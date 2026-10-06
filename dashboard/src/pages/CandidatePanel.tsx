@@ -7,6 +7,7 @@ import { CandidatePicker, ErrorBox, Loading, MapControls, MunicipioSelect, Situa
 import { agregar, porLocal, useBase, useTotais, useVotos } from "../lib/data";
 import { fmt, pct, titulo } from "../lib/format";
 import { CARGOS } from "../lib/types";
+import { useUf } from "../lib/uf";
 
 export function useMapParams(defaultModo: Modo = "escolas") {
   const [sp, setSp] = useSearchParams();
@@ -32,6 +33,7 @@ export function CandidatePanel() {
   const navigate = useNavigate();
   const { municipio, modo, metrica, set } = useMapParams();
   const base = useBase();
+  const { info } = useUf();
   const cand = base.data?.candById.get(Number(id));
   const votos = useVotos(cand ? [cand.id] : [], null);
   const totais = useTotais(cand?.cargo, null);
@@ -59,7 +61,7 @@ export function CandidatePanel() {
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="eyebrow">{CARGOS[cand.cargo]} · {cand.partido} · São Paulo · 1º turno 2026</div>
+          <div className="eyebrow">{CARGOS[cand.cargo]} · {cand.partido} · {info.nome} · 1º turno 2026</div>
           <h1 className="display text-3xl md:text-4xl">{nomeCand(cand)}<SituacaoBadge c={cand} /></h1>
           {cand.nomeCompleto && <p className="text-muted">{cand.nomeCompleto}{cand.situacao ? ` · ${cand.situacao}` : ""}</p>}
         </div>

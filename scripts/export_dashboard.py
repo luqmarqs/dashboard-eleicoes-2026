@@ -35,7 +35,17 @@ from tse2026.official import load_unificado
 
 ROOT = Path(__file__).resolve().parents[1]
 GEO_OUT = ROOT / "dashboard" / "public" / "geo"
-IBGE_UF = {"SP": 35}
+IBGE_UF = {"SP": 35, "MG": 31}
+# Cada UF ocupa uma faixa própria de ids no banco (SP mantém os ids originais).
+UF_ORDEM = ["SP", "MG"]
+# Candidaturas em destaque por UF: (cargo, número)
+DESTAQUES = {"SP": [(7, 50000), (6, 5005)], "MG": [(7, 50099)]}
+
+
+def offsets(uf: str) -> tuple[int, int]:
+    """(deslocamento dos ids de locais, deslocamento dos ids de candidaturas)."""
+    i = UF_ORDEM.index(uf)
+    return i * 1_000_000, i * 100_000
 CARGOS = {1: "Presidente", 3: "Governador", 5: "Senador", 6: "Deputado Federal", 7: "Deputado Estadual",
           8: "Deputado Distrital"}
 
@@ -77,7 +87,11 @@ def main(argv: list[str] | None = None) -> int:
 
     cad = s.raw_dir / "externo" / f"eleitorado_local_votacao_2026_{uf}.csv"
     if not cad.exists():
-        sys.exit(f"{cad} não existe; rode scripts/mapa_calor.py uma vez ou extraia o cadastro do TSE")
+        zip_path = s.raw_dir / "externo" / "eleitorado_local_votacao_2026.zip"
+        if not zip_path.exists():
+            sys.exit(f"{zip_path} não existe; baixe o cadastro de locais de votação do TSE (ver scripts/mapa_calor.py)")
+        import zipfile
+        zipfile.ZipFile(zip_path).extract(cad.name, cad.parent)
     glob = (s.dataset_dir / f"SG_UF={uf}" / f"turno{a.turno}_*.parquet").as_posix()
 
     con = duckdb.connect()
@@ -91,12 +105,13 @@ def main(argv: list[str] | None = None) -> int:
     con.execute(f"CREATE VIEW vot AS SELECT * FROM read_parquet('{glob}')")
 
     # --- municípios e locais -------------------------------------------------------------------
-    con.execute("""CREATE TABLE locais AS
+    off_loc, off_cand = offsets(uf)
+    con.execute(f"""CREATE TABLE locais AS
       WITH sec AS (
         SELECT DISTINCT v.CD_MUNICIPIO, v.CD_MUNICIPIO_IBGE, v.NM_MUNICIPIO, v.NR_ZONA, v.NR_SECAO
         FROM vot v
       )
-      SELECT row_number() OVER (ORDER BY c.CD_MUNICIPIO, c.NR_ZONA, c.NR_LOCAL) AS id,
+      SELECT row_number() OVER (ORDER BY c.CD_MUNICIPIO, c.NR_ZONA, c.NR_LOCAL) + {off_loc} AS id,
              c.CD_MUNICIPIO AS cd_municipio, ANY_VALUE(s.CD_MUNICIPIO_IBGE) AS cd_ibge, c.NR_ZONA AS nr_zona,
              c.NR_LOCAL AS nr_local, ANY_VALUE(c.NOME) AS nome, ANY_VALUE(c.ENDERECO) AS endereco,
              ANY_VALUE(c.BAIRRO) AS bairro, ANY_VALUE(c.CEP) AS cep,
@@ -128,18 +143,18 @@ def main(argv: list[str] | None = None) -> int:
         con.execute("UPDATE locais SET lat = ?, lon = ?, coord_aproximada = true WHERE id = ?", [lat, lon, lid])
     print(f"locais: {len(locais):,} ({len(fixed)} sem coordenada válida -> ponto interno do município)")
 
-    con.execute(f"""COPY (SELECT id, cd_municipio, cd_ibge, nr_zona, nr_local, nome, endereco, bairro, cep,
+    con.execute(f"""COPY (SELECT id, '{uf}' AS uf, cd_municipio, cd_ibge, nr_zona, nr_local, nome, endereco, bairro, cep,
                           round(lat, 6) lat, round(lon, 6) lon, coord_aproximada, qt_secoes FROM locais ORDER BY id)
                    TO '{(out / "locais.csv").as_posix()}' (HEADER)""")
     with (out / "municipios.csv").open("w", encoding="utf-8", newline="") as fh:
-        fh.write("cd_municipio,cd_ibge,nome,lat,lon\n")
+        fh.write("uf,cd_municipio,cd_ibge,nome,lat,lon\n")
         for cd, ibge, nome in munis:
             c = polys[ibge].representative_point()
-            fh.write(f'{cd},{ibge},"{nome}",{c.y:.5f},{c.x:.5f}\n')
+            fh.write(f'{uf},{cd},{ibge},"{nome}",{c.y:.5f},{c.x:.5f}\n')
 
     # --- candidaturas, votos e totais -----------------------------------------------------------
-    con.execute("""CREATE TABLE cand AS
-      SELECT row_number() OVER (ORDER BY CD_CARGO, TP_VOTO DESC, NR_CANDIDATO) AS id, *
+    con.execute(f"""CREATE TABLE cand AS
+      SELECT row_number() OVER (ORDER BY CD_CARGO, TP_VOTO DESC, NR_CANDIDATO) + {off_cand} AS id, *
       FROM (
         SELECT CD_ELEICAO AS cd_eleicao, CD_CARGO, ANY_VALUE(DS_CARGO) AS ds_cargo, TP_VOTO, NR_CANDIDATO,
                ANY_VALUE(NM_URNA_CANDIDATO) AS nm_urna, ANY_VALUE(NM_CANDIDATO) AS nm_candidato,
@@ -158,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
     con.executemany("INSERT INTO sit VALUES (?, ?, ?)", sit)
     print(f"situação oficial: {len(sit):,} candidaturas")
     con.execute(f"""COPY (
-        SELECT id, cd_eleicao, CD_CARGO AS cd_cargo, ds_cargo, TP_VOTO AS tipo, NR_CANDIDATO AS numero,
+        SELECT id, '{uf}' AS uf, cd_eleicao, CD_CARGO AS cd_cargo, ds_cargo, TP_VOTO AS tipo, NR_CANDIDATO AS numero,
                CASE WHEN TP_VOTO = 'legenda' THEN 'LEGENDA ' || COALESCE(sg_partido, NR_CANDIDATO::VARCHAR)
                     ELSE nm_urna END AS nm_urna,
                nm_candidato, nr_partido, sg_partido, sq_candidato, destinacao, votos_total,
@@ -172,6 +187,13 @@ def main(argv: list[str] | None = None) -> int:
         WHERE v.TP_VOTO IN ('nominal', 'legenda')
         GROUP BY 1, 2 HAVING SUM(v.QT_VOTOS) > 0 ORDER BY 2, 1
       ) TO '{(out / "votos_local.csv").as_posix()}' (HEADER)""")
+    vl = (out / "votos_local.csv").as_posix()
+    con.execute(f"""COPY (
+        SELECT candidatura_id,
+               '{{' || string_agg(local_id::VARCHAR, ',' ORDER BY local_id) || '}}' AS locais,
+               '{{' || string_agg(votos::VARCHAR, ',' ORDER BY local_id) || '}}' AS votos
+        FROM read_csv('{vl}', header=true) GROUP BY candidatura_id ORDER BY candidatura_id
+      ) TO '{(out / "votos_cand.csv").as_posix()}' (HEADER)""")
     con.execute(f"""COPY (
         WITH sc AS (
           SELECT DISTINCT CD_MUNICIPIO, NR_ZONA, NR_SECAO, CD_CARGO, QT_APTOS, QT_COMPARECIMENTO FROM vot
@@ -294,9 +316,10 @@ def export_dev_json(uf: str) -> int:
         "situacao": "situacao"}))
     dump(dest / "municipios.json", cols("SELECT * FROM municipios ORDER BY cd_municipio", {
         "cd": "cd_municipio", "ibge": "cd_ibge", "nome": "nome", "lat": "lat", "lon": "lon"}))
-    dest_ids = con.sql("""SELECT id FROM candidaturas WHERE tipo = 'nominal'
-                          AND ((cd_cargo = 7 AND numero = 50000) OR (cd_cargo = 6 AND numero = 5005))
-                          ORDER BY cd_cargo DESC""").fetchall()
+    dest_ids = []
+    for cargo, numero in DESTAQUES.get(uf, []):
+        dest_ids += con.sql(f"""SELECT id FROM candidaturas WHERE tipo = 'nominal'
+                                AND cd_cargo = {cargo} AND numero = {numero}""").fetchall()
     dump(dest / "config.json", {"partidos": [{"sigla": "PSOL", "ordem": 1, "cor": "#7b1fa2"}],
                                 "candidaturas": [r[0] for r in dest_ids]})
     for (cargo,) in con.sql("SELECT DISTINCT cd_cargo FROM totais_local").fetchall():

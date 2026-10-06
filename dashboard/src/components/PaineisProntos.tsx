@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { usePaineis } from "../pages/Paineis";
+import { useBase } from "../lib/data";
 import type { Painel } from "../lib/types";
 
 const ORDEM_GRUPOS = ["PSOL · comparativos", "Candidaturas em destaque"];
@@ -17,6 +18,9 @@ export function agruparPaineis(paineis: Painel[]): [string, Painel[]][] {
 /** Painéis prontos (sem autor) em destaque, agrupados. */
 export function PaineisProntos() {
   const paineis = usePaineis();
+  const base = useBase();
+  const nomes = (base.data?.candidaturasDestaque ?? []).map((id) => base.data?.candById.get(id)?.nome).filter(Boolean);
+  const rotuloPres = nomes.length ? `${nomes.join(" e ")} onde o Lula venceu →` : "Candidaturas onde o Lula venceu →";
   const prontos = (paineis.data ?? []).filter((p) => !p.autor);
   if (!prontos.length) return null;
   return (
@@ -27,7 +31,7 @@ export function PaineisProntos() {
       </div>
       <div className="flex flex-wrap gap-2">
         <Link to="/presidente" className="rounded-md border border-accent px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent-soft">
-          Bancada e Cortez onde o Lula venceu →
+          {rotuloPres}
         </Link>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
@@ -39,7 +43,7 @@ export function PaineisProntos() {
                 <li key={p.id}>
                   <Link to={`/paineis/${p.id}`} className="flex items-baseline gap-2 border-b border-line py-1.5 hover:text-accent">
                     {p.ordem != null && ps.length > 4 && <span className="num w-5 text-right text-xs text-muted">{p.ordem}</span>}
-                    <span className="font-semibold">{p.titulo.replace(/^(Bancada Feminista|Guilherme Cortez) em /, "")}</span>
+                    <span className="font-semibold">{p.grupo?.includes("10 cidades") ? p.titulo.replace(/^.+? em /, "") : p.titulo}</span>
                   </Link>
                 </li>
               ))}

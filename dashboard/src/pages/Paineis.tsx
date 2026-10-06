@@ -8,9 +8,13 @@ import { useSouAdmin } from "../lib/acessos";
 import { useBase, useDadosRegra, type Base } from "../lib/data";
 import { titulo } from "../lib/format";
 import { source } from "../lib/source";
+import { useUf } from "../lib/uf";
 import { CARGOS, type Candidatura, type Painel, type RegraPainel } from "../lib/types";
 
-export const usePaineis = () => useQuery({ queryKey: ["paineis"], queryFn: () => source.paineis() });
+export const usePaineis = () => {
+  const { uf } = useUf();
+  return useQuery({ queryKey: ["paineis", uf], queryFn: () => source.paineis() });
+};
 
 export function descreverPainel(p: Painel, b: Base): string {
   const onde = p.cd_municipio ? titulo(b.munByCd.get(p.cd_municipio)?.nome ?? "") : "estado de SP (escolha a cidade)";

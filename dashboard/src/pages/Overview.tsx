@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { PaineisProntos } from "../components/PaineisProntos";
 import { CandidatePicker, ErrorBox, Loading, SituacaoBadge, nomeCand } from "../components/ui";
 import { useBase, type Base } from "../lib/data";
+import { useUf } from "../lib/uf";
 import { fmt } from "../lib/format";
 import { CARGOS, type Candidatura } from "../lib/types";
 
@@ -16,6 +17,7 @@ function topPartido(base: Base, partido: string, cargo: number, n: number) {
 export function Overview() {
   const base = useBase();
   const navigate = useNavigate();
+  const { info } = useUf();
   const b = base.data;
   const partido = b?.partidosDestaque[0]?.sigla ?? "PSOL";
   const resumo = useMemo(() => {
@@ -37,8 +39,8 @@ export function Overview() {
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-3">
-        <div className="eyebrow">Estado de São Paulo · 1º turno · 4 de outubro de 2026</div>
-        <h1 className="display text-4xl">{partido} em São Paulo</h1>
+        <div className="eyebrow">Estado de {info.nome} · 1º turno · 4 de outubro de 2026</div>
+        <h1 className="display text-4xl">{partido} em {info.nome}</h1>
         <div className="max-w-xl">
           <CandidatePicker base={b} onPick={(c) => navigate(`/c/${c.id}`)} placeholder="Abrir o painel de qualquer candidatura (todos os partidos)…" />
         </div>

@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { useEffect, useState, type ReactNode } from "react";
-import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
+import { BrowserRouter, NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import { UFS, useUf } from "./lib/uf";
 import { CandidatePanel } from "./pages/CandidatePanel";
 import { Comparativo } from "./pages/Comparativo";
 import { Dobrada } from "./pages/Dobrada";
@@ -22,14 +23,34 @@ const NAV = [
   { to: "/metodologia", label: "Metodologia" },
 ];
 
+function SeletorUf() {
+  const { uf, setUf } = useUf();
+  const navigate = useNavigate();
+  return (
+    <div role="radiogroup" aria-label="Estado" className="inline-flex rounded-md border border-line p-0.5">
+      {UFS.map((u) => (
+        <button key={u.sigla} type="button" role="radio" aria-checked={uf === u.sigla} title={u.nome}
+          onClick={() => { if (u.sigla !== uf) { setUf(u.sigla); navigate("/"); } }}
+          className={`rounded px-2.5 py-1 text-sm font-bold ${uf === u.sigla ? "bg-accent text-panel" : "hover:bg-accent-soft"}`}>
+          {u.sigla}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Shell({ children, onSair }: { children: ReactNode; onSair?: () => void }) {
   const admin = useSouAdmin();
+  const { uf } = useUf();
   const nav = admin.data ? [...NAV, { to: "/acessos", label: "Acessos" }] : NAV;
   return (
     <div className="min-h-full">
       <header className="sticky top-0 z-30 border-b border-line bg-panel/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <NavLink to="/" className="display text-lg">Painel Eleitoral <span className="text-accent">SP 2026</span></NavLink>
+          <div className="flex items-center gap-3">
+            <NavLink to="/" className="display text-lg">Painel Eleitoral <span className="text-accent">{uf} 2026</span></NavLink>
+            <SeletorUf />
+          </div>
           <nav aria-label="Principal" className="flex flex-wrap gap-1">
             {nav.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end}
@@ -44,7 +65,7 @@ function Shell({ children, onSair }: { children: ReactNode; onSair?: () => void 
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-[1500px] px-4 py-6">{children}</main>
+      <main key={uf} className="mx-auto max-w-[1500px] px-4 py-6">{children}</main>
     </div>
   );
 }
@@ -69,7 +90,7 @@ function Login() {
     <div className="grid min-h-full place-items-center px-4">
       <form onSubmit={enviar} className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-line bg-panel p-6">
         <div className="eyebrow">Acesso restrito à equipe</div>
-        <h1 className="display text-2xl">Painel Eleitoral SP 2026</h1>
+        <h1 className="display text-2xl">Painel Eleitoral 2026</h1>
         {estado === "enviado" ? (
           <p role="status">Enviamos um link de acesso para <b>{email}</b>. Abra o e-mail neste mesmo navegador.</p>
         ) : (

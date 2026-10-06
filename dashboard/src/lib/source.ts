@@ -6,8 +6,7 @@ import type {
   CandidaturasCols, Config, LocaisCols, MunicipiosCols, Painel, TopCandidatura, TotaisCols, VotosCols,
 } from "./types";
 import { supabase } from "./supabase";
-
-export const UF = "sp";
+import { getUf } from "./uf";
 export const isDev = import.meta.env.VITE_DATA_SOURCE === "dev" && import.meta.env.DEV;
 
 export interface DadosRegra {
@@ -60,12 +59,14 @@ function filterByMunicipio(v: VotosCols, allowed: Set<number> | null): VotosCols
   return out;
 }
 
-const devBase = `/dev-data/${UF}`;
+const devBase = () => `/dev-data/${getUf().toLowerCase()}`;
 let devLocaisPorMun: Map<string, Set<number>> | null = null;
+let devLocaisUf = "";
 async function devMunSet(cd?: string | null): Promise<Set<number> | null> {
   if (!cd) return null;
-  if (!devLocaisPorMun) {
-    const l = await getJson<LocaisCols>(`${devBase}/locais.json`);
+  if (!devLocaisPorMun || devLocaisUf !== getUf()) {
+    devLocaisUf = getUf();
+    const l = await getJson<LocaisCols>(`${devBase()}/locais.json`);
     devLocaisPorMun = new Map();
     l.id.forEach((id, i) => {
       const s = devLocaisPorMun!.get(l.mun[i]) ?? new Set<number>();
@@ -76,7 +77,7 @@ async function devMunSet(cd?: string | null): Promise<Set<number> | null> {
   return devLocaisPorMun.get(cd) ?? new Set();
 }
 
-const PAINEIS_KEY = "paineis-dev";
+const paineisKey = () => `paineis-dev-${getUf()}`;
 const PAINEIS_PADRAO: Painel[] = [
   { id: "padrao-psol", titulo: "PSOL · 10 mais votados (federal e estadual)", candidatura_ids: [],
     regra: { partido: "PSOL", cargos: [6, 7], top: 10 }, cd_municipio: null, grupo: "PSOL · comparativos", ordem: 1 },
@@ -87,10 +88,10 @@ const PAINEIS_PADRAO: Painel[] = [
 ];
 function devPaineis(): Painel[] {
   try {
-    const own = JSON.parse(localStorage.getItem(PAINEIS_KEY) ?? "[]") as Painel[];
-    return [...PAINEIS_PADRAO, ...own.filter((p) => !p.id.startsWith("padrao-"))];
+    const own = JSON.parse(localStorage.getItem(paineisKey()) ?? "[]") as Painel[];
+    return [...(getUf() === "SP" ? PAINEIS_PADRAO : []), ...own.filter((p) => !p.id.startsWith("padrao-"))];
   } catch {
-    return PAINEIS_PADRAO;
+    return getUf() === "SP" ? PAINEIS_PADRAO : [];
   }
 }
 
@@ -101,16 +102,16 @@ const dev: DataSource = {
     const [votos, totais] = await Promise.all([dev.votos(top.map((t) => t.candidatura_id), cd), dev.totais(cargo, cd)]);
     return { top, votos, totais };
   },
-  locais: () => getJson(`${devBase}/locais.json`),
-  candidaturas: () => getJson(`${devBase}/candidaturas.json`),
-  municipios: () => getJson(`${devBase}/municipios.json`),
-  config: () => getJson(`${devBase}/config.json`),
+  locais: () => getJson(`${devBase()}/locais.json`),
+  candidaturas: () => getJson(`${devBase()}/candidaturas.json`),
+  municipios: () => getJson(`${devBase()}/municipios.json`),
+  config: () => getJson(`${devBase()}/config.json`),
   async votos(ids, cd) {
     const allowed = await devMunSet(cd);
     const out: Record<number, VotosCols> = {};
     await Promise.all(ids.map(async (id) => {
       try {
-        out[id] = filterByMunicipio(await getJson<VotosCols>(`${devBase}/votos/${id}.json`), allowed);
+        out[id] = filterByMunicipio(await getJson<VotosCols>(`${devBase()}/votos/${id}.json`), allowed);
       } catch {
         out[id] = { local: [], votos: [] };
       }
@@ -118,7 +119,7 @@ const dev: DataSource = {
     return out;
   },
   async totais(cargo, cd) {
-    const t = await getJson<TotaisCols>(`${devBase}/totais/${cargo}.json`);
+    const t = await getJson<TotaisCols>(`${devBase()}/totais/${cargo}.json`);
     const allowed = await devMunSet(cd);
     if (!allowed) return t;
     const out: TotaisCols = { local: [], validos: [], comparecimento: [], aptos: [] };
@@ -153,7 +154,7 @@ const dev: DataSource = {
     const painel: Painel = { ...p, id: p.id ?? crypto.randomUUID(), criado_em: new Date().toISOString() };
     const next = [painel, ...all.filter((x) => x.id !== painel.id)];
     try {
-      localStorage.setItem(PAINEIS_KEY, JSON.stringify(next));
+      localStorage.setItem(paineisKey(), JSON.stringify(next));
     } catch {
       /* armazenamento indisponível: painel vale só nesta sessão */
     }
@@ -161,7 +162,7 @@ const dev: DataSource = {
   },
   async apagarPainel(id) {
     try {
-      localStorage.setItem(PAINEIS_KEY, JSON.stringify(devPaineis().filter((p) => p.id !== id)));
+      localStorage.setItem(paineisKey(), JSON.stringify(devPaineis().filter((p) => p.id !== id)));
     } catch {
       /* ignora */
     }
@@ -175,12 +176,12 @@ const remote: DataSource = {
     return data?.valor ?? "sem-versao";
   },
   dadosRegra: (partido, cargo, cd, limite) =>
-    rpc("dados_regra", { p_partido: partido, p_cargo: cargo, p_cd_municipio: cd, p_limite: limite }),
-  locais: () => rpc("locais_json"),
-  candidaturas: () => rpc("candidaturas_json"),
+    rpc("dados_regra", { p_partido: partido, p_cargo: cargo, p_cd_municipio: cd, p_limite: limite, p_uf: getUf() }),
+  locais: () => rpc("locais_json", { p_uf: getUf() }),
+  candidaturas: () => rpc("candidaturas_json", { p_uf: getUf() }),
   async municipios() {
     const { data, error } = await supabase().from("municipios").select("cd_municipio, cd_ibge, nome, lat, lon")
-      .order("cd_municipio").range(0, 999);
+      .eq("uf", getUf()).order("cd_municipio").range(0, 999);
     if (error || !data) rpcError("municipios", error);
     return {
       cd: data.map((r) => r.cd_municipio), ibge: data.map((r) => r.cd_ibge), nome: data.map((r) => r.nome),
@@ -199,19 +200,19 @@ const remote: DataSource = {
     };
   },
   votos: (ids, cd) => rpc("votos_candidaturas", { p_ids: ids, p_cd_municipio: cd ?? null }),
-  totais: (cargo, cd) => rpc("totais_cargo", { p_cargo: cargo, p_cd_municipio: cd ?? null }),
+  totais: (cargo, cd) => rpc("totais_cargo", { p_cargo: cargo, p_cd_municipio: cd ?? null, p_uf: getUf() }),
   topCandidaturas: (partido, cargo, cd, limite) =>
-    rpc("top_candidaturas", { p_partido: partido, p_cargo: cargo, p_cd_municipio: cd, p_limite: limite }),
+    rpc("top_candidaturas", { p_partido: partido, p_cargo: cargo, p_cd_municipio: cd, p_limite: limite, p_uf: getUf() }),
   async paineis() {
     const { data, error } = await supabase().from("paineis")
-      .select("id, titulo, candidatura_ids, regra, cd_municipio, autor, criado_em, grupo, ordem")
+      .select("id, titulo, candidatura_ids, regra, cd_municipio, autor, criado_em, grupo, ordem").eq("uf", getUf())
       .order("grupo", { ascending: true, nullsFirst: false }).order("ordem", { ascending: true, nullsFirst: false })
       .order("criado_em", { ascending: false });
     if (error) rpcError("painéis", error);
     return data ?? [];
   },
   async salvarPainel(p) {
-    const row = { titulo: p.titulo, candidatura_ids: p.candidatura_ids, regra: p.regra ?? null, cd_municipio: p.cd_municipio };
+    const row = { titulo: p.titulo, candidatura_ids: p.candidatura_ids, regra: p.regra ?? null, cd_municipio: p.cd_municipio, uf: getUf() };
     const q = p.id
       ? supabase().from("paineis").update({ ...row, atualizado_em: new Date().toISOString() }).eq("id", p.id)
       : supabase().from("paineis").insert(row);
@@ -228,6 +229,6 @@ const remote: DataSource = {
 export const source: DataSource = isDev ? dev : remote;
 
 export const geoUrl = {
-  municipios: `/geo/${UF}/municipios.json`,
-  territorios: (ibge: number) => `/geo/${UF}/territorios/${ibge}.json`,
+  municipios: () => `/geo/${getUf().toLowerCase()}/municipios.json`,
+  territorios: (ibge: number) => `/geo/${getUf().toLowerCase()}/territorios/${ibge}.json`,
 };

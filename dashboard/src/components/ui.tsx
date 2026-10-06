@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import type { Base } from "../lib/data";
+import { useUf } from "../lib/uf";
 import { fmt, normalizar, titulo } from "../lib/format";
 import { CARGOS, type Candidatura } from "../lib/types";
 import { MODOS, type Metrica, type Modo } from "./mapTypes";
@@ -48,12 +49,13 @@ export function MunicipioSelect({ base, value, onChange, id = "municipio" }: {
   base: Base; value: string | null; onChange: (cd: string | null) => void; id?: string;
 }) {
   const opts = useMemo(() => [...base.municipios].sort((a, b) => a.nome.localeCompare(b.nome)), [base]);
+  const { info } = useUf();
   return (
     <label htmlFor={id} className="flex flex-col gap-1 text-sm text-muted">
       Abrangência
       <select id={id} value={value ?? ""} onChange={(e) => onChange(e.target.value || null)}
         className="rounded-md border border-line bg-panel px-3 py-1.5 text-ink">
-        <option value="">Estado de São Paulo</option>
+        <option value="">Estado de {info.nome}</option>
         {opts.map((m) => <option key={m.cd} value={m.cd}>{titulo(m.nome)}</option>)}
       </select>
     </label>

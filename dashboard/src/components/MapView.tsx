@@ -49,8 +49,8 @@ export function MapView({
   const mun = municipio ? base.munByCd.get(municipio) : undefined;
 
   const municipiosGeo = useQuery({
-    queryKey: ["geo", "municipios"],
-    queryFn: async () => (await fetch(geoUrl.municipios)).json() as Promise<Geo>,
+    queryKey: ["geo", "municipios", base.municipios[0]?.cd],
+    queryFn: async () => (await fetch(geoUrl.municipios())).json() as Promise<Geo>,
     staleTime: Infinity,
   });
   const territoriosGeo = useQuery({
@@ -68,13 +68,13 @@ export function MapView({
   // Enquadramento do escopo (estado ou município): o mapa é recriado já enquadrado quando o
   // escopo muda (key abaixo), o que é mais previsível do que animar depois do carregamento.
   const bounds = useMemo<[[number, number], [number, number]]>(() => {
-    if (!municipio) return SP_BOUNDS;
     let [minX, minY, maxX, maxY] = [180, 90, -180, -90];
     for (const l of noEscopo) {
+      if (l.aprox) continue;
       minX = Math.min(minX, l.lon); maxX = Math.max(maxX, l.lon);
       minY = Math.min(minY, l.lat); maxY = Math.max(maxY, l.lat);
     }
-    return minX <= maxX ? [[minX, minY], [maxX, maxY]] : SP_BOUNDS;
+    return minX <= maxX ? [[minX, minY], [maxX, maxY]] : SP_BOUNDS; // SP_BOUNDS só como último recurso
   }, [municipio, noEscopo]);
 
   const metricaDe = (v: number, val: number) => (metrica === "pct" ? (val ? v / val : 0) : v);
@@ -227,7 +227,7 @@ export function MapView({
       <div className="relative overflow-hidden rounded-lg border border-line" style={{ height: altura }}>
         <MapGL
           ref={mapRef}
-          key={municipio ?? "estado"}
+          key={`${base.municipios[0]?.cd}-${municipio ?? "estado"}`}
           initialViewState={{ bounds, fitBoundsOptions: { padding: municipio ? 40 : 20, maxZoom: 14 } }}
           mapStyle={dark ? STYLE_DARK : STYLE_LIGHT}
           attributionControl={{ compact: true, customAttribution: "Votos: TSE · Limites: IBGE" }}
