@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+build/
+dist/
+
+# Dados gerados pelo pipeline (podem ter dezenas de GB)
+data/*
+!data/.gitkeep
+
+# Sondagens locais
+scratch_probe/
