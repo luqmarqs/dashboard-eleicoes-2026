@@ -98,8 +98,12 @@ def test_choose_ballot() -> None:
     h, bu, reason = choose_ballot(aux)
     assert reason is None and bu["nm"] == "o03220sp7107200010001-bu.dat"
 
-    sem_totalizado = {"st": "Recebida", "hashes": [{"hash": "x", "st": "Recebido", "arq": [{"nm": "a", "tp": "bu"}]}]}
-    assert choose_ballot(sem_totalizado)[2].startswith("nenhum BU totalizado")
+    # Seção "Recebida" (BU ainda não totalizado): usa o BU, a situação fica registrada.
+    recebida = {"st": "Recebida", "hashes": [{"hash": "x", "st": "Recebido", "arq": [{"nm": "a", "tp": "bu"}]}]}
+    h, bu, reason = choose_ballot(recebida)
+    assert reason is None and h["st"] == "Recebido" and bu["nm"] == "a"
+    descartado = {"hashes": [{"hash": "x", "st": "Excluído", "arq": [{"nm": "a", "tp": "bu"}]}]}
+    assert choose_ballot(descartado)[2].startswith("nenhum BU utilizável")
     assert choose_ballot({"st": "Não instalada", "hashes": []})[2].startswith("aux sem hashes")
 
     # Seção apurada pelo Sistema de Apuração (ex.: exterior, cédulas): arquivo "busa".

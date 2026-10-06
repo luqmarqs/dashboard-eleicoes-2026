@@ -47,6 +47,7 @@ STATUS_DIFF = "DIFFERENCE"
 STATUS_MISSING_SECTIONS = "MISSING_SECTIONS"
 STATUS_MISSING_OFFICIAL = "MISSING_OFFICIAL_DATA"
 STATUS_NULO_TECNICO = "NULO_TECNICO"
+STATUS_NAO_TOTALIZADAS = "NAO_TOTALIZADAS"
 
 
 def _int(v: Any) -> int | None:
@@ -157,9 +158,20 @@ def run_validation(settings: Settings, state: StateDB, pleito: Pleito, flt: Sect
         con.execute(
             f"""COPY (
                 SELECT nivel, tipo, status, COUNT(*) AS n_comparacoes,
-                       SUM(abs(diferenca_absoluta)) AS soma_diferenca_absoluta
+                       SUM(abs(diferenca_absoluta)) AS soma_diferenca_absoluta,
+                       SUM(abs(votos_secoes_nao_totalizadas)) AS soma_votos_nao_totalizadas
                 FROM cmp GROUP BY ALL ORDER BY ALL
             ) TO '{summary.as_posix()}' (FORMAT parquet, COMPRESSION zstd)"""
+        )
+        nao_tot = settings.validation_dir / "secoes_nao_totalizadas.parquet"
+        con.execute(
+            f"""COPY (
+                SELECT SG_UF, CD_MUNICIPIO, NM_MUNICIPIO, NR_ZONA, NR_SECAO, DS_SITUACAO_BU, CD_ELEICAO, CD_CARGO,
+                       DS_CARGO, ANY_VALUE(QT_APTOS) AS QT_APTOS, ANY_VALUE(QT_COMPARECIMENTO) AS QT_COMPARECIMENTO,
+                       SUM(QT_VOTOS) AS QT_VOTOS
+                FROM vot WHERE DS_SITUACAO_BU IS DISTINCT FROM 'Totalizado'
+                GROUP BY ALL ORDER BY ALL
+            ) TO '{nao_tot.as_posix()}' (FORMAT parquet, COMPRESSION zstd)"""
         )
         counts = dict(con.execute("SELECT status, COUNT(*) FROM cmp GROUP BY status").fetchall())
         _mark_validated(con, state, pleito)
@@ -196,24 +208,28 @@ UNION ALL SELECT 'uf', uf, '', 0, SUM(faltante) FROM s GROUP BY ALL
 UNION ALL SELECT 'br', '', '', 0, SUM(faltante) FROM s;
 
 CREATE TEMP TABLE bu_votavel AS
+-- nao_tot: seção cujo BU usado não está "Totalizado" no TSE (ex.: "Recebido"). Esses votos são
+-- separados para explicitar a diferença em relação ao resultado oficial.
 SELECT SG_UF AS uf, CD_MUNICIPIO AS municipio, NR_ZONA AS zona, CD_ELEICAO AS cd_eleicao,
-       CD_CARGO AS cd_cargo, TP_VOTO AS tp_voto, NR_CANDIDATO AS numero, SUM(QT_VOTOS) AS votos
+       CD_CARGO AS cd_cargo, TP_VOTO AS tp_voto, NR_CANDIDATO AS numero, (DS_SITUACAO_BU IS DISTINCT FROM 'Totalizado') AS nao_tot, SUM(QT_VOTOS) AS votos
 FROM vot WHERE TP_VOTO IN ('nominal', 'legenda') GROUP BY ALL;
 
 -- Totais por seção × cargo. Comparecimento/aptos vêm do BU; a classificação dos votos nominais
 -- (válido, nulo técnico, anulado...) usa a destinação oficial (DS_DESTINACAO_VOTO).
 CREATE TEMP TABLE bu_secao_cargo AS
-SELECT uf, municipio, zona, cd_eleicao, cd_cargo,
+SELECT uf, municipio, zona, cd_eleicao, cd_cargo, nao_tot,
        SUM(QT_APTOS)::BIGINT AS QT_APTOS, SUM(QT_COMPARECIMENTO)::BIGINT AS QT_COMPARECIMENTO,
        SUM(QT_ABSTENCOES)::BIGINT AS QT_ABSTENCOES
 FROM (
     SELECT DISTINCT SG_UF AS uf, CD_MUNICIPIO AS municipio, NR_ZONA AS zona, NR_SECAO AS secao,
-           CD_ELEICAO AS cd_eleicao, CD_CARGO AS cd_cargo, QT_APTOS, QT_COMPARECIMENTO, QT_ABSTENCOES
+           CD_ELEICAO AS cd_eleicao, CD_CARGO AS cd_cargo, (DS_SITUACAO_BU IS DISTINCT FROM 'Totalizado') AS nao_tot,
+           QT_APTOS, QT_COMPARECIMENTO, QT_ABSTENCOES
     FROM vot
 ) GROUP BY ALL;
 
 CREATE TEMP TABLE bu_votos AS
 SELECT SG_UF AS uf, CD_MUNICIPIO AS municipio, NR_ZONA AS zona, CD_ELEICAO AS cd_eleicao, CD_CARGO AS cd_cargo,
+       (DS_SITUACAO_BU IS DISTINCT FROM 'Totalizado') AS nao_tot,
        SUM(QT_VOTOS)::BIGINT AS QT_VOTOS_TOTAL,
        COALESCE(SUM(QT_VOTOS) FILTER (TP_VOTO = 'nominal' AND DS_DESTINACAO_VOTO LIKE 'Válido%'), 0)::BIGINT
            AS QT_VOTOS_NOMINAIS_VALIDOS,
@@ -233,10 +249,10 @@ FROM vot GROUP BY ALL;
 -- Comparecimento/aptos vêm do BU; a classificação dos votos nominais (válido, nulo técnico,
 -- anulado...) usa a destinação oficial (DS_DESTINACAO_VOTO).
 CREATE TEMP TABLE bu_tot AS
-SELECT * FROM (UNPIVOT bu_secao_cargo ON COLUMNS(* EXCLUDE (uf, municipio, zona, cd_eleicao, cd_cargo))
+SELECT * FROM (UNPIVOT bu_secao_cargo ON COLUMNS(* EXCLUDE (uf, municipio, zona, cd_eleicao, cd_cargo, nao_tot))
                INTO NAME metrica VALUE valor)
 UNION ALL
-SELECT * FROM (UNPIVOT bu_votos ON COLUMNS(* EXCLUDE (uf, municipio, zona, cd_eleicao, cd_cargo))
+SELECT * FROM (UNPIVOT bu_votos ON COLUMNS(* EXCLUDE (uf, municipio, zona, cd_eleicao, cd_cargo, nao_tot))
                INTO NAME metrica VALUE valor);
 
 CREATE TEMP TABLE bu_lvl AS
@@ -244,16 +260,20 @@ WITH b AS (
     SELECT uf, municipio, zona, cd_eleicao, cd_cargo,
            CASE tp_voto WHEN 'nominal' THEN 'candidato' ELSE 'legenda' END AS tipo,
            CASE tp_voto WHEN 'nominal' THEN 'QT_VOTOS' ELSE 'QT_VOTOS_LEGENDA' END AS metrica,
-           numero, votos AS valor
+           numero, nao_tot, votos AS valor
     FROM bu_votavel
     UNION ALL
-    SELECT uf, municipio, zona, cd_eleicao, cd_cargo, 'total', metrica, -1, valor FROM bu_tot
-)
-SELECT 'zona' AS nivel, uf, municipio, zona, cd_eleicao, cd_cargo, tipo, metrica, numero, SUM(valor) AS valor
-FROM b GROUP BY ALL
-UNION ALL SELECT 'municipio', uf, municipio, 0, cd_eleicao, cd_cargo, tipo, metrica, numero, SUM(valor) FROM b GROUP BY ALL
-UNION ALL SELECT 'uf', uf, '', 0, cd_eleicao, cd_cargo, tipo, metrica, numero, SUM(valor) FROM b GROUP BY ALL
-UNION ALL SELECT 'br', '', '', 0, cd_eleicao, cd_cargo, tipo, metrica, numero, SUM(valor) FROM b GROUP BY ALL;
+    SELECT uf, municipio, zona, cd_eleicao, cd_cargo, 'total', metrica, -1, nao_tot, valor FROM bu_tot
+),
+v AS (SELECT * EXCLUDE (nao_tot), CASE WHEN nao_tot THEN valor ELSE 0 END AS valor_nt FROM b)
+SELECT 'zona' AS nivel, uf, municipio, zona, cd_eleicao, cd_cargo, tipo, metrica, numero,
+       SUM(valor) AS valor, SUM(valor_nt) AS valor_nt FROM v GROUP BY ALL
+UNION ALL SELECT 'municipio', uf, municipio, 0, cd_eleicao, cd_cargo, tipo, metrica, numero, SUM(valor), SUM(valor_nt)
+FROM v GROUP BY ALL
+UNION ALL SELECT 'uf', uf, '', 0, cd_eleicao, cd_cargo, tipo, metrica, numero, SUM(valor), SUM(valor_nt)
+FROM v GROUP BY ALL
+UNION ALL SELECT 'br', '', '', 0, cd_eleicao, cd_cargo, tipo, metrica, numero, SUM(valor), SUM(valor_nt)
+FROM v GROUP BY ALL;
 
 CREATE TEMP TABLE of_lvl AS
 SELECT nivel, uf, municipio, zona, cd_eleicao, cd_cargo, 'candidato' AS tipo, 'QT_VOTOS' AS metrica,
@@ -271,7 +291,8 @@ SELECT DISTINCT nivel, uf, municipio, zona, cd_eleicao, cd_cargo FROM of_tot;
 CREATE TEMP TABLE cmp AS
 WITH j AS (
     SELECT nivel, uf, municipio, zona, cd_eleicao, cd_cargo, tipo, metrica, numero,
-           o.dvt, b.valor AS votos_secoes, o.valor AS votos_oficial, (o.metrica IS NULL) AS sem_oficial
+           o.dvt, b.valor AS votos_secoes, COALESCE(b.valor_nt, 0) AS votos_nt,
+           o.valor AS votos_oficial, (o.metrica IS NULL) AS sem_oficial
     FROM (
         SELECT b.* FROM bu_lvl b SEMI JOIN escopos USING (nivel, uf, municipio, zona, cd_eleicao, cd_cargo)
         -- totais: só as métricas que o arquivo oficial publica para o cargo
@@ -287,6 +308,8 @@ SELECT j.nivel, NULLIF(j.uf, '') AS uf, NULLIF(j.municipio, '') AS municipio, NU
        CASE WHEN j.numero >= 0 THEN j.numero END AS candidato,
        j.dvt AS destinacao_voto_oficial,
        COALESCE(j.votos_secoes, 0) AS votos_secoes,
+       COALESCE(j.votos_secoes, 0) - j.votos_nt AS votos_secoes_totalizadas,
+       j.votos_nt AS votos_secoes_nao_totalizadas,
        CASE WHEN NOT j.sem_oficial THEN COALESCE(j.votos_oficial, 0) END AS votos_oficial,
        COALESCE(j.votos_secoes, 0) - j.votos_oficial AS diferenca_absoluta,
        CASE WHEN j.votos_oficial > 0
@@ -302,6 +325,9 @@ SELECT j.nivel, NULLIF(j.uf, '') AS uf, NULLIF(j.municipio, '') AS municipio, NU
                THEN 'NULO_TECNICO'
            WHEN j.sem_oficial OR j.votos_oficial IS NULL THEN 'MISSING_OFFICIAL_DATA'
            WHEN COALESCE(j.votos_secoes, 0) = j.votos_oficial THEN 'OK'
+           -- a diferença é exatamente o voto das seções com BU não totalizado (ex.: "Recebida")
+           WHEN j.votos_nt <> 0 AND COALESCE(j.votos_secoes, 0) - j.votos_nt = j.votos_oficial
+               THEN 'NAO_TOTALIZADAS'
            WHEN COALESCE(c.faltantes, 0) > 0 THEN 'MISSING_SECTIONS'
            ELSE 'DIFFERENCE'
        END AS status

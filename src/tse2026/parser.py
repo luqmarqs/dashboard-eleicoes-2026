@@ -97,7 +97,7 @@ def append_votacao(cols: Columns, bu: BoletimUrna, section: dict[str, Any], ctx:
         ANO_ELEICAO=ctx.ano, CD_PLEITO=ctx.cd_pleito, NR_TURNO=ctx.turno, DT_ELEICAO=ctx.data,
         CD_MUNICIPIO=section["CD_MUNICIPIO"], CD_MUNICIPIO_IBGE=section["CD_MUNICIPIO_IBGE"],
         NM_MUNICIPIO=section["NM_MUNICIPIO"], NR_ZONA=section["NR_ZONA"], NR_SECAO=section["NR_SECAO"],
-        NR_LOCAL_VOTACAO=bu.local,
+        NR_LOCAL_VOTACAO=bu.local, DS_SITUACAO_BU=section["ds_situacao_hash"],
     )
     n = 0
     for res in bu.resultados:

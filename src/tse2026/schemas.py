@@ -22,6 +22,9 @@ VOTACAO_FIELDS: list[pa.Field] = [
     pa.field("NR_ZONA", pa.int32(), nullable=False),
     pa.field("NR_SECAO", pa.int32(), nullable=False),
     pa.field("NR_LOCAL_VOTACAO", pa.int32()),
+    # Situação do BU no TSE ("st" do hash escolhido no aux.json): Totalizado ou, p.ex., Recebido
+    # (BU publicado mas não totalizado). Filtre por 'Totalizado' para reproduzir o resultado oficial.
+    pa.field("DS_SITUACAO_BU", DICT),
     pa.field("CD_CARGO", pa.int16(), nullable=False),
     pa.field("DS_CARGO", DICT),
     pa.field("TP_CARGO", DICT),  # majoritario | proporcional | consulta

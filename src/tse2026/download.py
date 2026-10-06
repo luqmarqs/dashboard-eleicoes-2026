@@ -20,6 +20,8 @@ log = get_logger("download")
 
 COMMIT_EVERY = 200
 SITUACAO_TOTALIZADO = "totalizado"
+# Situações de hash que indicam BU descartado (nunca usado).
+SITUACOES_DESCARTE = ("exclu", "cancel", "substitu", "rejeit", "anulad", "invalid")
 # Tipos de arquivo de BU no aux.json, em ordem de preferência: "bu" (urna eletrônica) e
 # "busa" (BU gerado pelo Sistema de Apuração, ex.: votação manual/cédulas). Mesmo formato ASN.1.
 TIPOS_BU = ("bu", "busa")
@@ -55,12 +57,19 @@ def choose_ballot(aux: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str,
         dr, hr = h.get("dr", ""), h.get("hr", "")
         return f"{dr[6:10]}{dr[3:5]}{dr[0:2]}{hr}"
 
-    totalizados = [h for h in hashes if str(h.get("st", "")).lower() == SITUACAO_TOTALIZADO and bu_of(h)]
-    if totalizados:
-        h = max(totalizados, key=when)
+    def status(h: dict[str, Any]) -> str:
+        return str(h.get("st", "")).lower()
+
+    com_bu = [h for h in hashes if bu_of(h)]
+    totalizados = [h for h in com_bu if status(h) == SITUACAO_TOTALIZADO]
+    # Sem BU totalizado (ex.: seção "Recebida"), vale o BU mais recente que não foi descartado.
+    # A situação fica registrada em ds_situacao_hash / DS_SITUACAO_BU.
+    validos = totalizados or [h for h in com_bu if not any(m in status(h) for m in SITUACOES_DESCARTE)]
+    if validos:
+        h = max(validos, key=when)
         return h, bu_of(h), None
     situacoes = sorted({str(h.get("st")) for h in hashes})
-    return None, None, f"nenhum BU totalizado (situação aux: {aux.get('st')}; hashes: {', '.join(situacoes)})"
+    return None, None, f"nenhum BU utilizável (situação aux: {aux.get('st')}; hashes: {', '.join(situacoes)})"
 
 
 class SectionDownloader:

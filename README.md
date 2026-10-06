@@ -121,6 +121,11 @@ O estado fica em `data/manifests/state.sqlite`, com escrita incremental e commit
 - seções com `error` são tentadas de novo (use `--no-retry-errors` para pular);
 - seções "sem BU" são reavaliadas (o BU pode ser publicado depois).
 
+**Quais BUs entram:** todos. Se a seção tem BU "Totalizado", ele é usado (o mais recente, se
+houver mais de um). Se não tem, entra o BU mais recente em qualquer outra situação (ex.:
+"Recebido"), exceto as que indicam descarte (excluído, cancelado, substituído, rejeitado). A
+situação fica em `DS_SITUACAO_BU`.
+
 Estados de seção: `pending → downloading → downloaded → parsed → validated`, além de `error` e
 `skipped` (seção agregada ou sem BU totalizado, com o motivo em `status_reason`).
 
@@ -159,6 +164,7 @@ divididos (`turno1_1.parquet`, …).
 | NM_MUNICIPIO | string | |
 | NR_ZONA, NR_SECAO | int32 | |
 | NR_LOCAL_VOTACAO | int32 | local de votação, tirado do BU |
+| DS_SITUACAO_BU | string (dicionário) | situação do BU no TSE: `Totalizado` ou, por exemplo, `Recebido` (BU publicado mas ainda não totalizado). Use `= 'Totalizado'` para reproduzir o resultado oficial |
 | CD_CARGO | int16 | 1 Presidente, 3 Governador, 5 Senador, 6 Dep. Federal, 7 Dep. Estadual, 8 Dep. Distrital, 25 Conselheiro Distrital |
 | DS_CARGO, TP_CARGO | string (dicionário) | TP_CARGO: majoritario / proporcional |
 | TP_VOTO | string (dicionário) | `nominal`, `legenda`, `branco`, `nulo` |
@@ -289,14 +295,16 @@ Os resultados vão para `data/validation/`:
 
 | Arquivo | Conteúdo |
 |---|---|
-| `comparisons.parquet` | todas as comparações: nivel, uf, municipio, zona, cd_eleicao, cd_cargo, tipo, metrica, candidato, votos_secoes, votos_oficial, diferenca_absoluta, diferenca_percentual, secoes_faltantes, status |
+| `comparisons.parquet` | todas as comparações: nivel, uf, municipio, zona, cd_eleicao, cd_cargo, tipo, metrica, candidato, votos_secoes, votos_secoes_totalizadas, votos_secoes_nao_totalizadas, votos_oficial, diferenca_absoluta, diferenca_percentual, secoes_faltantes, status |
 | `differences.parquet` | só as comparações com status diferente de `OK` |
+| `secoes_nao_totalizadas.parquet` | seções cujo BU usado não está `Totalizado`, com a situação e os votos por cargo |
 | `validation_summary.parquet` | contagem por nível × tipo × status |
 
 | Status | Significado |
 |---|---|
 | `OK` | soma das seções = oficial |
 | `DIFFERENCE` | divergência com todas as seções do escopo processadas. **É um problema real** |
+| `NAO_TOTALIZADAS` | a diferença é **exatamente** o voto das seções com BU não totalizado (ex.: "Recebida"): sem elas, a soma bate com o oficial. Veja as colunas `votos_secoes_totalizadas` e `votos_secoes_nao_totalizadas` |
 | `MISSING_SECTIONS` | divergência explicada por seções ainda não baixadas ou parseadas no escopo |
 | `MISSING_OFFICIAL_DATA` | não há número oficial para comparar |
 | `NULO_TECNICO` | votável presente no BU mas ausente do resultado oficial (ex.: candidatura indeferida). O TSE conta esses votos como nulos técnicos, conferidos no agregado por `QT_NULOS_TECNICOS` |
