@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { source } from "../lib/source";
 import { MultiView } from "../components/MultiView";
 import { ErrorBox, Loading, MunicipioSelect } from "../components/ui";
-import { useBase, useTop } from "../lib/data";
+import { useBase, useDadosRegra } from "../lib/data";
 import { titulo } from "../lib/format";
 import { CARGOS } from "../lib/types";
 
@@ -21,7 +21,7 @@ export function Comparativo() {
     if (v == null) n.delete(k); else n.set(k, v);
     setSp(n, { replace: true });
   };
-  const topQ = useTop(partido, cargo, municipio, top);
+  const topQ = useDadosRegra(partido, cargo, municipio, top);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [ambos, setAmbos] = useState(true);
@@ -46,7 +46,7 @@ export function Comparativo() {
 
   if (base.error) return <ErrorBox error={base.error} />;
   if (!base.data) return <Loading />;
-  const ids = topQ.data?.map((t) => t.candidatura_id) ?? [];
+  const ids = topQ.data?.top.map((t) => t.candidatura_id) ?? [];
 
   return (
     <div className="flex flex-col gap-5">

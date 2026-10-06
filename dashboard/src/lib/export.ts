@@ -1,5 +1,3 @@
-import writeXlsxFile from "write-excel-file";
-
 export interface ExportCol<T> {
   header: string;
   value: (row: T) => string | number | null | undefined;
@@ -38,6 +36,7 @@ export async function exportarXlsx<T>(rows: T[], cols: ExportCol<T>[], nome: str
       return { type: String, value: String(v) };
     }),
   );
+  const { default: writeXlsxFile } = await import("write-excel-file"); // carregado só ao exportar
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const blob = await writeXlsxFile([header, ...data] as any, { fontFamily: "Arial", fontSize: 10 });
   baixar(blob as Blob, `${nome}.xlsx`);

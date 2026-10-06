@@ -2,7 +2,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DataTable } from "../components/DataTable";
-import { MapView } from "../components/MapView";
+import { LazyMap } from "../components/LazyMap";
 import { CandidatePicker, ErrorBox, Loading, MunicipioSelect, Segmented, SituacaoBadge, nomeCand } from "../components/ui";
 import { BIVAR, cssRgb, prefersDark, type RGB } from "../lib/colors";
 import { agregar, porLocal, useBase, useTotais, useVotos, type Base, type PorLocal } from "../lib/data";
@@ -98,7 +98,7 @@ export function Dobrada() {
               options={[{ id: "escolas", label: "Escolas" }, { id: "territorios", label: "Territórios" }]} />
           )}
           <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
-            <MapView base={B} dados={soma} municipio={municipio} modo={modo} metrica="votos" corPorLocal={corPorLocal}
+            <LazyMap base={B} dados={soma} municipio={municipio} modo={modo} metrica="votos" corPorLocal={corPorLocal}
               rotuloSerie="votos somados" onMunicipio={(cd) => set("mun", cd)} />
             <aside className="flex min-w-0 flex-col gap-4">
               <LegendaBivariada a={a} b={b} />

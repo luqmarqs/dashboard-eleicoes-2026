@@ -72,6 +72,11 @@ def upsert(cur: psycopg.Cursor, table: str, key: str, cols: str, path: Path) -> 
                 f"ON CONFLICT ({key}) DO UPDATE SET {sets}")
 
 
+# O dashboard guarda a base em cache no navegador e só a baixa de novo quando esta versão muda.
+VERSAO_SQL = ("INSERT INTO public.meta (chave, valor) VALUES ('versao_dados', to_char(now(), 'YYYYMMDDHH24MISS')) "
+              "ON CONFLICT (chave) DO UPDATE SET valor = excluded.valor;")
+
+
 # ---------------------------------------------------------------------------------------------
 # Modo --via-cli: lotes de SQL executados pelo Supabase CLI (Management API), sem senha do banco.
 # ---------------------------------------------------------------------------------------------
@@ -139,6 +144,7 @@ def load_via_cli(src: Path, chunk_rows: int, only: list[str] | None = None) -> N
             run_cli_sql(upsert_values_sql(table, key, header, rows[i:i + 2000]), f"{table} {i:,}")
         print(f"upsert {table}: {len(rows):,} linhas")
     if only:
+        run_cli_sql(VERSAO_SQL, "versão dos dados")
         print(f"ok em {time.time() - t0:.0f}s (só {', '.join(only)})")
         return
     run_cli_sql("TRUNCATE public.votos_local, public.totais_local;", "truncate")
@@ -155,6 +161,7 @@ def load_via_cli(src: Path, chunk_rows: int, only: list[str] | None = None) -> N
     run_cli_sql(f"INSERT INTO public.candidaturas_destaque (candidatura_id, ordem) {dest} "
                 "ON CONFLICT (candidatura_id) DO UPDATE SET ordem = excluded.ordem; "
                 "ANALYZE public.votos_local; ANALYZE public.totais_local; ANALYZE public.locais;", "destaques")
+    run_cli_sql(VERSAO_SQL, "versão dos dados")
     print(f"ok em {time.time() - t0:.0f}s")
 
 
@@ -191,6 +198,7 @@ def main(argv: list[str] | None = None) -> int:
                            ON CONFLICT (candidatura_id) DO UPDATE SET ordem = excluded.ordem""", (ordem, cargo, numero))
         conn.commit()
         cur.execute("ANALYZE public.votos_local; ANALYZE public.totais_local; ANALYZE public.locais;")
+        cur.execute(VERSAO_SQL)
         conn.commit()
         for t in ("municipios", "locais", "candidaturas", "votos_local", "totais_local", "candidaturas_destaque"):
             cur.execute(f"SELECT COUNT(*) FROM public.{t}")

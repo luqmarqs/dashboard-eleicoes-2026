@@ -8,31 +8,12 @@ import { latLngToCell } from "h3-js";
 import { useMemo, useRef } from "react";
 import MapGL, { Marker, NavigationControl, useControl, type MapRef } from "react-map-gl/maplibre";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
-import { corSequencial, cssRgb, prefersDark, quantis, ramp, type RGB } from "../lib/colors";
+import { corSequencial, cssRgb, prefersDark, quantis, ramp } from "../lib/colors";
 import type { Base, PorLocal } from "../lib/data";
 import { fmt, pct, titulo } from "../lib/format";
 import { geoUrl } from "../lib/source";
 
-export type Modo = "escolas" | "territorios" | "municipios" | "hexagonos" | "calor";
-export type Metrica = "pct" | "votos";
-
-export const MODOS: { id: Modo; label: string; ajuda: string }[] = [
-  { id: "escolas", label: "Escolas", ajuda: "Um círculo por local de votação: tamanho = votos, cor = métrica escolhida." },
-  { id: "territorios", label: "Territórios", ajuda: "Área mais próxima de cada local de votação (só com um município selecionado)." },
-  { id: "municipios", label: "Municípios", ajuda: "Cada município pintado pela métrica escolhida. Clique para entrar no município." },
-  { id: "hexagonos", label: "Hexágonos", ajuda: "Locais agregados em hexágonos de tamanho fixo." },
-  { id: "calor", label: "Calor", ajuda: "Densidade de votos, sem fronteiras." },
-];
-
-export interface Destaque {
-  rank: number;
-  nome: string;
-  lat: number;
-  lon: number;
-}
-
-/** Bivariado: quando informado, a cor de cada local vem daqui (modo dobrada). */
-export type CorPorLocal = (idx: number) => RGB | null;
+import type { CorPorLocal, Destaque, Metrica, Modo } from "./mapTypes";
 
 interface Props {
   base: Base;

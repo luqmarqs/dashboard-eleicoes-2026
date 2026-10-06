@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import type { Base } from "../lib/data";
 import { fmt, normalizar, titulo } from "../lib/format";
 import { CARGOS, type Candidatura } from "../lib/types";
-import { MODOS, type Metrica, type Modo } from "./MapView";
+import { MODOS, type Metrica, type Modo } from "./mapTypes";
 
 export function Stat({ valor, rotulo }: { valor: ReactNode; rotulo: ReactNode }) {
   return (

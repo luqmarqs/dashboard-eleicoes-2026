@@ -10,7 +10,15 @@ import { supabase } from "./supabase";
 export const UF = "sp";
 export const isDev = import.meta.env.VITE_DATA_SOURCE === "dev" && import.meta.env.DEV;
 
+export interface DadosRegra {
+  top: TopCandidatura[];
+  votos: Record<number, VotosCols>;
+  totais: TotaisCols;
+}
+
 export interface DataSource {
+  versao(): Promise<string>;
+  dadosRegra(partido: string, cargo: number, cdMunicipio: string | null, limite: number): Promise<DadosRegra>;
   locais(): Promise<LocaisCols>;
   candidaturas(): Promise<CandidaturasCols>;
   municipios(): Promise<MunicipiosCols>;
@@ -87,6 +95,12 @@ function devPaineis(): Painel[] {
 }
 
 const dev: DataSource = {
+  versao: async () => "dev",
+  async dadosRegra(partido, cargo, cd, limite) {
+    const top = await dev.topCandidaturas(partido, cargo, cd, limite);
+    const [votos, totais] = await Promise.all([dev.votos(top.map((t) => t.candidatura_id), cd), dev.totais(cargo, cd)]);
+    return { top, votos, totais };
+  },
   locais: () => getJson(`${devBase}/locais.json`),
   candidaturas: () => getJson(`${devBase}/candidaturas.json`),
   municipios: () => getJson(`${devBase}/municipios.json`),
@@ -155,6 +169,13 @@ const dev: DataSource = {
 };
 
 const remote: DataSource = {
+  async versao() {
+    const { data, error } = await supabase().from("meta").select("valor").eq("chave", "versao_dados").maybeSingle();
+    if (error) rpcError("versão dos dados", error);
+    return data?.valor ?? "sem-versao";
+  },
+  dadosRegra: (partido, cargo, cd, limite) =>
+    rpc("dados_regra", { p_partido: partido, p_cargo: cargo, p_cd_municipio: cd, p_limite: limite }),
   locais: () => rpc("locais_json"),
   candidaturas: () => rpc("candidaturas_json"),
   async municipios() {

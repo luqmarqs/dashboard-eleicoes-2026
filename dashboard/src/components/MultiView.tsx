@@ -6,7 +6,8 @@ import type { ExportCol } from "../lib/export";
 import { fmt, pct, titulo } from "../lib/format";
 import { CARGOS, type Candidatura } from "../lib/types";
 import { DataTable } from "./DataTable";
-import { MapView, type Metrica, type Modo } from "./MapView";
+import { LazyMap } from "./LazyMap";
+import type { Metrica, Modo } from "./mapTypes";
 import { TopLista } from "./Rankings";
 import { ErrorBox, Loading, MapControls, Segmented, SituacaoBadge, nomeCand } from "./ui";
 
@@ -132,7 +133,7 @@ export function MultiView({ ids, municipio, nomeArquivo, onMunicipio }: {
       </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
         {atual && (
-          <MapView base={base.data} dados={atual} municipio={municipio} modo={municipio && modo === "municipios" ? "escolas" : modo}
+          <LazyMap base={base.data} dados={atual} municipio={municipio} modo={municipio && modo === "municipios" ? "escolas" : modo}
             metrica={metrica} onMunicipio={onMunicipio}
             destaques={lista.slice(0, 20).map((l, i) => ({ rank: i + 1, nome: titulo(l.nome), lat: l.lat, lon: l.lon }))} />
         )}

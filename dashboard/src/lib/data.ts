@@ -1,5 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { source } from "./source";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { get, set } from "idb-keyval";
+import { isDev, source } from "./source";
 import type { Candidatura, Local, Municipio, TotaisCols, VotosCols } from "./types";
 
 export interface Base {
@@ -13,10 +14,34 @@ export interface Base {
   candidaturasDestaque: number[];
 }
 
+type BaseBruta = [
+  Awaited<ReturnType<typeof source.locais>>, Awaited<ReturnType<typeof source.candidaturas>>,
+  Awaited<ReturnType<typeof source.municipios>>, Awaited<ReturnType<typeof source.config>>,
+];
+
+/** Base (locais, candidaturas, municípios): ~1,5 MB que só muda numa nova carga de dados. */
+async function baseBruta(): Promise<BaseBruta> {
+  const baixar = () => Promise.all([source.locais(), source.candidaturas(), source.municipios(), source.config()]);
+  if (isDev) return baixar();
+  const versao = await source.versao();
+  const chave = `base-v${versao}`;
+  try {
+    const cache = await get<BaseBruta>(chave);
+    if (cache) return cache;
+  } catch {
+    /* IndexedDB indisponível: segue sem cache */
+  }
+  const dados = await baixar();
+  try {
+    await set(chave, dados);
+  } catch {
+    /* ignora */
+  }
+  return dados;
+}
+
 async function loadBase(): Promise<Base> {
-  const [l, c, m, cfg] = await Promise.all([
-    source.locais(), source.candidaturas(), source.municipios(), source.config(),
-  ]);
+  const [l, c, m, cfg] = await baseBruta();
   const municipios: Municipio[] = m.cd.map((cd, i) => ({ cd, ibge: m.ibge[i], nome: m.nome[i], lat: m.lat[i], lon: m.lon[i] }));
   const munByCd = new Map(municipios.map((x) => [x.cd, x]));
   const locais: Local[] = l.id.map((id, i) => {
@@ -60,6 +85,22 @@ export function useTotais(cargo: number | undefined, cd?: string | null) {
     queryKey: ["totais", cargo, cd ?? null],
     queryFn: () => source.totais(cargo!, cd),
     enabled: cargo != null,
+    staleTime: Infinity,
+  });
+}
+
+/** Painel por regra numa única chamada; já preenche o cache usado por useVotos/useTotais. */
+export function useDadosRegra(partido: string, cargo: number, cd: string | null, limite: number) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: ["regra", partido, cargo, cd, limite],
+    queryFn: async () => {
+      const d = await source.dadosRegra(partido, cargo, cd, limite);
+      const ids = d.top.map((t) => t.candidatura_id).sort((a, b) => a - b);
+      qc.setQueryData(["votos", ids, cd ?? null], d.votos);
+      qc.setQueryData(["totais", cargo, cd ?? null], d.totais);
+      return d;
+    },
     staleTime: Infinity,
   });
 }

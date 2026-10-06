@@ -2,10 +2,16 @@ const nf = new Intl.NumberFormat("pt-BR");
 
 export const fmt = (n: number) => nf.format(Math.round(n));
 
-export const pct = (x: number, digits = 2) =>
-  Number.isFinite(x)
-    ? (x * 100).toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits }) + "%"
-    : "–";
+const pf = new Map<number, Intl.NumberFormat>();
+export const pct = (x: number, digits = 2) => {
+  if (!Number.isFinite(x)) return "–";
+  let f = pf.get(digits);
+  if (!f) {
+    f = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    pf.set(digits, f);
+  }
+  return f.format(x * 100) + "%";
+};
 
 const MINUSCULAS = new Set(["da", "das", "de", "do", "dos", "e"]);
 

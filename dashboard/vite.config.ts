@@ -8,15 +8,7 @@ export default defineConfig({
   // nunca entra no build publicado.
   server: { port: 5173 },
   build: {
+    // maplibre + deck.gl ficam no chunk do MapView, carregado sob demanda (components/LazyMap.tsx)
     chunkSizeWarningLimit: 2500,
-    rollupOptions: {
-      output: {
-        manualChunks(id: string) {
-          if (id.includes("maplibre-gl") || id.includes("react-map-gl")) return "map";
-          if (id.includes("@deck.gl") || id.includes("@luma.gl") || id.includes("@loaders.gl") || id.includes("h3-js")) return "deck";
-          return undefined;
-        },
-      },
-    },
   },
 });

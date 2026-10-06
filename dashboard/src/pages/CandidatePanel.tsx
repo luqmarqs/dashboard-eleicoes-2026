@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { MapView, type Metrica, type Modo } from "../components/MapView";
+import { LazyMap } from "../components/LazyMap";
+import type { Metrica, Modo } from "../components/mapTypes";
 import { Rankings, TopLista } from "../components/Rankings";
 import { CandidatePicker, ErrorBox, Loading, MapControls, MunicipioSelect, SituacaoBadge, Stat, nomeCand } from "../components/ui";
 import { agregar, porLocal, useBase, useTotais, useVotos } from "../lib/data";
@@ -84,7 +85,7 @@ export function CandidatePanel() {
         temMunicipio={!!municipio} />
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         {dados ? (
-          <MapView base={b} dados={dados} municipio={municipio} modo={modo} metrica={metrica}
+          <LazyMap base={b} dados={dados} municipio={municipio} modo={modo} metrica={metrica}
             destaques={lista.filter((l) => l.votos > 0).slice(0, 20).map((l, i) => ({ rank: i + 1, nome: titulo(l.nome), lat: l.lat, lon: l.lon }))}
             onMunicipio={(cd) => set("mun", cd)} />
         ) : <Loading texto="Carregando votos…" />}

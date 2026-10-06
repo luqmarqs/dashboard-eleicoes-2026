@@ -5,7 +5,7 @@ import { MultiView } from "../components/MultiView";
 import { CandidatePicker, ErrorBox, Loading, MunicipioSelect, Segmented, nomeCand } from "../components/ui";
 import { agruparPaineis } from "../components/PaineisProntos";
 import { useSouAdmin } from "../lib/acessos";
-import { useBase, useTop, type Base } from "../lib/data";
+import { useBase, useDadosRegra, type Base } from "../lib/data";
 import { titulo } from "../lib/format";
 import { source } from "../lib/source";
 import { CARGOS, type Candidatura, type Painel, type RegraPainel } from "../lib/types";
@@ -25,8 +25,8 @@ export function RegraView({ regra, municipio, nomeArquivo, onMunicipio }: {
   regra: RegraPainel; municipio: string | null; nomeArquivo: string; onMunicipio: (cd: string | null) => void;
 }) {
   const [cargo, setCargo] = useState(regra.cargos[0]);
-  const top = useTop(regra.partido, cargo, municipio, regra.top);
-  const ids = top.data?.map((t) => t.candidatura_id) ?? [];
+  const top = useDadosRegra(regra.partido, cargo, municipio, regra.top);
+  const ids = top.data?.top.map((t) => t.candidatura_id) ?? [];
   return (
     <div className="flex flex-col gap-4">
       {regra.cargos.length > 1 && (
