@@ -149,7 +149,8 @@ class HttpClient:
                 self._pause_until = max(self._pause_until, time.monotonic() + retry_after)
                 log.warning("HTTP 429: pausando requisições", extra={"segundos": retry_after})
                 raise RetryableError("HTTP 429", status)
-            if status >= 500:
+            # 304 sem requisição condicional foi observado na CDN do TSE: transitório.
+            if status >= 500 or status == 304:
                 raise RetryableError(f"HTTP {status}", status)
             if status != 200:
                 raise FetchError(url, f"HTTP {status} inesperado", status)

@@ -99,3 +99,9 @@ def test_404_opcional_nao_alimenta_disjuntor(settings: Settings) -> None:
                     await c.get(f"{URL}?{i}", optional=True)
 
     asyncio.run(go())
+
+
+def test_retry_em_304_espurio(settings: Settings) -> None:
+    handler, calls = sequence(httpx.Response(304), httpx.Response(200, content=b"{}"))
+    result, _ = run(settings, handler, expect_json=True)
+    assert result.http_status == 200 and len(calls) == 2
