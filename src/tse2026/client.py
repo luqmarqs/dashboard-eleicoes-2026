@@ -69,8 +69,9 @@ def validate_payload(content: bytes, headers: httpx.Headers, expect_json: bool) 
 
 
 class HttpClient:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, transport: httpx.AsyncBaseTransport | None = None) -> None:
         self.settings = settings
+        self._transport = transport
         self.semaphore = asyncio.Semaphore(settings.max_concurrency)
         self.breaker = NotFoundBreaker(settings.not_found_window, settings.not_found_threshold)
         self._pause_until = 0.0
@@ -87,7 +88,7 @@ class HttpClient:
             limits=limits,
             headers={"User-Agent": self.settings.user_agent, "Accept-Encoding": "gzip"},
             follow_redirects=True,
-            http2=False,
+            transport=self._transport,
         )
         return self
 

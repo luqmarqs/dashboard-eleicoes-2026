@@ -358,7 +358,7 @@ def consolidate_uf(settings: Settings, turno: int, uf: str, file_size: str = "40
                 tmp_dir.rmdir()
             con.execute(
                 f"""
-                COPY (SELECT * FROM read_parquet('{src_glob}', union_by_name = true) ORDER BY {order})
+                COPY (SELECT * FROM read_parquet('{src_glob}', union_by_name = true, hive_partitioning = false) ORDER BY {order})
                 TO '{tmp_dir.as_posix()}'
                 (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 500000,
                  FILE_SIZE_BYTES '{file_size}', FILENAME_PATTERN 'turno{turno}_{{i}}')

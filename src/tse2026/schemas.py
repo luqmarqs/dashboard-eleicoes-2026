@@ -83,17 +83,17 @@ SECOES_FIELDS: list[pa.Field] = [
     pa.field("NR_TURMA_APURADORA", pa.int32()),
     pa.field("NR_URNA_EFETIVADA", pa.int64()),
     pa.field("CD_CARGA_URNA", pa.string()),
-    pa.field("DT_CARGA_URNA", pa.timestamp("s")),
+    pa.field("DT_CARGA_URNA", pa.timestamp("ms")),
     pa.field("DS_VERSAO_VOTACAO", pa.string()),
-    pa.field("DT_ABERTURA", pa.timestamp("s")),
-    pa.field("DT_ENCERRAMENTO", pa.timestamp("s")),
-    pa.field("DT_EMISSAO_BU", pa.timestamp("s")),
-    pa.field("DT_RECEBIMENTO", pa.timestamp("s")),
+    pa.field("DT_ABERTURA", pa.timestamp("ms")),
+    pa.field("DT_ENCERRAMENTO", pa.timestamp("ms")),
+    pa.field("DT_EMISSAO_BU", pa.timestamp("ms")),
+    pa.field("DT_RECEBIMENTO", pa.timestamp("ms")),
     pa.field("QT_APTOS", pa.int32()),
     pa.field("QT_COMPARECIMENTO", pa.int32()),
     pa.field("QT_ABSTENCOES", pa.int32()),
     pa.field("QT_COMPARECIMENTO_URNA", pa.int32()),
-    pa.field("QT_HABILITACAO", pa.list_(pa.int32())),  # campo [2026] de semântica não documentada
+    pa.field("QT_HABILITACAO", pa.list_(pa.field("element", pa.int32()))),  # campo [2026] de semântica não documentada
     pa.field("BU_SHA256", pa.string()),
     pa.field("BU_URL", pa.string()),
 ]
