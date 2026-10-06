@@ -25,6 +25,11 @@ export function PaineisProntos() {
         <h2 className="display text-xl">Painéis prontos</h2>
         <Link to="/paineis" className="text-sm text-accent">Todos os painéis e criar novo →</Link>
       </div>
+      <div className="flex flex-wrap gap-2">
+        <Link to="/presidente" className="rounded-md border border-accent px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent-soft">
+          Bancada e Cortez onde o Lula venceu →
+        </Link>
+      </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {agruparPaineis(prontos).map(([grupo, ps]) => (
           <div key={grupo} className="rounded-lg border border-line bg-panel p-4">

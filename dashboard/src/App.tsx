@@ -8,6 +8,7 @@ import { Metodologia } from "./pages/Metodologia";
 import { Overview } from "./pages/Overview";
 import { PainelView, Paineis } from "./pages/Paineis";
 import { Acessos } from "./pages/Acessos";
+import { Presidente } from "./pages/Presidente";
 import { useSouAdmin } from "./lib/acessos";
 import { isDev } from "./lib/source";
 import { supabase } from "./lib/supabase";
@@ -16,6 +17,7 @@ const NAV = [
   { to: "/", label: "Visão geral", end: true },
   { to: "/comparativo", label: "Comparativo" },
   { to: "/dobrada", label: "Dobrada" },
+  { to: "/presidente", label: "Presidente" },
   { to: "/paineis", label: "Painéis" },
   { to: "/metodologia", label: "Metodologia" },
 ];
@@ -95,6 +97,7 @@ function Rotas() {
       <Route path="/c/:id" element={<CandidatePanel />} />
       <Route path="/comparativo" element={<Comparativo />} />
       <Route path="/dobrada" element={<Dobrada />} />
+      <Route path="/presidente" element={<Presidente />} />
       <Route path="/paineis" element={<Paineis />} />
       <Route path="/paineis/:id" element={<PainelView />} />
       <Route path="/metodologia" element={<Metodologia />} />
