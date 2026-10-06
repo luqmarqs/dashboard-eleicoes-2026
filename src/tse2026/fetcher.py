@@ -73,9 +73,11 @@ class Fetcher:
         self.state.increment_attempts(url)
         try:
             result = await self.client.get(url, expect_json=expect_json, optional=optional)
-        except NotFoundError as exc:
-            self.state.upsert_file(url, tipo, status="error", http_status=404, error="404 não encontrado", **base)
-            raise exc
+        except NotFoundError:
+            # 404 esperado (arquivo opcional, ex.: cargo inexistente na UF) não é erro.
+            status = "not_found" if optional else "error"
+            self.state.upsert_file(url, tipo, status=status, http_status=404, error="404 não encontrado", **base)
+            raise
         except FetchError as exc:
             self.state.upsert_file(url, tipo, status="error", http_status=exc.http_status, error=exc.reason, **base)
             raise
