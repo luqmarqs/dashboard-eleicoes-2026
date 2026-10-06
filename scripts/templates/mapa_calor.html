@@ -37,8 +37,13 @@ select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .stat b { display: block; font-family: var(--display); font-stretch: 90%; font-weight: 800; font-size: 24px;
   font-variant-numeric: tabular-nums; }
 .stat span { color: var(--muted); font-size: 13px; }
+/* Escala sequencial de um só tom (roxo): claro = poucos votos, escuro = concentração. No tema escuro inverte. */
+:root { --h0: rgba(201,160,232,0); --h1: #d9bdf0; --h2: #b27ddb; --h3: #8436b8; --h4: #4a0d70; }
+@media (prefers-color-scheme: dark) {
+  :root { --h0: rgba(90,30,130,0); --h1: #5a1e82; --h2: #8a3fbf; --h3: #c48ae8; --h4: #f3e6ff; }
+}
 .ramp { height: 10px; border-radius: 2px;
-  background: linear-gradient(90deg, rgba(255,214,64,.2), #ffd640 25%, #ff8a3d 50%, #e0306f 75%, #5b0f7a); }
+  background: linear-gradient(90deg, var(--h0), var(--h1) 25%, var(--h2) 50%, var(--h3) 75%, var(--h4)); }
 .ramp-labels { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; }
 h2 { font-family: var(--display); font-stretch: 90%; font-weight: 800; font-size: 14px; margin: 0 0 4px;
   text-transform: uppercase; letter-spacing: .04em; }
@@ -129,8 +134,29 @@ const outline = L.geoJSON(D.geo, { style: { color: edge, weight: isCity ? 2 : 0.
   interactive: false }).addTo(map);
 map.fitBounds(outline.getBounds(), { padding: [10, 10] });
 
-const heat = L.heatLayer([], { radius: isCity ? 18 : 14, blur: isCity ? 20 : 16, minOpacity: 0.25,
-  gradient: { 0.2: "#ffd640", 0.45: "#ff8a3d", 0.7: "#e0306f", 1: "#5b0f7a" } }).addTo(map);
+const tok = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const RADIUS = isCity ? 11 : 8;
+const BLUR = Math.round(RADIUS * 0.7);
+// maxZoom: 0 desliga o fator 1/2^(maxZoom - zoom) da biblioteca; a escala fica toda no teto adaptativo.
+const heat = L.heatLayer([], { radius: RADIUS, blur: BLUR, minOpacity: 0.05, maxZoom: 0,
+  gradient: { 0.15: tok("--h1"), 0.4: tok("--h2"), 0.7: tok("--h3"), 1: tok("--h4") } }).addTo(map);
+
+// O leaflet.heat soma a intensidade dos pontos que caem juntos; em zoom baixo isso satura tudo.
+// A cada zoom, o teto passa a ser um percentil alto das somas por célula, com a mesma grade da biblioteca
+// (células de (raio + desfoque) / 2 pixels).
+let heatPts = [];
+const CELL = (RADIUS + BLUR) / 2;
+function adaptMax() {
+  const z = map.getZoom(), sums = new Map();
+  for (const [la, lo, v] of heatPts) {
+    const pt = map.project([la, lo], z);
+    const k = Math.floor(pt.x / CELL) + ":" + Math.floor(pt.y / CELL);
+    sums.set(k, (sums.get(k) || 0) + v);
+  }
+  const arr = [...sums.values()].sort((a, b) => a - b);
+  const q = isCity ? 0.995 : 0.97;  // na cidade os locais são densos em toda parte: teto mais alto
+  heat.setOptions({ max: arr.length ? Math.max(arr[Math.floor((arr.length - 1) * q)], 1) : 1 });
+}
 const badges = L.layerGroup().addTo(map);
 const dots = L.layerGroup();
 
@@ -150,10 +176,9 @@ function render(si) {
   const ci = D.cargos.indexOf(s.cargo);
   const vals = D.points.map((p) => p[5][si]);
   const nz = vals.filter((v) => v > 0).sort((a, b) => a - b);
-  // Teto da escala: no estado muitos locais se somam no mesmo ponto em zoom baixo, então o teto é maior.
-  const q = (f) => (nz.length ? nz[Math.floor((nz.length - 1) * f)] : 1);
-  heat.setOptions({ max: Math.max(isCity ? q(0.95) : q(0.995) * 4, 1) });
-  heat.setLatLngs(D.points.filter((p, i) => vals[i] > 0).map((p) => [p[0], p[1], p[5][si]]));
+  heatPts = D.points.filter((p, i) => vals[i] > 0).map((p) => [p[0], p[1], p[5][si]]);
+  adaptMax();
+  heat.setLatLngs(heatPts);
 
   let total = 0, validos = 0;
   const areas = new Map();
@@ -211,7 +236,7 @@ function syncZoom() {
   });
   if (z >= DOT_ZOOM) map.addLayer(dots); else map.removeLayer(dots);
 }
-map.on("zoomend", syncZoom);
+map.on("zoomend", () => { adaptMax(); heat.redraw(); syncZoom(); });
 sel.addEventListener("change", () => render(+sel.value));
 render(0);
 </script>
