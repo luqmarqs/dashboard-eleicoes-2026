@@ -1,0 +1,450 @@
+{
+ "cabecalho": {
+  "dataGeracao": "20261004T171121",
+  "idEleitoral": {
+   "idPleito": 3220
+  }
+ },
+ "fase": "oficial",
+ "urna": {
+  "tipoUrna": "secao",
+  "versaoVotacao": "10.23.0.0 - Praia da Barra do Cahy",
+  "correspondenciaResultado": {
+   "identificacao": {
+    "identificacaoSecaoEleitoral": {
+     "municipioZona": {
+      "municipio": 71072,
+      "zona": 1
+     },
+     "local": 1,
+     "secao": 1
+    }
+   },
+   "carga": {
+    "numeroInternoUrna": 2027601,
+    "numeroSerieFC": "c2969040",
+    "identificacaoCarga": [
+     "ZSP001STD29",
+     "6B8DFAFE",
+     "50F717EF"
+    ],
+    "dataHoraCarga": "20260923T112200",
+    "codigoCarga": "190030307323112804184197"
+   }
+  },
+  "tipoArquivo": "votacaoUE",
+  "numeroSerieFV": "81f58571"
+ },
+ "identificacaoSecao": {
+  "municipioZona": {
+   "municipio": 71072,
+   "zona": 1
+  },
+  "local": 1015,
+  "secao": 1
+ },
+ "dataHoraEmissao": "20261004T171028",
+ "dadosSecaoSA": {
+  "dadosSecao": {
+   "dataHoraAbertura": "20261004T080001",
+   "dataHoraEncerramento": "20261004T170842"
+  }
+ },
+ "qtdComparecimentoSecao": 256,
+ "habilitacaoEleitores": [
+  7,
+  212,
+  37
+ ],
+ "resultadosVotacaoPorEleicao": [
+  {
+   "idEleicao": 6257,
+   "qtdEleitoresAptos": 362,
+   "qtdEleitoresAptos2": 362,
+   "qtdEleitoresExtra": 0,
+   "resultadosVotacao": [
+    {
+     "tipoCargo": "majoritario",
+     "qtdComparecimento": 256,
+     "totaisVotosCargo": [
+      {
+       "codigoCargo": {
+        "cargoConstitucional": "presidente"
+       },
+       "ordemImpressao": 5,
+       "votosVotaveis": [
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 121,
+         "identificacaoVotavel": {
+          "partido": 13,
+          "codigo": 13
+         },
+         "ordem": 1,
+         "assinatura": "180566df7a019928aa3d2040ef48d7a0..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 7,
+         "identificacaoVotavel": {
+          "partido": 14,
+          "codigo": 14
+         },
+         "ordem": 2,
+         "assinatura": "932a879873b973c1beaa863e7b4c13ec..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 96,
+         "identificacaoVotavel": {
+          "partido": 22,
+          "codigo": 22
+         },
+         "ordem": 3,
+         "assinatura": "7d3dd8f5211274c9484fa553bf713a1b..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 3,
+         "identificacaoVotavel": {
+          "partido": 30,
+          "codigo": 30
+         },
+         "ordem": 4,
+         "assinatura": "7413560869f9c38a5dc21e093bb71a49..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 13,
+         "identificacaoVotavel": {
+          "partido": 55,
+          "codigo": 55
+         },
+         "ordem": 5,
+         "assinatura": "aeefa4eec0829ae209c7ec2f973e1b5c..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 4,
+         "identificacaoVotavel": {
+          "partido": 70,
+          "codigo": 70
+         },
+         "ordem": 6,
+         "assinatura": "5d7418d9d721a9002f1bb625b536ef53..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 1,
+         "identificacaoVotavel": {
+          "partido": 80,
+          "codigo": 80
+         },
+         "ordem": 7,
+         "assinatura": "f870b62227c1e5746c471bf316575972..."
+        },
+        {
+         "tipoVoto": "branco",
+         "quantidadeVotos": 2,
+         "ordem": 8,
+         "assinatura": "4f3a4b03b86ee3ab20d8cdb1bd7921b9..."
+        },
+        {
+         "tipoVoto": "nulo",
+         "quantidadeVotos": 9,
+         "ordem": 9,
+         "assinatura": "82a7ed7515c53243100448a51313d6ab..."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "assinaturaEleicao1": "82a7ed7515c53243100448a51313d6ab...",
+   "assinaturaEleicao2": "c3558dd1945226fbecf49565363e3699..."
+  },
+  {
+   "idEleicao": 6259,
+   "qtdEleitoresAptos": 362,
+   "qtdEleitoresAptos2": 362,
+   "qtdEleitoresExtra": 0,
+   "resultadosVotacao": [
+    {
+     "tipoCargo": "proporcional",
+     "qtdComparecimento": 256,
+     "totaisVotosCargo": [
+      {
+       "codigoCargo": {
+        "cargoConstitucional": "deputadoFederal"
+       },
+       "ordemImpressao": 1,
+       "votosVotaveis": [
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 4,
+         "identificacaoVotavel": {
+          "partido": 10,
+          "codigo": 1001
+         },
+         "ordem": 1,
+         "assinatura": "55c193f56198b37b1529fc9064aac80c..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 1,
+         "identificacaoVotavel": {
+          "partido": 10,
+          "codigo": 1038
+         },
+         "ordem": 2,
+         "assinatura": "7f990356d88746a67abb1475bca7f489..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 2,
+         "identificacaoVotavel": {
+          "partido": 10,
+          "codigo": 1045
+         },
+         "ordem": 3,
+         "assinatura": "bf844b4a85cf98340b84b57724d35082..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 1,
+         "identificacaoVotavel": {
+          "partido": 10,
+          "codigo": 1050
+         },
+         "ordem": 4,
+         "assinatura": "c68397f7a0f1347ffb545fe132478f39..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 1,
+         "identificacaoVotavel": {
+          "partido": 10,
+          "codigo": 1055
+         },
+         "ordem": 5,
+         "assinatura": "a3700823762334f21c68924140bf997c..."
+        },
+        "... (+76 votáveis omitidos no exemplo)"
+       ]
+      },
+      {
+       "codigoCargo": {
+        "cargoConstitucional": "deputadoEstadual"
+       },
+       "ordemImpressao": 2,
+       "votosVotaveis": [
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 1,
+         "identificacaoVotavel": {
+          "partido": 10,
+          "codigo": 10001
+         },
+         "ordem": 1,
+         "assinatura": "3f163f649f82d2681674d73efc36082d..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 1,
+         "identificacaoVotavel": {
+          "partido": 10,
+          "codigo": 10111
+         },
+         "ordem": 2,
+         "assinatura": "d0c9779283b105fd98629b108de88071..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 1,
+         "identificacaoVotavel": {
+          "partido": 10,
+          "codigo": 10153
+         },
+         "ordem": 3,
+         "assinatura": "538bc18a9eb2aaef5734bdc1d84060a2..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 1,
+         "identificacaoVotavel": {
+          "partido": 10,
+          "codigo": 10221
+         },
+         "ordem": 4,
+         "assinatura": "2e72104bb8ed21e2a548e96b20912553..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 1,
+         "identificacaoVotavel": {
+          "partido": 10,
+          "codigo": 10456
+         },
+         "ordem": 5,
+         "assinatura": "40f6263360008958580bb28a220cd312..."
+        },
+        "... (+96 votáveis omitidos no exemplo)"
+       ]
+      }
+     ]
+    },
+    {
+     "tipoCargo": "majoritario",
+     "qtdComparecimento": 256,
+     "totaisVotosCargo": [
+      {
+       "codigoCargo": {
+        "cargoConstitucional": "senador"
+       },
+       "ordemImpressao": 3,
+       "votosVotaveis": [
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 109,
+         "identificacaoVotavel": {
+          "partido": 11,
+          "codigo": 111
+         },
+         "ordem": 1,
+         "assinatura": "ddb71d8471cc0649d5cf8082dbd38286..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 4,
+         "identificacaoVotavel": {
+          "partido": 14,
+          "codigo": 144
+         },
+         "ordem": 2,
+         "assinatura": "102a0181145f9621d9e9f8198aa17096..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 120,
+         "identificacaoVotavel": {
+          "partido": 18,
+          "codigo": 180
+         },
+         "ordem": 3,
+         "assinatura": "4581eed9447b01200f5095adcbd1b5a0..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 1,
+         "identificacaoVotavel": {
+          "partido": 20,
+          "codigo": 200
+         },
+         "ordem": 4,
+         "assinatura": "db4c81f061d61f9351d8598bf97ec8eb..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 101,
+         "identificacaoVotavel": {
+          "partido": 22,
+          "codigo": 222
+         },
+         "ordem": 5,
+         "assinatura": "77291b9b595f690c7a68241d0ad019d4..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 7,
+         "identificacaoVotavel": {
+          "partido": 23,
+          "codigo": 232
+         },
+         "ordem": 6,
+         "assinatura": "34736d502492b4d12a63c5778df69792..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 131,
+         "identificacaoVotavel": {
+          "partido": 40,
+          "codigo": 400
+         },
+         "ordem": 7,
+         "assinatura": "7384fee9b5e150c519ac31ad35f9a07c..."
+        },
+        {
+         "tipoVoto": "branco",
+         "quantidadeVotos": 12,
+         "ordem": 8,
+         "assinatura": "3ccc21bba4071ae5ea542a7ff1d9f955..."
+        },
+        {
+         "tipoVoto": "nulo",
+         "quantidadeVotos": 27,
+         "ordem": 9,
+         "assinatura": "5a1cbb264c74c98114cc3d3028015b93..."
+        }
+       ]
+      },
+      {
+       "codigoCargo": {
+        "cargoConstitucional": "governador"
+       },
+       "ordemImpressao": 4,
+       "votosVotaveis": [
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 124,
+         "identificacaoVotavel": {
+          "partido": 10,
+          "codigo": 10
+         },
+         "ordem": 1,
+         "assinatura": "54530d9383ca8356ff9382ddf369a67f..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 115,
+         "identificacaoVotavel": {
+          "partido": 13,
+          "codigo": 13
+         },
+         "ordem": 2,
+         "assinatura": "fa2bbcb923f318b9b394026267f1b915..."
+        },
+        {
+         "tipoVoto": "nominal",
+         "quantidadeVotos": 1,
+         "identificacaoVotavel": {
+          "partido": 21,
+          "codigo": 21
+         },
+         "ordem": 3,
+         "assinatura": "555839a6f1140eb43f9049ad51dbb52a..."
+        },
+        {
+         "tipoVoto": "branco",
+         "quantidadeVotos": 2,
+         "ordem": 4,
+         "assinatura": "2f87f3841cbb5c1c40401ebf8c0d5df7..."
+        },
+        {
+         "tipoVoto": "nulo",
+         "quantidadeVotos": 14,
+         "ordem": 5,
+         "assinatura": "ed7146601fb27f58788e46c76f859665..."
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "assinaturaEleicao1": "ed7146601fb27f58788e46c76f859665...",
+   "assinaturaEleicao2": "e9c3ccb3b65fe1a191a74a89380d9da4..."
+  }
+ ],
+ "codigosCarga": [
+  "190030307323112804184197"
+ ]
+}
