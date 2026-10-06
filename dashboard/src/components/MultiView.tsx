@@ -65,6 +65,9 @@ export function MultiView({ ids, municipio, nomeArquivo, onMunicipio }: {
     [base.data, atual, municipio],
   );
 
+  // Total de cada candidatura no escopo (estado, ou cidade escolhida): base da coluna "% do total".
+  const totaisCand = useMemo(() => cands.map((_, i) => linhas.reduce((a, l) => a + l.porCand[i], 0)), [cands, linhas]);
+
   const columns = useMemo<ColumnDef<Linha, unknown>[]>(() => [
     {
       id: "nome", accessorKey: "nome",
@@ -86,27 +89,42 @@ export function MultiView({ ids, municipio, nomeArquivo, onMunicipio }: {
         </span>
       ),
       cell: (c) => fmt(Number(c.getValue())),
-    })),
+    })).flatMap((col, i) => [col, {
+      id: `t${cands[i].id}`, accessorFn: (r: Linha) => (totaisCand[i] ? r.porCand[i] / totaisCand[i] : 0),
+      meta: { numeric: true },
+      header: () => (
+        <span className="font-normal" title={`Parte do total de ${cands[i].nome} ${municipio ? "na cidade" : "no estado"}`}>
+          % do total{municipio ? " na cidade" : ""}<br />{cands[i].nome}
+        </span>
+      ),
+      cell: (c) => <span className="text-muted">{pct(Number(c.getValue()))}</span>,
+    } as ColumnDef<Linha, unknown>]),
     { id: "soma", accessorKey: "soma", header: "Soma", cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     {
       id: "pct", accessorFn: (r) => (r.validos ? r.soma / r.validos : 0), header: "% dos válidos",
       cell: (c) => pct(Number(c.getValue())), meta: { numeric: true },
     },
     { id: "validos", accessorKey: "validos", header: "Válidos (todos)", cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
-  ], [cands, efetivoNivel, municipio]);
+  ], [cands, efetivoNivel, municipio, totaisCand]);
 
   const exportCols = useMemo<ExportCol<Linha>[]>(() => [
     { header: efetivoNivel === "municipio" ? "Município" : efetivoNivel === "bairro" ? "Bairro" : "Local de votação", value: (r) => r.nome },
     { header: "Município", value: (r) => r.municipio },
     ...(efetivoNivel === "local" ? [{ header: "Endereço", value: (r: Linha) => r.endereco ?? "" }, { header: "Bairro", value: (r: Linha) => r.bairro ?? "" }] : []),
-    ...cands.map((c, i) => ({
-      header: `${c.numero} ${c.nome}${c.situacao?.startsWith("Eleito") ? " (ELEITO)" : ""}`,
-      value: (r: Linha) => r.porCand[i], type: "number" as const,
-    })),
+    ...cands.flatMap((c, i): ExportCol<Linha>[] => [
+      {
+        header: `${c.numero} ${c.nome}${c.situacao?.startsWith("Eleito") ? " (ELEITO)" : ""}`,
+        value: (r: Linha) => r.porCand[i], type: "number",
+      },
+      {
+        header: `% do total de ${c.nome}${municipio ? " na cidade" : ""}`,
+        value: (r: Linha) => (totaisCand[i] ? r.porCand[i] / totaisCand[i] : 0), type: "percent",
+      },
+    ]),
     { header: "Soma das selecionadas", value: (r) => r.soma, type: "number" },
     { header: "% dos válidos", value: (r) => (r.validos ? r.soma / r.validos : 0), type: "percent" },
     { header: "Votos válidos (todos os candidatos)", value: (r) => r.validos, type: "number" },
-  ], [cands, efetivoNivel]);
+  ], [cands, efetivoNivel, municipio, totaisCand]);
 
   if (base.error) return <ErrorBox error={base.error} />;
   if (votos.error) return <ErrorBox error={votos.error} />;

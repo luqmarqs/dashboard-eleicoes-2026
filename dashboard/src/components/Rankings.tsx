@@ -21,8 +21,9 @@ export function Rankings({ base, dados, municipio, nomeArquivo }: {
   const efetivo = municipio && nivel === "municipio" ? "bairro" : nivel;
   const linhas = useMemo(() => agregar(base, dados, efetivo, municipio), [base, dados, efetivo, municipio]);
   // Quanto cada linha representa do total da candidatura no escopo (estado ou município escolhido).
+  // Parte de cada linha no total da candidatura no escopo: no estado, ou na cidade escolhida.
   const totalEscopo = useMemo(() => linhas.reduce((a, l) => a + l.votos, 0), [linhas]);
-  const rotuloTotal = municipio ? "% do total no município" : "% do total da candidatura";
+  const rotuloTotal = municipio ? "% do total na cidade" : "% do total da candidatura";
 
   const columns = useMemo<ColumnDef<LinhaAgregada, unknown>[]>(() => {
     const cols: ColumnDef<LinhaAgregada, unknown>[] = [
@@ -84,6 +85,8 @@ export function Rankings({ base, dados, municipio, nomeArquivo }: {
 
 /** Lista compacta das N áreas mais votadas, ao lado do mapa. */
 export function TopLista({ linhas, n, onClick }: { linhas: LinhaAgregada[]; n: number; onClick?: (l: LinhaAgregada) => void }) {
+  // % de cada área na votação total da candidatura no escopo (estado, ou cidade escolhida)
+  const total = linhas.reduce((t, l) => t + l.votos, 0);
   return (
     <ol className="flex flex-col">
       {linhas.slice(0, n).map((l, i) => (
@@ -94,7 +97,7 @@ export function TopLista({ linhas, n, onClick }: { linhas: LinhaAgregada[]; n: n
             <span className="min-w-0 font-semibold [overflow-wrap:anywhere]">{titulo(l.nome)}</span>
             <span className="num text-right text-sm">
               {fmt(l.votos)}
-              <small className="block text-[11px] text-muted">{pct(l.pct)}</small>
+              <small className="block text-[11px] text-muted" title={`${pct(l.pct)} dos válidos`}>{total ? pct(l.votos / total) : "–"} do total</small>
             </span>
           </button>
         </li>

@@ -290,6 +290,7 @@ function TabelaArea({ base, cand, pl, ref_, municipio, analise, presCands }: {
       };
     }).sort((x, y) => y.vCand - x.vCand);
   }, [base, analise, pl, municipio, nivel, presCands]);
+  // total da candidatura no escopo (estado, ou cidade escolhida)
   const totalCand = useMemo(() => linhas.reduce((t, l) => t + l.vCand, 0), [linhas]);
 
   const columns = useMemo<ColumnDef<LinhaArea, unknown>[]>(() => [
@@ -302,7 +303,7 @@ function TabelaArea({ base, cand, pl, ref_, municipio, analise, presCands }: {
     { id: "vCand", accessorKey: "vCand", header: `Votos ${cand.nome}`, cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     { id: "pCand", accessorKey: "pCand", header: `% ${cand.nome}`, cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
     { id: "partTotal", accessorFn: (r) => (totalCand ? r.vCand / totalCand : 0),
-      header: municipio ? `% do total de ${cand.nome} no município` : `% do total de ${cand.nome}`,
+      header: municipio ? `% do total de ${cand.nome} na cidade` : `% do total de ${cand.nome}`,
       cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
     { id: "locais", accessorKey: "locais", header: "Locais", meta: { numeric: true } },
   ], [nivel, ref_, cand, totalCand, municipio]);
@@ -313,7 +314,7 @@ function TabelaArea({ base, cand, pl, ref_, municipio, analise, presCands }: {
     { header: `% ${ref_.nome} (válidos)`, value: (r) => r.pRef, type: "percent" },
     { header: `Votos ${cand.numero} ${cand.nome}`, value: (r) => r.vCand, type: "number" },
     { header: `% ${cand.nome} (válidos ${CARGOS[cand.cargo]})`, value: (r) => r.pCand, type: "percent" },
-    { header: municipio ? `% do total de ${cand.nome} no município` : `% do total de ${cand.nome}`,
+    { header: municipio ? `% do total de ${cand.nome} na cidade` : `% do total de ${cand.nome}`,
       value: (r) => (totalCand ? r.vCand / totalCand : 0), type: "percent" },
     { header: "Locais de votação", value: (r) => r.locais, type: "number" },
   ];
