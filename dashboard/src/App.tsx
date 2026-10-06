@@ -117,7 +117,33 @@ function NaoAutorizado({ email, onSair }: { email?: string; onSair: () => void }
   );
 }
 
+function configOk(): string | null {
+  if (isDev) return null;
+  try {
+    supabase();
+    return null;
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
+}
+
 export default function App() {
+  const erroConfig = configOk();
+  if (erroConfig) {
+    return (
+      <div className="grid min-h-full place-items-center px-4">
+        <div className="max-w-md rounded-lg border border-danger bg-panel p-6" role="alert">
+          <h1 className="display text-2xl">Painel sem configuração</h1>
+          <p className="mt-2">{erroConfig}</p>
+          <p className="mt-2 text-sm text-muted">Na Vercel: Settings → Environment Variables, e depois um novo deploy.</p>
+        </div>
+      </div>
+    );
+  }
+  return <AppComSessao />;
+}
+
+function AppComSessao() {
   const [session, setSession] = useState<Session | null | undefined>(isDev ? null : undefined);
   const [autorizado, setAutorizado] = useState<boolean | undefined>(isDev ? true : undefined);
   useEffect(() => {
