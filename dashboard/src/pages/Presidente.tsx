@@ -17,6 +17,14 @@ const FAIXAS = [
   { ate: 0.6, rotulo: "50 a 60%" }, { ate: Infinity, rotulo: "60% ou mais" },
 ];
 
+interface Analise {
+  pres: PorLocal[];
+  iRef: number;
+  pc: PorLocal;
+  vencedor: Int32Array;
+  pcs: { c: Candidatura; pl: PorLocal }[];
+}
+
 interface Grupo { rotulo: string; locais: number; vPres: number; valPres: number; vCand: number; valCand: number }
 const novoGrupo = (rotulo: string): Grupo => ({ rotulo, locais: 0, vPres: 0, valPres: 0, vCand: 0, valCand: 0 });
 
@@ -57,13 +65,23 @@ export function Presidente() {
   const ref = b?.candById.get(refId);
   const cand = b?.candById.get(candId);
 
-  const ids = useMemo(() => [...presCands.map((c) => c.id), ...(cand ? [cand.id] : [])], [presCands, cand]);
+  // Candidaturas da tabela por município/bairro: as em destaque + a selecionada (se for outra).
+  const tabela = useMemo(() => {
+    if (!b) return [] as Candidatura[];
+    const ds = b.candidaturasDestaque.map((id) => b.candById.get(id)).filter(Boolean) as Candidatura[];
+    return cand && !ds.some((d) => d.id === cand.id) ? [...ds, cand] : ds;
+  }, [b, cand]);
+  const ids = useMemo(() => [...presCands.map((c) => c.id), ...tabela.map((c) => c.id)], [presCands, tabela]);
   const votos = useVotos(ids, municipio);
   const totPres = useTotais(1, municipio);
   const totCand = useTotais(cand?.cargo, municipio);
+  const tot6 = useTotais(6, municipio);
+  const tot7 = useTotais(7, municipio);
 
   const analise = useMemo(() => {
-    if (!b || !votos.data || !totPres.data || !totCand.data || !cand || !ref) return null;
+    if (!b || !votos.data || !totPres.data || !totCand.data || !tot6.data || !tot7.data || !cand || !ref) return null;
+    const totais = { 1: totPres.data, 6: tot6.data, 7: tot7.data, [cand.cargo]: totCand.data } as Record<number, typeof totPres.data>;
+    const pcs = tabela.filter((c) => totais[c.cargo]).map((c) => ({ c, pl: porLocal(b, votos.data![c.id], totais[c.cargo]) }));
     const pres = presCands.map((c) => porLocal(b, votos.data![c.id], totPres.data));
     const iRef = presCands.findIndex((c) => c.id === ref.id);
     const pc = porLocal(b, votos.data[cand.id], totCand.data);
@@ -74,8 +92,8 @@ export function Presidente() {
       pres.forEach((p, k) => { if (p.votos[i] > bv) { bv = p.votos[i]; best = k; } });
       vencedor[i] = best;
     }
-    return { pres, iRef, pc, vencedor };
-  }, [b, votos.data, totPres.data, totCand.data, presCands, cand, ref]);
+    return { pres, iRef, pc, vencedor, pcs };
+  }, [b, votos.data, totPres.data, totCand.data, tot6.data, tot7.data, presCands, cand, ref, tabela]);
 
   if (base.error) return <ErrorBox error={base.error} />;
   if (!b) return <Loading />;
@@ -123,7 +141,7 @@ export function Presidente() {
 
 function Conteudo({ base, cand, ref_, municipio, analise, presCands, onMunicipio }: {
   base: Base; cand: Candidatura; ref_: Candidatura; municipio: string | null;
-  analise: { pres: PorLocal[]; iRef: number; pc: PorLocal; vencedor: Int32Array };
+  analise: Analise;
   presCands: Candidatura[]; onMunicipio: (cd: string) => void;
 }) {
   const { pres, iRef, pc, vencedor } = analise;
@@ -183,7 +201,7 @@ function Conteudo({ base, cand, ref_, municipio, analise, presCands, onMunicipio
           corPorLocal={(idx) => (vencedor[idx] < 0 ? null : vencedor[idx] === iRef ? VENCEU : NAO_VENCEU)} onMunicipio={onMunicipio} />
       </section>
 
-      <TabelaAreas base={base} cand={cand} ref_={ref_} municipio={municipio} analise={analise} presCands={presCands} />
+      <TabelaAreas base={base} ref_={ref_} municipio={municipio} analise={analise} presCands={presCands} />
     </>
   );
 }
@@ -225,15 +243,32 @@ function TabelaGrupos({ titulo: t, grupos, cand, ref_, totCand, totVal }: {
   );
 }
 
-interface LinhaArea { key: string; nome: string; vencedor: string; refVenceu: boolean; pRef: number; vCand: number; pCand: number; locais: number }
+interface LinhaArea {
+  key: string; nome: string; vencedor: string; refVenceu: boolean; vRef: number; pRef: number; locais: number;
+  vCand: number; pCand: number;
+}
 
-function TabelaAreas({ base, cand, ref_, municipio, analise, presCands }: {
-  base: Base; cand: Candidatura; ref_: Candidatura; municipio: string | null;
-  analise: { pres: PorLocal[]; iRef: number; pc: PorLocal }; presCands: Candidatura[];
+/** Uma tabela por candidatura (as em destaque + a selecionada), por município ou bairro. */
+function TabelaAreas({ base, ref_, municipio, analise, presCands }: {
+  base: Base; ref_: Candidatura; municipio: string | null; analise: Analise; presCands: Candidatura[];
+}) {
+  return (
+    <>
+      {analise.pcs.map(({ c, pl }) => (
+        <TabelaArea key={c.id} base={base} cand={c} pl={pl} ref_={ref_} municipio={municipio} analise={analise}
+          presCands={presCands} />
+      ))}
+    </>
+  );
+}
+
+function TabelaArea({ base, cand, pl, ref_, municipio, analise, presCands }: {
+  base: Base; cand: Candidatura; pl: PorLocal; ref_: Candidatura; municipio: string | null; analise: Analise;
+  presCands: Candidatura[];
 }) {
   const nivel = municipio ? "bairro" : "municipio";
   const linhas = useMemo<LinhaArea[]>(() => {
-    const { pres, iRef, pc } = analise;
+    const { pres, iRef } = analise;
     const m = new Map<string, { nome: string; locais: number; pv: number[]; valP: number; vC: number; valC: number }>();
     for (const l of base.locais) {
       if (municipio && l.mun !== municipio) continue;
@@ -242,23 +277,26 @@ function TabelaAreas({ base, cand, ref_, municipio, analise, presCands }: {
       a.locais++;
       pres.forEach((p, k) => { a.pv[k] += p.votos[l.idx]; });
       a.valP += pres[iRef].validos[l.idx];
-      a.vC += pc.votos[l.idx]; a.valC += pc.validos[l.idx];
+      a.vC += pl.votos[l.idx];
+      a.valC += pl.validos[l.idx];
       m.set(key, a);
     }
     return [...m.entries()].map(([key, a]) => {
       const kv = a.pv.indexOf(Math.max(...a.pv));
       return {
         key, nome: a.nome, vencedor: presCands[kv]?.nome ?? "–", refVenceu: kv === iRef,
-        pRef: a.valP ? a.pv[iRef] / a.valP : 0, vCand: a.vC, pCand: a.valC ? a.vC / a.valC : 0, locais: a.locais,
+        vRef: a.pv[iRef], pRef: a.valP ? a.pv[iRef] / a.valP : 0, locais: a.locais,
+        vCand: a.vC, pCand: a.valC ? a.vC / a.valC : 0,
       };
     }).sort((x, y) => y.vCand - x.vCand);
-  }, [base, analise, municipio, nivel, presCands]);
+  }, [base, analise, pl, municipio, nivel, presCands]);
 
   const columns = useMemo<ColumnDef<LinhaArea, unknown>[]>(() => [
     { id: "nome", accessorKey: "nome", header: nivel === "municipio" ? "Município" : "Bairro (do local de votação)",
       cell: (c) => <span className="font-semibold">{titulo(String(c.getValue()))}</span> },
     { id: "vencedor", accessorKey: "vencedor", header: "Venceu p/ presidente",
       cell: (c) => <span className={c.row.original.refVenceu ? "font-semibold text-accent" : ""}>{String(c.getValue())}</span> },
+    { id: "vRef", accessorKey: "vRef", header: `Votos ${ref_.nome}`, cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     { id: "pRef", accessorKey: "pRef", header: `% ${ref_.nome}`, cell: (c) => pct(Number(c.getValue()), 1), meta: { numeric: true } },
     { id: "vCand", accessorKey: "vCand", header: `Votos ${cand.nome}`, cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     { id: "pCand", accessorKey: "pCand", header: `% ${cand.nome}`, cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
@@ -267,6 +305,7 @@ function TabelaAreas({ base, cand, ref_, municipio, analise, presCands }: {
   const exportCols: ExportCol<LinhaArea>[] = [
     { header: nivel === "municipio" ? "Município" : "Bairro", value: (r) => r.nome },
     { header: "Venceu para presidente (1º turno)", value: (r) => r.vencedor },
+    { header: `Votos ${ref_.numero} ${ref_.nome}`, value: (r) => r.vRef, type: "number" },
     { header: `% ${ref_.nome} (válidos)`, value: (r) => r.pRef, type: "percent" },
     { header: `Votos ${cand.numero} ${cand.nome}`, value: (r) => r.vCand, type: "number" },
     { header: `% ${cand.nome} (válidos ${CARGOS[cand.cargo]})`, value: (r) => r.pCand, type: "percent" },
@@ -274,7 +313,9 @@ function TabelaAreas({ base, cand, ref_, municipio, analise, presCands }: {
   ];
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="display text-lg">Por {nivel === "municipio" ? "município" : "bairro"}</h2>
+      <h2 className="display text-lg">
+        {cand.nome} <span className="text-muted">({CARGOS[cand.cargo]})</span> · por {nivel === "municipio" ? "município" : "bairro"}
+      </h2>
       <DataTable data={linhas} columns={columns} exportCols={exportCols}
         nomeArquivo={`presidente_${ref_.numero}_x_${cand.numero}${municipio ? `_${municipio}` : ""}`}
         busca={(r) => r.nome} initialSort={[{ id: "vCand", desc: true }]} />

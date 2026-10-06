@@ -13,7 +13,15 @@ export function Comparativo() {
   const base = useBase();
   const partidoPadrao = base.data?.partidosDestaque[0]?.sigla ?? "PSOL";
   const partido = sp.get("partido") ?? partidoPadrao;
-  const cargo = Number(sp.get("cargo") ?? 7);
+  // Só os cargos em que o partido teve candidatura (ex.: o PSOL não teve presidente, governador nem senador em SP).
+  const cargosDoPartido = useMemo(() => {
+    const doPartido = new Set(
+      (base.data?.candidaturas ?? []).filter((c) => c.partido === partido && c.tipo === "nominal" && c.votos > 0).map((c) => c.cargo),
+    );
+    return [6, 7, 5, 3, 1].filter((c) => doPartido.has(c));
+  }, [base.data, partido]);
+  const pedido = Number(sp.get("cargo") ?? 7);
+  const cargo = cargosDoPartido.includes(pedido) ? pedido : (cargosDoPartido[0] ?? pedido);
   const top = Number(sp.get("top") ?? 10);
   const municipio = sp.get("mun");
   const set = (k: string, v: string | null) => {
@@ -66,7 +74,7 @@ export function Comparativo() {
         <label htmlFor="cargo" className="flex flex-col gap-1 text-sm text-muted">Cargo
           <select id="cargo" value={cargo} onChange={(e) => set("cargo", e.target.value)}
             className="rounded-md border border-line bg-panel px-3 py-1.5 text-ink">
-            {[6, 7, 5, 3, 1].map((c) => <option key={c} value={c}>{CARGOS[c]}</option>)}
+            {cargosDoPartido.map((c) => <option key={c} value={c}>{CARGOS[c]}</option>)}
           </select>
         </label>
         <label htmlFor="top" className="flex flex-col gap-1 text-sm text-muted">Quantas
