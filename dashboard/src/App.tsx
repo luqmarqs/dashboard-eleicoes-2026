@@ -51,12 +51,11 @@ function Login() {
     e.preventDefault();
     setEstado("enviando");
     const { error } = await supabase().auth.signInWithOtp({
-      email: email.trim(), options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+      // A conta é criada no primeiro acesso; os dados só aparecem para e-mails da lista autorizada (RLS).
+      email: email.trim(), options: { shouldCreateUser: true, emailRedirectTo: window.location.origin },
     });
     if (error) {
-      setErro(error.message.includes("Signups not allowed")
-        ? "Este e-mail não tem acesso. Peça a um administrador para convidá-lo."
-        : `Não foi possível enviar o link: ${error.message}`);
+      setErro(`Não foi possível enviar o link: ${error.message}`);
       setEstado("erro");
     } else setEstado("enviado");
   };
@@ -100,23 +99,45 @@ function Rotas() {
   );
 }
 
+function NaoAutorizado({ email, onSair }: { email?: string; onSair: () => void }) {
+  return (
+    <div className="grid min-h-full place-items-center px-4">
+      <div className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-line bg-panel p-6" role="alert">
+        <div className="eyebrow">Acesso restrito à equipe</div>
+        <h1 className="display text-2xl">E-mail não autorizado</h1>
+        <p><b>{email}</b> entrou, mas não está na lista de e-mails autorizados. Peça a um administrador para incluí-lo.</p>
+        <button type="button" onClick={onSair} className="rounded-md border border-line px-4 py-2">Sair</button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(isDev ? null : undefined);
+  const [autorizado, setAutorizado] = useState<boolean | undefined>(isDev ? true : undefined);
   useEffect(() => {
     if (isDev) return;
     void supabase().auth.getSession().then(({ data }) => setSession(data.session));
     const { data } = supabase().auth.onAuthStateChange((_e, s) => setSession(s));
     return () => data.subscription.unsubscribe();
   }, []);
+  useEffect(() => {
+    if (isDev || !session) return;
+    setAutorizado(undefined);
+    void supabase().rpc("autorizado").then(({ data, error }) => setAutorizado(!error && data === true));
+  }, [session]);
+  const sair = () => void supabase().auth.signOut();
 
   return (
     <BrowserRouter>
       {isDev ? (
         <Shell><Rotas /></Shell>
-      ) : session === undefined ? (
+      ) : session === undefined || (session && autorizado === undefined) ? (
         <p className="py-20 text-center text-muted">Verificando acesso…</p>
+      ) : session && autorizado ? (
+        <Shell onSair={sair}><Rotas /></Shell>
       ) : session ? (
-        <Shell onSair={() => void supabase().auth.signOut()}><Rotas /></Shell>
+        <NaoAutorizado email={session.user.email} onSair={sair} />
       ) : (
         <Login />
       )}
