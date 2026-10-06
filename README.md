@@ -146,8 +146,9 @@ movida para `_history/` ao lado dele.
 ### Dataset principal: `data/processed/votacao_secao_2026/`
 
 Parquet com compressão ZSTD, particionado por UF no estilo Hive (`SG_UF=SP/turno1_0.parquet`) e
-ordenado por município, zona, seção, cargo, tipo de voto e número. Arquivos acima de ~400 MB são
-divididos (`turno1_1.parquet`, …).
+ordenado por município, zona, seção, cargo, tipo de voto e número. Cada UF/turno gera um único
+arquivo; só passaria de 100 milhões de linhas (~500 MB) se dividido em `turno1_1.parquet`, … (SP
+inteiro: 17,9 milhões de linhas, 86 MB).
 
 <a id="schema"></a>
 

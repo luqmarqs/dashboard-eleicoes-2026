@@ -329,7 +329,14 @@ def _progress() -> Progress:
 # Consolidação STAGING -> PROCESSED
 # ---------------------------------------------------------------------------
 
-def consolidate_uf(settings: Settings, turno: int, uf: str, file_size: str = "400MB") -> dict[str, int]:
+# FILE_SIZE_BYTES do DuckDB mede o tamanho antes da compressão e gerava arquivos de ~15 MB.
+# Limitamos por linhas: 200 row groups × 500 mil = 100 milhões de linhas por arquivo (~500 MB em
+# ZSTD). Na prática cada UF/turno cabe num único arquivo (SP inteiro: 17,9 milhões de linhas, 86 MB).
+ROW_GROUP_SIZE = 500_000
+ROW_GROUPS_PER_FILE = 200
+
+
+def consolidate_uf(settings: Settings, turno: int, uf: str) -> dict[str, int]:
     """Junta os arquivos de staging de uma UF em Parquets grandes e ordenados (DuckDB, fora da RAM)."""
     out = {}
     targets = (
@@ -339,6 +346,7 @@ def consolidate_uf(settings: Settings, turno: int, uf: str, file_size: str = "40
     con = duckdb.connect()
     try:
         con.execute("SET preserve_insertion_order = false")
+        con.execute("SET enable_progress_bar = false")
         for name, dest_root, sort in targets:
             src = settings.staging_dir / name / f"t{turno}" / f"SG_UF={uf}"
             files = sorted(src.glob("*.parquet"))
@@ -360,8 +368,8 @@ def consolidate_uf(settings: Settings, turno: int, uf: str, file_size: str = "40
                 f"""
                 COPY (SELECT * FROM read_parquet('{src_glob}', union_by_name = true, hive_partitioning = false) ORDER BY {order})
                 TO '{tmp_dir.as_posix()}'
-                (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 500000,
-                 FILE_SIZE_BYTES '{file_size}', FILENAME_PATTERN 'turno{turno}_{{i}}')
+                (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE {ROW_GROUP_SIZE},
+                 ROW_GROUPS_PER_FILE {ROW_GROUPS_PER_FILE}, FILENAME_PATTERN 'turno{turno}_{{i}}')
                 """
             )
             for f in sorted(tmp_dir.glob("*.parquet")):
