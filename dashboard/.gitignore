@@ -4,3 +4,4 @@ dev-data/
 .env.local
 .env.*.local
 .vercel
+*.tsbuildinfo
