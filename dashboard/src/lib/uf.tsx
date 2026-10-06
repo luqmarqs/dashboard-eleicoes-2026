@@ -9,7 +9,8 @@ export interface InfoUf {
 
 export const UFS: InfoUf[] = [
   { sigla: "SP", nome: "São Paulo", capital: "71072" },
-  { sigla: "MG", nome: "Minas Gerais", capital: "41238" },
+  // MG: reativar quando os dados de Minas estiverem carregados no banco.
+  // { sigla: "MG", nome: "Minas Gerais", capital: "41238" },
 ];
 
 const KEY = "uf-selecionada";

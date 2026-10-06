@@ -290,6 +290,7 @@ function TabelaArea({ base, cand, pl, ref_, municipio, analise, presCands }: {
       };
     }).sort((x, y) => y.vCand - x.vCand);
   }, [base, analise, pl, municipio, nivel, presCands]);
+  const totalCand = useMemo(() => linhas.reduce((t, l) => t + l.vCand, 0), [linhas]);
 
   const columns = useMemo<ColumnDef<LinhaArea, unknown>[]>(() => [
     { id: "nome", accessorKey: "nome", header: nivel === "municipio" ? "Município" : "Bairro (do local de votação)",
@@ -300,8 +301,11 @@ function TabelaArea({ base, cand, pl, ref_, municipio, analise, presCands }: {
     { id: "pRef", accessorKey: "pRef", header: `% ${ref_.nome}`, cell: (c) => pct(Number(c.getValue()), 1), meta: { numeric: true } },
     { id: "vCand", accessorKey: "vCand", header: `Votos ${cand.nome}`, cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     { id: "pCand", accessorKey: "pCand", header: `% ${cand.nome}`, cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
+    { id: "partTotal", accessorFn: (r) => (totalCand ? r.vCand / totalCand : 0),
+      header: municipio ? `% do total de ${cand.nome} no município` : `% do total de ${cand.nome}`,
+      cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
     { id: "locais", accessorKey: "locais", header: "Locais", meta: { numeric: true } },
-  ], [nivel, ref_, cand]);
+  ], [nivel, ref_, cand, totalCand, municipio]);
   const exportCols: ExportCol<LinhaArea>[] = [
     { header: nivel === "municipio" ? "Município" : "Bairro", value: (r) => r.nome },
     { header: "Venceu para presidente (1º turno)", value: (r) => r.vencedor },
@@ -309,6 +313,8 @@ function TabelaArea({ base, cand, pl, ref_, municipio, analise, presCands }: {
     { header: `% ${ref_.nome} (válidos)`, value: (r) => r.pRef, type: "percent" },
     { header: `Votos ${cand.numero} ${cand.nome}`, value: (r) => r.vCand, type: "number" },
     { header: `% ${cand.nome} (válidos ${CARGOS[cand.cargo]})`, value: (r) => r.pCand, type: "percent" },
+    { header: municipio ? `% do total de ${cand.nome} no município` : `% do total de ${cand.nome}`,
+      value: (r) => (totalCand ? r.vCand / totalCand : 0), type: "percent" },
     { header: "Locais de votação", value: (r) => r.locais, type: "number" },
   ];
   return (

@@ -26,6 +26,7 @@ const NAV = [
 function SeletorUf() {
   const { uf, setUf } = useUf();
   const navigate = useNavigate();
+  if (UFS.length < 2) return null;
   return (
     <div role="radiogroup" aria-label="Estado" className="inline-flex rounded-md border border-line p-0.5">
       {UFS.map((u) => (
