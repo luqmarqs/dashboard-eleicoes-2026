@@ -12,3 +12,7 @@ data/*
 
 # Sondagens locais
 scratch_probe/
+
+# Segredos locais (connection string do banco etc.)
+.env
+.env.*
