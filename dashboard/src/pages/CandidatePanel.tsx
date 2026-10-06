@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { MapView, type Metrica, type Modo } from "../components/MapView";
 import { Rankings, TopLista } from "../components/Rankings";
-import { CandidatePicker, ErrorBox, Loading, MapControls, MunicipioSelect, Stat, nomeCand } from "../components/ui";
+import { CandidatePicker, ErrorBox, Loading, MapControls, MunicipioSelect, SituacaoBadge, Stat, nomeCand } from "../components/ui";
 import { agregar, porLocal, useBase, useTotais, useVotos } from "../lib/data";
 import { fmt, pct, titulo } from "../lib/format";
 import { CARGOS } from "../lib/types";
@@ -59,8 +59,8 @@ export function CandidatePanel() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className="eyebrow">{CARGOS[cand.cargo]} · {cand.partido} · São Paulo · 1º turno 2026</div>
-          <h1 className="display text-3xl md:text-4xl">{nomeCand(cand)}</h1>
-          {cand.nomeCompleto && <p className="text-muted">{cand.nomeCompleto}</p>}
+          <h1 className="display text-3xl md:text-4xl">{nomeCand(cand)}<SituacaoBadge c={cand} /></h1>
+          {cand.nomeCompleto && <p className="text-muted">{cand.nomeCompleto}{cand.situacao ? ` · ${cand.situacao}` : ""}</p>}
         </div>
         <div className="w-full max-w-md">
           <CandidatePicker base={b} onPick={(c) => navigate(`/c/${c.id}${municipio ? `?mun=${municipio}` : ""}`)}

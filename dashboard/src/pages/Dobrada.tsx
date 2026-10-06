@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DataTable } from "../components/DataTable";
 import { MapView } from "../components/MapView";
-import { CandidatePicker, ErrorBox, Loading, MunicipioSelect, Segmented, nomeCand } from "../components/ui";
+import { CandidatePicker, ErrorBox, Loading, MunicipioSelect, Segmented, SituacaoBadge, nomeCand } from "../components/ui";
 import { BIVAR, cssRgb, prefersDark, type RGB } from "../lib/colors";
 import { agregar, porLocal, useBase, useTotais, useVotos, type Base, type PorLocal } from "../lib/data";
 import type { ExportCol } from "../lib/export";
@@ -76,7 +76,9 @@ export function Dobrada() {
     <div className="flex flex-col gap-5">
       <header>
         <div className="eyebrow">Dobrada</div>
-        <h1 className="display text-3xl">{a ? nomeCand(a) : "?"} × {b ? nomeCand(b) : "?"}</h1>
+        <h1 className="display text-3xl">
+          {a ? <>{nomeCand(a)}<SituacaoBadge c={a} compacto /></> : "?"} × {b ? <>{nomeCand(b)}<SituacaoBadge c={b} compacto /></> : "?"}
+        </h1>
         <p className="max-w-3xl text-muted">
           Cada local de votação é classificado pelos tercis da % dos válidos de cada candidatura no recorte: onde as duas são fortes juntas, onde só uma é, e onde nenhuma é.
         </p>

@@ -25,6 +25,7 @@ class Candidato:
     sg_partido: str | None
     destinacao_voto: str | None  # campo "dvt" (ex.: Válido, Anulado, Nulo técnico...)
     votos: int | None  # campo "vap" (votos apurados)
+    situacao: str | None = None  # campo "st" (Eleito por QP, Eleito por média, Suplente, 2º turno...)
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,7 @@ def parse_unificado(data: dict[str, Any]) -> Unificado:
                         sg_partido=par.get("sg"),
                         destinacao_voto=c.get("dvt"),
                         votos=_int(c.get("vap")),
+                        situacao=c.get("st"),
                     )
                 )
     return Unificado(

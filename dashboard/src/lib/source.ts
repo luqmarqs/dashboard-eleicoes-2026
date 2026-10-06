@@ -69,11 +69,20 @@ async function devMunSet(cd?: string | null): Promise<Set<number> | null> {
 }
 
 const PAINEIS_KEY = "paineis-dev";
+const PAINEIS_PADRAO: Painel[] = [
+  { id: "padrao-psol", titulo: "PSOL · 10 mais votados (federal e estadual)", candidatura_ids: [],
+    regra: { partido: "PSOL", cargos: [6, 7], top: 10 }, cd_municipio: null, grupo: "PSOL · comparativos", ordem: 1 },
+  { id: "padrao-campinas", titulo: "PSOL em Campinas · 10 mais votados", candidatura_ids: [],
+    regra: { partido: "PSOL", cargos: [6, 7], top: 10 }, cd_municipio: "62910", grupo: "PSOL · comparativos", ordem: 2 },
+  { id: "padrao-capital", titulo: "PSOL em São Paulo (capital) · 10 mais votados", candidatura_ids: [],
+    regra: { partido: "PSOL", cargos: [6, 7], top: 10 }, cd_municipio: "71072", grupo: "PSOL · comparativos", ordem: 3 },
+];
 function devPaineis(): Painel[] {
   try {
-    return JSON.parse(localStorage.getItem(PAINEIS_KEY) ?? "[]") as Painel[];
+    const own = JSON.parse(localStorage.getItem(PAINEIS_KEY) ?? "[]") as Painel[];
+    return [...PAINEIS_PADRAO, ...own.filter((p) => !p.id.startsWith("padrao-"))];
   } catch {
-    return [];
+    return PAINEIS_PADRAO;
   }
 }
 
@@ -174,16 +183,18 @@ const remote: DataSource = {
     rpc("top_candidaturas", { p_partido: partido, p_cargo: cargo, p_cd_municipio: cd, p_limite: limite }),
   async paineis() {
     const { data, error } = await supabase().from("paineis")
-      .select("id, titulo, candidatura_ids, cd_municipio, autor, criado_em").order("criado_em", { ascending: false });
+      .select("id, titulo, candidatura_ids, regra, cd_municipio, autor, criado_em, grupo, ordem")
+      .order("grupo", { ascending: true, nullsFirst: false }).order("ordem", { ascending: true, nullsFirst: false })
+      .order("criado_em", { ascending: false });
     if (error) rpcError("painéis", error);
     return data ?? [];
   },
   async salvarPainel(p) {
-    const row = { titulo: p.titulo, candidatura_ids: p.candidatura_ids, cd_municipio: p.cd_municipio };
+    const row = { titulo: p.titulo, candidatura_ids: p.candidatura_ids, regra: p.regra ?? null, cd_municipio: p.cd_municipio };
     const q = p.id
       ? supabase().from("paineis").update({ ...row, atualizado_em: new Date().toISOString() }).eq("id", p.id)
       : supabase().from("paineis").insert(row);
-    const { data, error } = await q.select("id, titulo, candidatura_ids, cd_municipio, autor, criado_em").single();
+    const { data, error } = await q.select("id, titulo, candidatura_ids, regra, cd_municipio, autor, criado_em").single();
     if (error || !data) rpcError("salvar painel", error);
     return data;
   },

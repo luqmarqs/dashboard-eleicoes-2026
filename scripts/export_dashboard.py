@@ -31,6 +31,7 @@ from shapely.geometry import MultiPoint, Point, mapping, shape
 from shapely.ops import unary_union
 
 from tse2026.config import get_settings
+from tse2026.official import load_unificado
 
 ROOT = Path(__file__).resolve().parents[1]
 GEO_OUT = ROOT / "dashboard" / "public" / "geo"
@@ -148,11 +149,21 @@ def main(argv: list[str] | None = None) -> int:
         FROM vot WHERE TP_VOTO IN ('nominal', 'legenda')
         GROUP BY CD_ELEICAO, CD_CARGO, TP_VOTO, NR_CANDIDATO
       )""")
+    # situação oficial (eleito, suplente, 2º turno...) dos arquivos -u.json da UF
+    sit = []
+    for f in sorted((s.raw_dir / "metadata" / "ele2026").glob(f"*/dados/{uf.lower()}/{uf.lower()}-c*-u.json")):
+        u = load_unificado(f)
+        sit += [(u.cd_cargo, c.numero, c.situacao) for c in u.candidatos if c.situacao]
+    con.execute("CREATE TABLE sit (cd_cargo INT, numero INT, situacao VARCHAR)")
+    con.executemany("INSERT INTO sit VALUES (?, ?, ?)", sit)
+    print(f"situação oficial: {len(sit):,} candidaturas")
     con.execute(f"""COPY (
         SELECT id, cd_eleicao, CD_CARGO AS cd_cargo, ds_cargo, TP_VOTO AS tipo, NR_CANDIDATO AS numero,
                CASE WHEN TP_VOTO = 'legenda' THEN 'LEGENDA ' || COALESCE(sg_partido, NR_CANDIDATO::VARCHAR)
                     ELSE nm_urna END AS nm_urna,
-               nm_candidato, nr_partido, sg_partido, sq_candidato, destinacao, votos_total
+               nm_candidato, nr_partido, sg_partido, sq_candidato, destinacao, votos_total,
+               (SELECT ANY_VALUE(situacao) FROM sit WHERE sit.cd_cargo = cand.CD_CARGO AND sit.numero = cand.NR_CANDIDATO
+                AND cand.TP_VOTO = 'nominal') AS situacao
         FROM cand ORDER BY id) TO '{(out / "candidaturas.csv").as_posix()}' (HEADER)""")
     con.execute(f"""COPY (
         SELECT sl.local_id, c.id AS candidatura_id, SUM(v.QT_VOTOS)::INT AS votos
@@ -279,7 +290,8 @@ def export_dev_json(uf: str) -> int:
         "bairro": "bairro", "lat": "lat", "lon": "lon", "aprox": "coord_aproximada", "secoes": "qt_secoes"}))
     dump(dest / "candidaturas.json", cols("SELECT * FROM candidaturas ORDER BY id", {
         "id": "id", "cargo": "cd_cargo", "tipo": "tipo", "numero": "numero", "nome": "nm_urna",
-        "nomeCompleto": "nm_candidato", "partido": "sg_partido", "destinacao": "destinacao", "votos": "votos_total"}))
+        "nomeCompleto": "nm_candidato", "partido": "sg_partido", "destinacao": "destinacao", "votos": "votos_total",
+        "situacao": "situacao"}))
     dump(dest / "municipios.json", cols("SELECT * FROM municipios ORDER BY cd_municipio", {
         "cd": "cd_municipio", "ibge": "cd_ibge", "nome": "nome", "lat": "lat", "lon": "lon"}))
     dest_ids = con.sql("""SELECT id FROM candidaturas WHERE tipo = 'nominal'

@@ -2,13 +2,47 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { MultiView } from "../components/MultiView";
-import { CandidatePicker, ErrorBox, Loading, MunicipioSelect, nomeCand } from "../components/ui";
-import { useBase } from "../lib/data";
+import { CandidatePicker, ErrorBox, Loading, MunicipioSelect, Segmented, nomeCand } from "../components/ui";
+import { agruparPaineis } from "../components/PaineisProntos";
+import { useSouAdmin } from "../lib/acessos";
+import { useBase, useTop, type Base } from "../lib/data";
 import { titulo } from "../lib/format";
 import { source } from "../lib/source";
-import type { Candidatura } from "../lib/types";
+import { CARGOS, type Candidatura, type Painel, type RegraPainel } from "../lib/types";
 
-const usePaineis = () => useQuery({ queryKey: ["paineis"], queryFn: () => source.paineis() });
+export const usePaineis = () => useQuery({ queryKey: ["paineis"], queryFn: () => source.paineis() });
+
+export function descreverPainel(p: Painel, b: Base): string {
+  const onde = p.cd_municipio ? titulo(b.munByCd.get(p.cd_municipio)?.nome ?? "") : "estado de SP (escolha a cidade)";
+  if (p.regra) {
+    return `${p.regra.top} mais votados do ${p.regra.partido} · ${p.regra.cargos.map((c) => CARGOS[c]).join(" e ")} · ${onde}`;
+  }
+  return `${p.candidatura_ids.map((id) => b.candById.get(id)?.nome).filter(Boolean).join(", ")} · ${onde}`;
+}
+
+/** Painel por regra: as N mais votadas do partido em cada cargo, recalculadas para o município escolhido. */
+export function RegraView({ regra, municipio, nomeArquivo, onMunicipio }: {
+  regra: RegraPainel; municipio: string | null; nomeArquivo: string; onMunicipio: (cd: string | null) => void;
+}) {
+  const [cargo, setCargo] = useState(regra.cargos[0]);
+  const top = useTop(regra.partido, cargo, municipio, regra.top);
+  const ids = top.data?.map((t) => t.candidatura_id) ?? [];
+  return (
+    <div className="flex flex-col gap-4">
+      {regra.cargos.length > 1 && (
+        <Segmented label="Cargo" value={String(cargo)} onChange={(v) => setCargo(Number(v))}
+          options={regra.cargos.map((c) => ({ id: String(c), label: CARGOS[c] }))} />
+      )}
+      {top.error && <ErrorBox error={top.error} />}
+      {top.isLoading && <Loading texto="Buscando as candidaturas mais votadas…" />}
+      {top.data && ids.length === 0 && <p className="text-muted">Nenhuma candidatura com voto neste recorte.</p>}
+      {ids.length > 0 && (
+        <MultiView key={`${cargo}-${municipio}`} ids={ids} municipio={municipio}
+          nomeArquivo={`${nomeArquivo}_${CARGOS[cargo].replace(/\W+/g, "_")}`} onMunicipio={(cd) => onMunicipio(cd)} />
+      )}
+    </div>
+  );
+}
 
 export function Paineis() {
   const base = useBase();
@@ -22,6 +56,7 @@ export function Paineis() {
     mutationFn: () => source.salvarPainel({ titulo: titulo_.trim(), candidatura_ids: sel.map((c) => c.id), cd_municipio: mun }),
     onSuccess: (p) => { void qc.invalidateQueries({ queryKey: ["paineis"] }); navigate(`/paineis/${p.id}`); },
   });
+  const admin = useSouAdmin();
   const apagar = useMutation({
     mutationFn: (id: string) => source.apagarPainel(id),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["paineis"] }),
@@ -71,20 +106,27 @@ export function Paineis() {
         <h2 className="display text-xl">Painéis salvos</h2>
         {paineis.error && <ErrorBox error={paineis.error} />}
         {paineis.data?.length === 0 && <p className="text-muted">Nenhum painel ainda. Crie o primeiro acima.</p>}
+        {agruparPaineis(paineis.data ?? []).map(([grupo, ps]) => (
+        <div key={grupo} className="flex flex-col gap-2">
+        <h3 className="mt-2 text-sm font-bold uppercase tracking-wide text-muted">{grupo}</h3>
         <ul className="grid gap-2 md:grid-cols-2">
-          {paineis.data?.map((p) => (
+          {ps.map((p) => (
             <li key={p.id} className="flex items-start justify-between gap-3 rounded-lg border border-line bg-panel p-4">
               <Link to={`/paineis/${p.id}`} className="min-w-0">
-                <div className="font-semibold hover:underline">{p.titulo}</div>
-                <div className="text-sm text-muted">
-                  {p.candidatura_ids.map((id) => b.candById.get(id)?.nome).filter(Boolean).join(", ")}
-                  {p.cd_municipio ? ` · ${titulo(b.munByCd.get(p.cd_municipio)?.nome ?? "")}` : ""}
+                <div className="font-semibold hover:underline">
+                  {p.titulo}
+                  {!p.autor && <span className="ml-2 rounded bg-accent-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-accent">pronto</span>}
                 </div>
+                <div className="text-sm text-muted">{descreverPainel(p, b)}</div>
               </Link>
-              <button type="button" className="text-sm text-muted hover:text-danger" onClick={() => apagar.mutate(p.id)}>Apagar</button>
+              {(p.autor || admin.data) && (
+                <button type="button" className="text-sm text-muted hover:text-danger" onClick={() => apagar.mutate(p.id)}>Apagar</button>
+              )}
             </li>
           ))}
         </ul>
+        </div>
+        ))}
       </section>
     </div>
   );
@@ -99,20 +141,29 @@ export function PainelView() {
   if (paineis.error) return <ErrorBox error={paineis.error} />;
   if (!paineis.data || !base.data) return <Loading />;
   if (!p) return <ErrorBox error="Painel não encontrado." />;
-  const municipio = sp.get("mun") ?? p.cd_municipio;
+  const municipio = sp.has("mun") ? sp.get("mun") || null : p.cd_municipio;
+  function setMun(cd: string | null) {
+    const n = new URLSearchParams(sp);
+    n.set("mun", cd ?? "");
+    setSp(n, { replace: true });
+  }
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="eyebrow">Painel personalizado</div>
+          <div className="eyebrow">{p.autor ? "Painel personalizado" : "Painel pronto"}</div>
           <h1 className="display text-3xl">{p.titulo}</h1>
+          <p className="text-muted">{descreverPainel(p, base.data)}</p>
         </div>
-        <MunicipioSelect base={base.data} value={municipio} id="mun-pv"
-          onChange={(cd) => { const n = new URLSearchParams(sp); if (cd) n.set("mun", cd); else n.delete("mun"); setSp(n, { replace: true }); }} />
+        <MunicipioSelect base={base.data} value={municipio} id="mun-pv" onChange={setMun} />
       </header>
-      <MultiView key={`${p.id}-${municipio}`} ids={p.candidatura_ids} municipio={municipio}
-        nomeArquivo={p.titulo.replace(/\W+/g, "_")}
-        onMunicipio={(cd) => { const n = new URLSearchParams(sp); n.set("mun", cd); setSp(n, { replace: true }); }} />
+      {p.regra ? (
+        <RegraView regra={p.regra} municipio={municipio} nomeArquivo={p.titulo.replace(/\W+/g, "_")}
+          onMunicipio={setMun} />
+      ) : (
+        <MultiView key={`${p.id}-${municipio}`} ids={p.candidatura_ids} municipio={municipio}
+          nomeArquivo={p.titulo.replace(/\W+/g, "_")} onMunicipio={setMun} />
+      )}
     </div>
   );
 }

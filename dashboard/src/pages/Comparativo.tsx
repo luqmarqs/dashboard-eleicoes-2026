@@ -1,5 +1,7 @@
-import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { source } from "../lib/source";
 import { MultiView } from "../components/MultiView";
 import { ErrorBox, Loading, MunicipioSelect } from "../components/ui";
 import { useBase, useTop } from "../lib/data";
@@ -20,6 +22,21 @@ export function Comparativo() {
     setSp(n, { replace: true });
   };
   const topQ = useTop(partido, cargo, municipio, top);
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [ambos, setAmbos] = useState(true);
+  const nomeMun = municipio ? titulo(base.data?.munByCd.get(municipio)?.nome ?? "") : null;
+  const salvar = useMutation({
+    mutationFn: () => {
+      const cargos = ambos && (cargo === 6 || cargo === 7) ? [6, 7] : [cargo];
+      const sufixo = cargos.length > 1 ? " (federal e estadual)" : ` (${CARGOS[cargo]})`;
+      return source.salvarPainel({
+        titulo: `${partido}${nomeMun ? ` em ${nomeMun}` : ""} · ${top} mais votados${sufixo}`,
+        candidatura_ids: [], regra: { partido, cargos, top }, cd_municipio: municipio,
+      });
+    },
+    onSuccess: (p) => { void qc.invalidateQueries({ queryKey: ["paineis"] }); navigate(`/paineis/${p.id}`); },
+  });
   const partidos = useMemo(() => {
     if (!base.data) return [];
     const destaque = base.data.partidosDestaque.map((p) => p.sigla);
@@ -59,7 +76,20 @@ export function Comparativo() {
           </select>
         </label>
         <MunicipioSelect base={base.data} value={municipio} onChange={(cd) => set("mun", cd)} id="mun-comp" />
+        <div className="ml-auto flex flex-wrap items-center gap-3">
+          {(cargo === 6 || cargo === 7) && (
+            <label htmlFor="ambos" className="flex items-center gap-1.5 text-sm">
+              <input id="ambos" type="checkbox" checked={ambos} onChange={(e) => setAmbos(e.target.checked)} />
+              federal e estadual
+            </label>
+          )}
+          <button type="button" onClick={() => salvar.mutate()} disabled={salvar.isPending}
+            className="rounded-md bg-accent px-4 py-2 font-semibold text-panel disabled:opacity-50">
+            {salvar.isPending ? "Salvando…" : "Salvar como painel"}
+          </button>
+        </div>
       </div>
+      {salvar.error && <ErrorBox error={salvar.error} />}
       {topQ.error && <ErrorBox error={topQ.error} />}
       {topQ.isLoading && <Loading texto="Buscando as candidaturas mais votadas…" />}
       {topQ.data && ids.length === 0 && <p className="text-muted">Nenhuma candidatura com voto neste recorte.</p>}

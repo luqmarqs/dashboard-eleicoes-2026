@@ -24,6 +24,7 @@ export interface CandidaturasCols {
   partido: (string | null)[];
   destinacao: (string | null)[];
   votos: number[];
+  situacao?: (string | null)[];
 }
 
 export interface MunicipiosCols {
@@ -58,11 +59,20 @@ export interface TopCandidatura {
   votos: number;
 }
 
+export interface RegraPainel {
+  partido: string;
+  cargos: number[];
+  top: number;
+}
+
 export interface Painel {
   id: string;
   titulo: string;
   candidatura_ids: number[];
+  regra?: RegraPainel | null;
   cd_municipio: string | null;
+  grupo?: string | null;
+  ordem?: number | null;
   autor?: string;
   criado_em?: string;
 }
@@ -95,6 +105,7 @@ export interface Candidatura {
   partido: string | null;
   destinacao: string | null;
   votos: number;
+  situacao: string | null;
 }
 
 export interface Municipio {

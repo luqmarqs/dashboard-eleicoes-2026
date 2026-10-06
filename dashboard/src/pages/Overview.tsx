@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CandidatePicker, ErrorBox, Loading, nomeCand } from "../components/ui";
+import { PaineisProntos } from "../components/PaineisProntos";
+import { CandidatePicker, ErrorBox, Loading, SituacaoBadge, nomeCand } from "../components/ui";
 import { useBase, type Base } from "../lib/data";
 import { fmt } from "../lib/format";
 import { CARGOS, type Candidatura } from "../lib/types";
@@ -43,11 +44,13 @@ export function Overview() {
         </div>
       </header>
 
+      <PaineisProntos />
+
       <section aria-label="Candidaturas em destaque" className="grid gap-4 md:grid-cols-2">
         {destaques.map((c) => (
           <Link key={c.id} to={`/c/${c.id}`} className="rounded-lg border border-line bg-panel p-5 hover:border-accent">
             <div className="eyebrow">{CARGOS[c.cargo]} · {c.partido}</div>
-            <div className="display mt-1 text-2xl">{nomeCand(c)}</div>
+            <div className="display mt-1 text-2xl">{nomeCand(c)}<SituacaoBadge c={c} /></div>
             <div className="mt-3 flex items-baseline gap-2">
               <b className="display num text-3xl">{fmt(c.votos)}</b>
               <span className="text-muted">votos no estado</span>
@@ -74,7 +77,7 @@ export function Overview() {
                 <li key={c.id}>
                   <Link to={`/c/${c.id}`} className="grid grid-cols-[24px_1fr_auto] items-baseline gap-2 border-b border-line px-3 py-1.5 last:border-0 hover:bg-accent-soft">
                     <span className="num text-right text-xs text-muted">{i + 1}</span>
-                    <span className="font-semibold">{nomeCand(c)}</span>
+                    <span className="font-semibold">{nomeCand(c)}<SituacaoBadge c={c} /></span>
                     <span className="num text-sm">{fmt(c.votos)}</span>
                   </Link>
                 </li>

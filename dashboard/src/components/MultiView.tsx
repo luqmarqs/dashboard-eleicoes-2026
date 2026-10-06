@@ -8,7 +8,7 @@ import { CARGOS, type Candidatura } from "../lib/types";
 import { DataTable } from "./DataTable";
 import { MapView, type Metrica, type Modo } from "./MapView";
 import { TopLista } from "./Rankings";
-import { ErrorBox, Loading, MapControls, Segmented, nomeCand } from "./ui";
+import { ErrorBox, Loading, MapControls, Segmented, SituacaoBadge, nomeCand } from "./ui";
 
 interface Linha {
   key: string;
@@ -78,7 +78,12 @@ export function MultiView({ ids, municipio, nomeArquivo, onMunicipio }: {
     },
     ...cands.map((cand, i): ColumnDef<Linha, unknown> => ({
       id: `c${cand.id}`, accessorFn: (r) => r.porCand[i], meta: { numeric: true },
-      header: () => <span title={cand.nomeCompleto ?? ""}>{cand.numero}<br /><span className="font-normal">{cand.nome}</span></span>,
+      header: () => (
+        <span title={[cand.nomeCompleto, cand.situacao].filter(Boolean).join(" · ")}>
+          {cand.numero}<br /><span className="font-normal">{cand.nome}</span>
+          {cand.situacao?.startsWith("Eleito") && <><br /><SituacaoBadge c={cand} compacto /></>}
+        </span>
+      ),
       cell: (c) => fmt(Number(c.getValue())),
     })),
     { id: "soma", accessorKey: "soma", header: "Soma", cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
@@ -93,7 +98,10 @@ export function MultiView({ ids, municipio, nomeArquivo, onMunicipio }: {
     { header: efetivoNivel === "municipio" ? "Município" : efetivoNivel === "bairro" ? "Bairro" : "Local de votação", value: (r) => r.nome },
     { header: "Município", value: (r) => r.municipio },
     ...(efetivoNivel === "local" ? [{ header: "Endereço", value: (r: Linha) => r.endereco ?? "" }, { header: "Bairro", value: (r: Linha) => r.bairro ?? "" }] : []),
-    ...cands.map((c, i) => ({ header: `${c.numero} ${c.nome}`, value: (r: Linha) => r.porCand[i], type: "number" as const })),
+    ...cands.map((c, i) => ({
+      header: `${c.numero} ${c.nome}${c.situacao?.startsWith("Eleito") ? " (ELEITO)" : ""}`,
+      value: (r: Linha) => r.porCand[i], type: "number" as const,
+    })),
     { header: "Soma das selecionadas", value: (r) => r.soma, type: "number" },
     { header: "% dos válidos", value: (r) => (r.validos ? r.soma / r.validos : 0), type: "percent" },
     { header: "Votos válidos (todos os candidatos)", value: (r) => r.validos, type: "number" },
@@ -159,6 +167,7 @@ function ResumoCands({ base, cands, porCand, municipio }: {
         <li key={c.id} className="grid grid-cols-[1fr_auto] items-center gap-2 border-b border-line py-1">
           <div className="min-w-0">
             <Link to={`/c/${c.id}${municipio ? `?mun=${municipio}` : ""}`} className="font-semibold hover:underline">{nomeCand(c)}</Link>
+            <SituacaoBadge c={c} />
             <span className="ml-2 text-xs text-muted">{c.partido} · {CARGOS[c.cargo]}</span>
             <div className="mt-1 h-1.5 rounded-sm bg-accent-soft">
               <div className="h-1.5 rounded-sm bg-accent" style={{ width: `${(100 * tot[i].v) / max}%` }} />

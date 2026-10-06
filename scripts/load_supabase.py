@@ -41,7 +41,7 @@ TABLES = {
     "locais": ("id", "id, cd_municipio, cd_ibge, nr_zona, nr_local, nome, endereco, bairro, cep, lat, lon, "
                      "coord_aproximada, qt_secoes"),
     "candidaturas": ("id", "id, cd_eleicao, cd_cargo, ds_cargo, tipo, numero, nm_urna, nm_candidato, nr_partido, "
-                           "sg_partido, sq_candidato, destinacao, votos_total"),
+                           "sg_partido, sq_candidato, destinacao, votos_total, situacao"),
 }
 
 
@@ -129,13 +129,18 @@ def unnest_insert_sql(table: str, header: list[str], rows: list[list[str]], type
     return f"INSERT INTO public.{table} ({', '.join(header)}) SELECT * FROM unnest({arrays});"
 
 
-def load_via_cli(src: Path, chunk_rows: int) -> None:
+def load_via_cli(src: Path, chunk_rows: int, only: list[str] | None = None) -> None:
     t0 = time.time()
     for table, (key, _cols) in TABLES.items():
+        if only and table not in only:
+            continue
         header, rows = rows_of(src / f"{table}.csv")
         for i in range(0, len(rows), 2000):
             run_cli_sql(upsert_values_sql(table, key, header, rows[i:i + 2000]), f"{table} {i:,}")
         print(f"upsert {table}: {len(rows):,} linhas")
+    if only:
+        print(f"ok em {time.time() - t0:.0f}s (só {', '.join(only)})")
+        return
     run_cli_sql("TRUNCATE public.votos_local, public.totais_local;", "truncate")
     for table, types in (("totais_local", {c: "int" for c in ("local_id", "cd_cargo", "aptos", "comparecimento",
                                                               "validos", "brancos", "nulos")}),
@@ -159,10 +164,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--skip-migrations", action="store_true")
     p.add_argument("--via-cli", action="store_true", help="carrega pelo Supabase CLI logado (sem senha)")
     p.add_argument("--chunk-rows", type=int, default=150_000, help="linhas por lote no modo --via-cli")
+    p.add_argument("--only", help="modo --via-cli: atualiza só estas tabelas pequenas (ex.: candidaturas)")
     a = p.parse_args(argv)
     src = get_settings().data_dir / "dashboard" / a.uf.lower()
     if a.via_cli:
-        load_via_cli(src, a.chunk_rows)
+        load_via_cli(src, a.chunk_rows, a.only.split(",") if a.only else None)
         return 0
     t0 = time.time()
     with psycopg.connect(db_url(), autocommit=False) as conn, conn.cursor() as cur:

@@ -60,6 +60,26 @@ export function MunicipioSelect({ base, value, onChange, id = "municipio" }: {
   );
 }
 
+/** Selo da situação oficial: Eleito (por QP / média), 2º turno, Suplente. "Não eleito" não leva selo. */
+export function SituacaoBadge({ c, compacto = false }: { c: Pick<Candidatura, "situacao">; compacto?: boolean }) {
+  const s = c.situacao ?? "";
+  if (s.startsWith("Eleito")) {
+    const como = s.replace(/^Eleito\s*/, "");
+    return (
+      <span title={s} className="ml-1.5 inline-flex items-center rounded bg-accent px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-panel">
+        {compacto || !como ? "Eleito" : `Eleito ${como}`}
+      </span>
+    );
+  }
+  if (s === "2º turno") {
+    return <span title={s} className="ml-1.5 inline-flex rounded border border-accent px-1.5 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-accent">2º turno</span>;
+  }
+  if (s === "Suplente" && !compacto) {
+    return <span title={s} className="ml-1.5 inline-flex rounded border border-line px-1.5 py-0.5 align-middle text-[10px] uppercase tracking-wide text-muted">Suplente</span>;
+  }
+  return null;
+}
+
 export function nomeCand(c: Candidatura) {
   return c.tipo === "legenda" ? `Legenda ${c.partido ?? c.numero}` : `${c.numero} · ${c.nome}`;
 }
@@ -88,7 +108,7 @@ export function CandidatePicker({ base, onPick, cargo, placeholder = "Buscar can
             <li key={c.id}>
               <button type="button" className="flex w-full items-baseline gap-3 px-3 py-2 text-left hover:bg-accent-soft"
                 onClick={() => { onPick(c); setQ(""); }}>
-                <span className="font-semibold">{nomeCand(c)}</span>
+                <span className="font-semibold">{nomeCand(c)}<SituacaoBadge c={c} compacto /></span>
                 <span className="text-sm text-muted">{c.partido} · {CARGOS[c.cargo]}</span>
                 <span className="num ml-auto text-sm">{fmt(c.votos)}</span>
               </button>
