@@ -182,7 +182,8 @@ class Pipeline:
         return report.ok
 
     def _dry_run(self, pleito: Pleito, flt: SectionFilter) -> None:
-        rows = [r for r in self.state.iter_sections(flt, ["pending", "error"])]
+        rows = [r for r in self.state.iter_sections(flt, ["pending", "error", "skipped"])
+                if r["status"] != "skipped" or r["NR_SECAO_PRINCIPAL"] is None]
         if self.args.limit:
             rows = rows[: self.args.limit]
         counts = self.state.count_by_status(flt)

@@ -7,6 +7,8 @@ import pytest
 from tse2026.bu import decode_bu, decode_envelope
 from tse2026.exceptions import BUDecodeError
 
+from .conftest import FIXTURES
+
 
 def test_envelope_identifica_secao(bu_bytes: bytes) -> None:
     env = decode_envelope(bu_bytes)
@@ -57,3 +59,13 @@ def test_bu_invalido(data: bytes) -> None:
 def test_bu_truncado(bu_bytes: bytes) -> None:
     with pytest.raises(BUDecodeError):
         decode_bu(bu_bytes[: len(bu_bytes) // 2])
+
+
+def test_busa_sistema_de_apuracao() -> None:
+    bu = decode_bu((FIXTURES / "o03220zz2917300010494-busa.dat").read_bytes())
+    assert bu.origem == "dadosSA"
+    assert bu.tipo_arquivo == "saManual"
+    assert bu.motivo_sa == "apuracaoTotalmenteManual:outros"
+    (pres,) = bu.resultados
+    assert (pres.cd_cargo, pres.qt_aptos, pres.qt_comparecimento) == (1, 32, 13)
+    assert sum(v.quantidade for v in pres.votos) == 13

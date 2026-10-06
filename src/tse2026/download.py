@@ -20,6 +20,11 @@ log = get_logger("download")
 
 COMMIT_EVERY = 200
 SITUACAO_TOTALIZADO = "totalizado"
+# Tipos de arquivo de BU no aux.json, em ordem de preferência: "bu" (urna eletrônica) e
+# "busa" (BU gerado pelo Sistema de Apuração, ex.: votação manual/cédulas). Mesmo formato ASN.1.
+TIPOS_BU = ("bu", "busa")
+# Eleições municipais (ex.: Conselheiro Distrital de Fernando de Noronha) não publicam -u.json por UF.
+TIPO_ELEICAO_MUNICIPAL = "3"
 
 
 @dataclass
@@ -43,7 +48,8 @@ def choose_ballot(aux: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str,
         return None, None, f"aux sem hashes (situação: {aux.get('st')})"
 
     def bu_of(h: dict[str, Any]) -> dict[str, Any] | None:
-        return next((a for a in h.get("arq", []) if a.get("tp") == "bu"), None)
+        arqs = {a.get("tp"): a for a in h.get("arq", [])}
+        return next((arqs[t] for t in TIPOS_BU if t in arqs), None)
 
     def when(h: dict[str, Any]) -> str:
         dr, hr = h.get("dr", ""), h.get("hr", "")
@@ -67,8 +73,15 @@ class SectionDownloader:
         self._since_commit = 0
 
     def pending(self, flt: SectionFilter, retry_errors: bool = True) -> list[Any]:
-        statuses = ["pending", "error"] if retry_errors else ["pending"]
-        return list(self.state.iter_sections(flt, statuses))
+        """Seções a processar: pendentes, com erro e as "sem BU" (o BU pode ter sido publicado depois).
+
+        Seções agregadas (sem BU próprio por definição) nunca entram na fila.
+        """
+        statuses = ["pending", "error", "skipped"] if retry_errors else ["pending", "skipped"]
+        return [
+            r for r in self.state.iter_sections(flt, statuses)
+            if r["status"] != "skipped" or (r["NR_SECAO_PRINCIPAL"] is None and r["metadata_url"])
+        ]
 
     async def run(self, flt: SectionFilter, retry_errors: bool = True) -> DownloadReport:
         reset = self.state.reset_stale_downloading(flt)
@@ -266,6 +279,8 @@ async def download_official(
                 ufs_ok = [uf for uf in ufs if any(m[0] == uf for m in members)]
                 found = await asyncio.gather(*(get(OfficialTarget(e.cd, cargo.cd, uf)) for uf in ufs_ok))
                 ufs_with = {uf for uf, ok in zip(ufs_ok, found) if ok}
+                if e.tp == TIPO_ELEICAO_MUNICIPAL:
+                    ufs_with = set(ufs_ok)
                 if "municipio" in levels:
                     targets = [OfficialTarget(e.cd, cargo.cd, uf, mun) for uf, mun in muns
                                if uf in ufs_with and (uf, mun) in members]

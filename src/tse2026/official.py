@@ -6,6 +6,7 @@ Usados para (1) nomes de candidatos e siglas de partidos e (2) a validação.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -110,6 +111,9 @@ def parse_unificado(data: dict[str, Any]) -> Unificado:
     )
 
 
+_URL_IDS = re.compile(r"-c(\d{4})-e(\d{6})-u\.json$")
+
+
 @dataclass(frozen=True)
 class OfficialFile:
     tipo: str  # u-br | u-uf | u-municipio | u-zona
@@ -117,17 +121,25 @@ class OfficialFile:
     municipio: str | None
     zona: int | None
     path: Path
+    url: str
+
+    @property
+    def eleicao_cargo(self) -> tuple[int, int]:
+        m = _URL_IDS.search(self.url)
+        if not m:
+            raise ValueError(f"URL de -u.json inesperada: {self.url}")
+        return int(m.group(2)), int(m.group(1))
 
 
 def iter_official_files(state: StateDB, raw_dir: Path, tipos: tuple[str, ...]) -> Iterator[OfficialFile]:
     marks = ", ".join("?" for _ in tipos)
     rows = state.conn.execute(
-        f"SELECT tipo_arquivo, uf, municipio, zona, filename FROM files "
+        f"SELECT url, tipo_arquivo, uf, municipio, zona, filename FROM files "
         f"WHERE tipo_arquivo IN ({marks}) AND status IN ('downloaded', 'parsed', 'validated')",
         tipos,
     )
     for r in rows:
-        yield OfficialFile(r["tipo_arquivo"], r["uf"], r["municipio"], r["zona"], raw_dir / r["filename"])
+        yield OfficialFile(r["tipo_arquivo"], r["uf"], r["municipio"], r["zona"], raw_dir / r["filename"], r["url"])
 
 
 def load_unificado(path: Path) -> Unificado:
@@ -160,12 +172,19 @@ def build_candidate_index(state: StateDB, raw_dir: Path) -> CandidateIndex:
     cand_br: dict[tuple[int, int, int], Candidato] = {}
     partidos: dict[int, str] = {}
     legendas: dict[tuple[int, int, str, int], str | None] = {}
-    for f in iter_official_files(state, raw_dir, ("u-br", "u-uf")):
+    files = list(iter_official_files(state, raw_dir, ("u-br", "u-uf")))
+    covered = {(*f.eleicao_cargo, (f.uf or "").upper()) for f in files if f.tipo == "u-uf"}
+    # Eleições municipais (ex.: Conselheiro Distrital de Noronha) só têm arquivos por município.
+    files += [
+        f for f in iter_official_files(state, raw_dir, ("u-municipio",))
+        if (*f.eleicao_cargo, (f.uf or "").upper()) not in covered
+    ]
+    for f in files:
         u = load_unificado(f.path)
         for p in u.partidos:
             if p.sigla:
                 partidos.setdefault(p.numero, p.sigla)
-            if f.tipo == "u-uf":
+            if f.tipo != "u-br":
                 legendas[(u.cd_eleicao, u.cd_cargo, (f.uf or "").upper(), p.numero)] = p.destinacao_voto
         for c in u.candidatos:
             if f.tipo == "u-br":

@@ -102,6 +102,11 @@ def test_choose_ballot() -> None:
     assert choose_ballot(sem_totalizado)[2].startswith("nenhum BU totalizado")
     assert choose_ballot({"st": "Não instalada", "hashes": []})[2].startswith("aux sem hashes")
 
+    # Seção apurada pelo Sistema de Apuração (ex.: exterior, cédulas): arquivo "busa".
+    sa = {"st": "Totalizada", "hashes": [{"hash": "h", "st": "Totalizado", "arq": [
+        {"nm": "o03220zz2917300010494-busa.dat", "tp": "busa"}, {"nm": "x-rdv.dat", "tp": "rdv"}]}]}
+    assert choose_ballot(sa)[1]["nm"].endswith("-busa.dat")
+
     dois = {"hashes": [
         {"hash": "old", "st": "Totalizado", "dr": "04/10/2026", "hr": "18:00:00", "arq": [{"nm": "a", "tp": "bu"}]},
         {"hash": "new", "st": "Totalizado", "dr": "04/10/2026", "hr": "19:00:00", "arq": [{"nm": "b", "tp": "bu"}]},
