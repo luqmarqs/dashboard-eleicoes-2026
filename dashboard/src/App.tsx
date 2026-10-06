@@ -7,6 +7,8 @@ import { Dobrada } from "./pages/Dobrada";
 import { Metodologia } from "./pages/Metodologia";
 import { Overview } from "./pages/Overview";
 import { PainelView, Paineis } from "./pages/Paineis";
+import { Acessos } from "./pages/Acessos";
+import { useSouAdmin } from "./lib/acessos";
 import { isDev } from "./lib/source";
 import { supabase } from "./lib/supabase";
 
@@ -19,13 +21,15 @@ const NAV = [
 ];
 
 function Shell({ children, onSair }: { children: ReactNode; onSair?: () => void }) {
+  const admin = useSouAdmin();
+  const nav = admin.data ? [...NAV, { to: "/acessos", label: "Acessos" }] : NAV;
   return (
     <div className="min-h-full">
       <header className="sticky top-0 z-30 border-b border-line bg-panel/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
           <NavLink to="/" className="display text-lg">Painel Eleitoral <span className="text-accent">SP 2026</span></NavLink>
           <nav aria-label="Principal" className="flex flex-wrap gap-1">
-            {NAV.map((n) => (
+            {nav.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end}
                 className={({ isActive }) => `rounded-md px-3 py-1.5 text-sm ${isActive ? "bg-accent-soft font-semibold text-accent" : "hover:bg-accent-soft"}`}>
                 {n.label}
@@ -94,6 +98,7 @@ function Rotas() {
       <Route path="/paineis" element={<Paineis />} />
       <Route path="/paineis/:id" element={<PainelView />} />
       <Route path="/metodologia" element={<Metodologia />} />
+      <Route path="/acessos" element={<Acessos />} />
       <Route path="*" element={<p className="text-muted">Página não encontrada.</p>} />
     </Routes>
   );
