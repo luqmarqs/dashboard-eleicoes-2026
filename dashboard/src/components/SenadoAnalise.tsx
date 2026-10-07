@@ -109,7 +109,10 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
     return a;
   }, [base, totais.data]);
 
-  const nivel = municipio ? "bairro" : "municipio";
+  // estado: por cidade ou por bairro (todos os bairros do estado); com cidade escolhida: sempre por bairro
+  const [nivelEstado, setNivelEstado] = useState<"municipio" | "bairro">("municipio");
+  const nivel = municipio ? "bairro" : nivelEstado;
+  const porBairro = nivel === "bairro";
   const { areas, areaDoLocal } = useMemo(() => {
     const areaDoLocal = new Map<number, Area>();
     if (!porSenador) return { areas: [] as Area[], areaDoLocal };
@@ -117,10 +120,10 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
     const map = new Map<string, Area>();
     for (const l of base.locais) {
       if (municipio && l.mun !== municipio) continue;
-      const key = municipio ? `${l.mun}|${l.bairro}` : l.mun;
+      const key = porBairro ? `${l.mun}|${l.bairro}` : l.mun;
       let a = map.get(key);
       if (!a) {
-        a = { key, nome: municipio ? l.bairro : l.munNome, municipio: l.munNome, regiao: regiaoDe.get(l.mun) ?? null,
+        a = { key, nome: porBairro ? l.bairro : l.munNome, municipio: l.munNome, regiao: regiaoDe.get(l.mun) ?? null,
           v: new Float64Array(n), validos: 0, aptos: 0, ordem: [], pos: 0, vFoco: 0 };
         map.set(key, a);
       }
@@ -135,7 +138,7 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
       a.vFoco = a.v[iFoco];
     }
     return { areas: [...map.values()].filter((a) => a.validos > 0), areaDoLocal };
-  }, [base, porSenador, senadores.length, municipio, regiaoDe, aptosLocal, iFoco]);
+  }, [base, porSenador, senadores.length, municipio, porBairro, regiaoDe, aptosLocal, iFoco]);
 
   // ranking no escopo (estado ou cidade)
   const ranking = useMemo(() => {
@@ -240,11 +243,13 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
   // ---- tabela ----
   const distVaga = (a: Area) => (a.pos <= vagas ? a.vFoco - a.v[a.ordem[vagas]] : a.vFoco - a.v[a.ordem[vagas - 1]]);
   const columns = useMemo<ColumnDef<Area, unknown>[]>(() => [
-    { id: "nome", accessorKey: "nome", header: municipio ? "Bairro" : "Município",
+    { id: "nome", accessorKey: "nome", header: porBairro ? "Bairro" : "Município",
       cell: (c) => (
         <div>
           <div className="font-semibold">{titulo(c.row.original.nome)}</div>
-          {!municipio && c.row.original.regiao && <div className="text-xs text-muted">{c.row.original.regiao}</div>}
+          {!municipio && (porBairro || c.row.original.regiao) && (
+            <div className="text-xs text-muted">{porBairro ? titulo(c.row.original.municipio) : c.row.original.regiao}</div>
+          )}
         </div>
       ) },
     { id: "pos", accessorKey: "pos", header: "Posição", cell: (c) => {
@@ -276,10 +281,11 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
     ] as ColumnDef<Area, unknown>[] : []),
     { id: "aptos", accessorKey: "aptos", header: "Eleitores", cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [municipio, vagas, iFoco, iRival, totalFocoEscopo, senadores]);
+  ], [municipio, porBairro, vagas, iFoco, iRival, totalFocoEscopo, senadores]);
 
   const exportCols: ExportCol<Area>[] = [
-    { header: municipio ? "Bairro" : "Município", value: (a) => a.nome },
+    { header: porBairro ? "Bairro" : "Município", value: (a) => a.nome },
+    ...(porBairro && !municipio ? [{ header: "Município", value: (a: Area) => a.municipio }] : []),
     ...(municipio ? [] : [{ header: "Região intermediária (IBGE)", value: (a: Area) => a.regiao ?? "" }]),
     { header: "Eleitores", value: (a) => a.aptos, type: "number" },
     { header: "Votos válidos (Senado)", value: (a) => a.validos, type: "number" },
@@ -302,7 +308,7 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
   if (!porSenador) return <Loading texto="Carregando votos do Senado…" />;
 
   const nomeEscopo = municipio ? titulo(base.munByCd.get(municipio)?.nome ?? "") : `o estado (${uf})`;
-  const unid = municipio ? "bairros" : "cidades";
+  const unid = porBairro ? "bairros" : "cidades";
   const ultimaVaga = ranking.ordem[vagas - 1], primeiroFora = ranking.ordem[vagas];
   const margem = posEscopo <= vagas ? ranking.tot[iFoco] - ranking.tot[primeiroFora] : ranking.tot[iFoco] - ranking.tot[ultimaVaga];
   const dadosFoco = porSenador[iFoco];
@@ -367,6 +373,14 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
       {/* ---- filtros ---- */}
       <section aria-label="Filtros" className="flex flex-col gap-3 rounded-lg border border-line bg-panel p-3">
         <div className="flex flex-wrap items-end gap-3">
+          {!municipio && (
+            <label className="flex flex-col gap-1 text-sm text-muted">
+              Ver por
+              <Segmented label="Nível" value={nivelEstado} onChange={(v) => { setNivelEstado(v); setFPorte(""); }} options={[
+                { id: "municipio", label: "Cidade" }, { id: "bairro", label: "Bairro" },
+              ]} />
+            </label>
+          )}
           <label className="flex flex-col gap-1 text-sm text-muted">
             Posição de {nomeS(iFoco)}
             <Segmented label="Posição" value={fPos} onChange={setFPos} options={[
@@ -390,7 +404,7 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
             ]} />
           </label>
           <label htmlFor="porte" className="flex flex-col gap-1 text-sm text-muted">
-            Tamanho ({municipio ? "bairro" : "cidade"})
+            Tamanho ({porBairro ? "bairro" : "cidade"})
             <select id="porte" value={fPorte} onChange={(e) => setFPorte(e.target.value)}
               className="rounded-md border border-line bg-panel px-3 py-1.5 text-ink">
               <option value="">Todos</option>
@@ -431,22 +445,27 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
           { id: "pct", label: `% de ${nomeS(iFoco)}` },
           { id: "rival", label: `${nomeS(iFoco)} × ${nomeS(iRival)}` },
         ]} />
-        <LazyMap base={base} dados={dadosFoco} municipio={municipio} modo={municipio ? "territorios" : "municipios"} metrica="pct"
-          corPorMunicipio={municipio ? undefined : corPorMunicipio} corPorLocal={municipio ? corPorLocal : undefined}
+        <LazyMap base={base} dados={dadosFoco} municipio={municipio} modo={municipio ? "territorios" : porBairro ? "escolas" : "municipios"} metrica="pct"
+          corPorMunicipio={porBairro ? undefined : corPorMunicipio} corPorLocal={porBairro ? corPorLocal : undefined}
           infoExtra={infoExtra} rotuloSerie={`votos de ${nomeS(iFoco)}`}
           onMunicipio={(cd) => setMunicipio(cd)} />
         <Legenda modo={modoMapa} cat={[...corSenador.entries()].map(([s, c]) => ({ nome: nomeS(s), c }))} outros={OUTROS}
           div={DIV} foco={nomeS(iFoco)} rival={nomeS(iRival)} breaks={breaksPct} apagado={filtroAtivo ? APAGADO : null} />
-        {municipio && <p className="text-xs text-muted">Com uma cidade escolhida, cada território (área mais próxima de um local de votação) recebe a cor do seu bairro.</p>}
+        {porBairro && <p className="text-xs text-muted">
+          {municipio ? "Com uma cidade escolhida, cada território (área mais próxima de um local de votação) recebe a cor do seu bairro."
+            : "Por bairro no estado: cada ponto é um local de votação, com a cor do resultado do seu bairro."}
+        </p>}
       </section>
 
       {/* ---- tabela ---- */}
       <section aria-label="Tabela" className="flex flex-col gap-2">
-        <h2 className="display text-2xl">{municipio ? "Por bairro" : "Por cidade"}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="display text-2xl">{porBairro ? (municipio ? "Por bairro" : "Por bairro (todo o estado)") : "Por cidade"}</h2>
+        </div>
         <DataTable data={filtradas} columns={columns} exportCols={exportCols}
-          nomeArquivo={`senado_${cand.numero}_${municipio ? `bairros_${municipio}` : "cidades"}`}
-          busca={(a) => `${a.nome} ${a.regiao ?? ""}`} initialSort={[{ id: "v", desc: true }]} />
-        {!municipio && <p className="text-xs text-muted">Clique numa cidade do mapa ou escolha na abrangência para ver por bairro.</p>}
+          nomeArquivo={`senado_${cand.numero}_${porBairro ? `bairros_${municipio ?? uf}` : "cidades"}`}
+          busca={(a) => `${a.nome} ${a.municipio} ${a.regiao ?? ""}`} initialSort={[{ id: "v", desc: true }]} />
+        {!municipio && !porBairro && <p className="text-xs text-muted">Clique numa cidade do mapa ou escolha na abrangência para ver os bairros só dela.</p>}
       </section>
     </div>
   );
