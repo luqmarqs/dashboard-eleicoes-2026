@@ -9,14 +9,23 @@ export interface InfoUf {
 
 export const UFS: InfoUf[] = [
   { sigla: "SP", nome: "São Paulo", capital: "71072" },
-  // MG: reativar quando os dados de Minas estiverem carregados no banco.
-  // { sigla: "MG", nome: "Minas Gerais", capital: "41238" },
+  { sigla: "MG", nome: "Minas Gerais", capital: "41238" },
 ];
 
 const KEY = "uf-selecionada";
 let atual = lerSalva();
 
 function lerSalva(): string {
+  // ?uf=MG no endereço escolhe o estado (links diretos); senão, a última escolha deste navegador.
+  const daUrl = new URLSearchParams(window.location.search).get("uf")?.toUpperCase();
+  if (daUrl && UFS.some((u) => u.sigla === daUrl)) {
+    try {
+      localStorage.setItem(KEY, daUrl);
+    } catch {
+      /* ignora */
+    }
+    return daUrl;
+  }
   try {
     const s = localStorage.getItem(KEY);
     if (s && UFS.some((u) => u.sigla === s)) return s;

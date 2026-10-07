@@ -155,7 +155,7 @@ export function MultiView({ ids, municipio, nomeArquivo, onMunicipio }: {
             metrica={metrica} onMunicipio={onMunicipio}
             destaques={lista.slice(0, 20).map((l, i) => ({ rank: i + 1, nome: titulo(l.nome), lat: l.lat, lon: l.lon }))} />
         )}
-        <aside className="min-w-0">
+        <aside className="min-w-0 lg:max-h-[min(70vh,720px)] lg:overflow-y-auto">
           <h2 className="mb-1 text-sm font-bold uppercase tracking-wide">20 {municipio ? "bairros" : "cidades"} com mais votos</h2>
           <TopLista linhas={lista} n={20} onClick={(l) => { if (!municipio && onMunicipio) onMunicipio(l.key); }} />
         </aside>

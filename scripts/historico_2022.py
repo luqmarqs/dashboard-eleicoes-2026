@@ -33,7 +33,8 @@ from tse2026.config import get_settings
 
 # candidatura 2026 (cargo, número) -> candidatura 2022 (cargo, número)
 HISTORICO = {
-    "SP": {(7, 50000): (7, 50000), (6, 5005): (7, 50005)},
+    "SP": {(7, 50000): (7, 50000), (6, 5005): (7, 50005)},  # Bancada Feminista; Guilherme Cortez (estadual em 2022)
+    "MG": {(7, 50099): (6, 5000), (6, 5050): (6, 1212)},     # Iza Lourença (federal em 2022); Duda Salabert (PDT em 2022)
 }
 VOTOS_NAO_VALIDOS = (95, 96, 97, 98)  # branco, nulo, anulado, anulado sub judice
 RAIO_M = 150

@@ -23,12 +23,18 @@ interface Linha {
 
 const sinal = (x: number) => (x > 0 ? "+" : "");
 
+export function useHistorico(id: number | undefined) {
+  const { uf } = useUf();
+  return useQuery({
+    queryKey: ["historico", uf, id], queryFn: () => source.historico(id!), enabled: id != null, staleTime: Infinity,
+  });
+}
+
 /** Comparação da candidatura de 2026 com a de 2022 (mesma pessoa), por cidade, bairro e escola. */
 export function Historico({ base, cand, dados, municipio }: {
   base: Base; cand: Candidatura; dados: PorLocal; municipio: string | null;
 }) {
-  const { uf } = useUf();
-  const hist = useQuery({ queryKey: ["historico", uf, cand.id], queryFn: () => source.historico(cand.id), staleTime: Infinity });
+  const hist = useHistorico(cand.id);
   const [nivel, setNivel] = useState<Nivel>(municipio ? "bairro" : "municipio");
   const efetivo: Nivel = municipio && nivel === "municipio" ? "bairro" : nivel;
 

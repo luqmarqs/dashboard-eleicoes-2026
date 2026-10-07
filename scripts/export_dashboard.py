@@ -39,7 +39,7 @@ IBGE_UF = {"SP": 35, "MG": 31}
 # Cada UF ocupa uma faixa própria de ids no banco (SP mantém os ids originais).
 UF_ORDEM = ["SP", "MG"]
 # Candidaturas em destaque por UF: (cargo, número)
-DESTAQUES = {"SP": [(7, 50000), (6, 5005)], "MG": [(7, 50099)]}
+DESTAQUES = {"SP": [(7, 50000), (6, 5005)], "MG": [(7, 50099), (6, 5050)]}  # MG: Iza Lourença, Duda Salabert
 
 
 def offsets(uf: str) -> tuple[int, int]:

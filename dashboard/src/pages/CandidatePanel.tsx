@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Historico } from "../components/Historico";
+import { Historico, useHistorico } from "../components/Historico";
 import { LazyMap } from "../components/LazyMap";
 import type { Metrica, Modo } from "../components/mapTypes";
 import { Rankings, TopLista } from "../components/Rankings";
@@ -37,6 +37,8 @@ export function CandidatePanel() {
   const { info } = useUf();
   const cand = base.data?.candById.get(Number(id));
   const votos = useVotos(cand ? [cand.id] : [], null);
+  const hist = useHistorico(cand?.id);
+  const temHistorico = (hist.data?.resumo.length ?? 0) > 0;
   const totais = useTotais(cand?.cargo, null);
 
   const dados = useMemo(
@@ -92,7 +94,7 @@ export function CandidatePanel() {
             destaques={lista.filter((l) => l.votos > 0).slice(0, 20).map((l, i) => ({ rank: i + 1, nome: titulo(l.nome), lat: l.lat, lon: l.lon }))}
             onMunicipio={(cd) => set("mun", cd)} />
         ) : <Loading texto="Carregando votos…" />}
-        <aside className="min-w-0">
+        <aside className="min-w-0 lg:max-h-[min(70vh,720px)] lg:overflow-y-auto">
           <h2 className="mb-1 text-sm font-bold uppercase tracking-wide">
             20 {municipio ? "bairros" : "cidades"} com mais votos
           </h2>
@@ -101,9 +103,10 @@ export function CandidatePanel() {
         </aside>
       </div>
 
-      {dados && <Historico base={b} cand={cand} dados={dados} municipio={municipio} />}
+      {/* Com histórico, a tabela de comparação já traz 2026 completo (votos, % válidos, % do total). */}
+      {dados && temHistorico && <Historico base={b} cand={cand} dados={dados} municipio={municipio} />}
 
-      {dados && <Rankings base={b} dados={dados} municipio={municipio}
+      {dados && !hist.isLoading && !temHistorico && <Rankings base={b} dados={dados} municipio={municipio}
         nomeArquivo={`${cand.numero}_${(cand.nome ?? "").replace(/\W+/g, "_")}${municipio ? `_${municipio}` : ""}`} />}
     </div>
   );
