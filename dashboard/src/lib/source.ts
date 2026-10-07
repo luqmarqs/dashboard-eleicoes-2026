@@ -141,7 +141,14 @@ export interface Digital {
   execucoes: DigitalExecucao[];
 }
 
+/** Agregados de anúncios de uma candidatura prioritária (próprio ou dobradas); c* = só anúncios em BRL com alcance > 0. */
+export interface AggMeta { n: number; gmin: number | null; gmax: number | null; aberto: boolean | null; cgmin: number | null;
+  cgmax: number | null; caberto: boolean | null; alcance: number | null }
+export interface MetaPrioritaria { id: number; uf: string; nome: string; cargo: number; partido: string | null; votos: number;
+  situacao: string | null; prop: AggMeta | null; dob: AggMeta | null }
+
 export interface DataSource {
+  metaPrioritarias(): Promise<MetaPrioritaria[]>;
   digital(): Promise<Digital>;
   metaDobradas(candidaturaId: number): Promise<MetaMencao[]>;
   metaResumo(): Promise<MetaResumo>;
@@ -237,6 +244,33 @@ const dev: DataSource = {
     } catch {
       return META_VAZIO;
     }
+  },
+  async metaPrioritarias() {
+    // modo dev: mesmo cálculo da RPC, a partir dos arquivos de cada UF
+    const agg = (ads: MetaAnuncio[]): AggMeta | null => {
+      if (!ads.length) return null;
+      const c = ads.filter((a) => a.moeda === "BRL" && (a.alcance ?? 0) > 0);
+      const soma = (xs: MetaAnuncio[], i: 0 | 1) => xs.reduce((t, a) => t + (a.gasto[i] ?? 0), 0);
+      return { n: ads.length, gmin: soma(ads, 0), gmax: soma(ads, 1), aberto: ads.some((a) => a.gasto[1] == null),
+        cgmin: c.length ? soma(c, 0) : null, cgmax: c.length ? soma(c, 1) : null, caberto: c.length ? c.some((a) => a.gasto[1] == null) : null,
+        alcance: c.length ? c.reduce((t, a) => t + (a.alcance ?? 0), 0) : null };
+    };
+    const out: MetaPrioritaria[] = [];
+    for (const uf of ["sp", "mg", "rs"]) {
+      try {
+        const cfg = await getJson<Config>(`/dev-data/${uf}/config.json`);
+        const cs = await getJson<CandidaturasCols>(`/dev-data/${uf}/candidaturas.json`);
+        for (const id of cfg.candidaturas) {
+          const i = cs.id.indexOf(id);
+          const prop = await getJson<MetaAnuncio[]>(`/dev-data/${uf}/meta/${id}.json`).catch(() => [] as MetaAnuncio[]);
+          const dob = await getJson<MetaMencao[]>(`/dev-data/${uf}/meta/dobradas/${id}.json`).catch(() => [] as MetaMencao[]);
+          const dobAds = [...new Map(dob.filter((m) => m.papel === "recebe" && m.cita_numero).map((m) => [m.ad.id, m.ad])).values()];
+          out.push({ id, uf: uf.toUpperCase(), nome: cs.nome[i] ?? String(id), cargo: cs.cargo[i], partido: cs.partido[i], votos: cs.votos[i],
+            situacao: cs.situacao?.[i] ?? null, prop: agg(prop), dob: agg(dobAds) });
+        }
+      } catch { /* UF sem dev-data */ }
+    }
+    return out;
   },
   async digital() {
     try {
@@ -345,6 +379,7 @@ const remote: DataSource = {
   metaAnuncios: async (id) => expandirCompacto(await rpc<MetaCompacto>("meta_anuncios_cache", { p_candidatura_id: id })),
   metaDobradas: (id) => rpc("meta_dobradas_cache", { p_candidatura_id: id }),
   digital: () => rpc("digital_json", { p_uf: getUf() }),
+  metaPrioritarias: () => rpc("meta_prioritarias_cache"),
   async versao() {
     const { data, error } = await supabase().from("meta").select("valor").eq("chave", "versao_dados").maybeSingle();
     if (error) rpcError(L("versão dos dados", "data version"), error);

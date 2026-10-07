@@ -5,7 +5,7 @@ import { dec, fmt, pct, titulo } from "../lib/format";
 import { L, getLang } from "../lib/i18n";
 import { fmtFaixa, porMunicipio, somaFaixas, custoPorMil, fmtCusto } from "../lib/meta";
 import { useMetaAnuncios, useMetaResumo } from "../lib/metaHooks";
-import { source, type MetaAnuncio } from "../lib/source";
+import { source, type AggMeta, type MetaAnuncio } from "../lib/source";
 import { EIXOS, contarTemas, rotuloDe } from "../lib/temas";
 import { CARGOS, type Candidatura } from "../lib/types";
 import { emUf, useUf } from "../lib/uf";
@@ -29,6 +29,8 @@ export function AnaliseCandidatura({ base, cand, dados }: { base: Base; cand: Ca
   const proprios = !!item && item.anuncios > 0;
   const ads = useMetaAnuncios(cand.id, item?.ultima_coleta, proprios);
   const dob = useQuery({ queryKey: ["meta-dobradas", uf, cand.id], queryFn: () => source.metaDobradas(cand.id), enabled: !!item, staleTime: 5 * 60_000 });
+
+  const prio = useQuery({ queryKey: ["meta-prioritarias"], queryFn: () => source.metaPrioritarias(), staleTime: 10 * 60_000 });
 
   const pontos = useMemo(() => {
     const out: ReactNode[] = [];
@@ -98,8 +100,30 @@ export function AnaliseCandidatura({ base, cand, dados }: { base: Base; cand: Ca
         ? <><b>Joint tickets:</b> {proprios ? <>{fmt(total)} ads from other campaigns mention {nome}; </> : null}confirmed (name + number + campaign funder) mostly by {top.map((x) => `${titulo(x.c!.nome)} (${x.n})`).join(", ")}.</>
         : <><b>Dobradas:</b> {proprios ? <>{fmt(total)} anúncios de outras campanhas citam {nome}; </> : null}confirmadas (nome + número + CNPJ de campanha) principalmente por {top.map((x) => `${titulo(x.c!.nome)} (${x.n})`).join(", ")}.</>);
     }
+    // 6. comparativo de custo por mil alcançados entre as prioritárias (todas as UFs; próprio + dobradas)
+    const custo = (aggs: (AggMeta | null)[]) => {
+      const xs = aggs.filter((x): x is AggMeta => !!x && !!x.alcance);
+      const alc = xs.reduce((t, x) => t + (x.alcance ?? 0), 0);
+      if (!alc) return null;
+      const min = xs.reduce((t, x) => t + (x.cgmin ?? 0), 0) / alc * 1000;
+      const max = xs.some((x) => x.caberto) ? null : xs.reduce((t, x) => t + (x.cgmax ?? 0), 0) / alc * 1000;
+      return { min, max };
+    };
+    const comp = (prio.data ?? []).map((p) => ({ p, total: custo([p.prop, p.dob]), prop: custo([p.prop]) }))
+      .filter((x) => x.total).sort((a, b) => a.total!.min - b.total!.min);
+    if (comp.length > 1) {
+      const pos = comp.findIndex((x) => x.p.id === cand.id) + 1;
+      const itens = comp.map((x, i) => (
+        <span key={x.p.id} className={x.p.id === cand.id ? "font-bold text-accent" : ""}>
+          {i > 0 && " · "}{titulo(x.p.nome)} ({x.p.uf}) {fmtCusto(x.total)}{x.prop ? null : <> {L("(só dobradas)", "(joint tickets only)")}</>}
+        </span>
+      ));
+      out.push(en()
+        ? <><b>Cost per 1,000 reached among our priority candidacies</b> (own + joint tickets, lowest first{pos ? `; ${nome} is ${ord(pos)} of ${comp.length}` : ""}): {itens}.</>
+        : <><b>Custo por mil alcançados entre as nossas prioritárias</b> (próprio + dobradas, do menor para o maior{pos ? `; ${nome} está em ${ord(pos)} lugar entre ${comp.length}` : ""}): {itens}.</>);
+    }
     return out;
-  }, [base, cand, dados, hist.data, ads.data, dob.data, proprios, info]);
+  }, [base, cand, dados, hist.data, ads.data, dob.data, proprios, info, prio.data]);
 
   return (
     <section aria-label={L("Análise", "Analysis")} className="rounded-lg border border-accent/40 bg-accent-soft/30 p-4">

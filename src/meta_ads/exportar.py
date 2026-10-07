@@ -254,4 +254,5 @@ def atualizar_cache(root: Path, ufs: list[str]) -> None:
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=3) as ex:
         list(ex.map(lambda uf: _rodar_sql(root, f"select public.meta_atualizar_cache('{uf}');", f"cache {uf}"), ufs))
-    print(f"  cache do painel atualizado: {', '.join(ufs)}", flush=True)
+    _rodar_sql(root, "select public.meta_atualizar_prioritarias();", "cache das prioritárias")
+    print(f"  cache do painel atualizado: {', '.join(ufs)} + prioritárias", flush=True)
