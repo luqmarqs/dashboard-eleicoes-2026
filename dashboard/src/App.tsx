@@ -89,6 +89,14 @@ function Login() {
       setEstado("erro");
     } else setEstado("enviado");
   };
+  const google = async () => {
+    setErro("");
+    // O acesso continua limitado aos e-mails da lista autorizada (RLS), qualquer que seja o login.
+    const { error } = await supabase().auth.signInWithOAuth({
+      provider: "google", options: { redirectTo: window.location.origin + window.location.pathname },
+    });
+    if (error) { setErro(`Não foi possível entrar com o Google: ${error.message}`); setEstado("erro"); }
+  };
   return (
     <div className="grid min-h-full place-items-center px-4">
       <form onSubmit={enviar} className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-line bg-panel p-6">
@@ -98,12 +106,25 @@ function Login() {
           <p role="status">Enviamos um link de acesso para <b>{email}</b>. Abra o e-mail neste mesmo navegador.</p>
         ) : (
           <>
+            <button type="button" onClick={() => void google()}
+              className="flex items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 font-semibold text-panel">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden className="rounded-sm bg-white p-0.5">
+                <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.7z" />
+                <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z" />
+                <path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6h-4a12 12 0 0 0 0 10.8l4-3.1z" />
+                <path fill="#EA4335" d="M12 4.8c1.8 0 3.4.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z" />
+              </svg>
+              Entrar com Google
+            </button>
+            <div className="flex items-center gap-2 text-xs text-muted" aria-hidden>
+              <span className="h-px flex-1 bg-line" />ou receba um link por e-mail<span className="h-px flex-1 bg-line" />
+            </div>
             <label htmlFor="email" className="flex flex-col gap-1 text-sm text-muted">E-mail
               <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email" className="rounded-md border border-line bg-bg px-3 py-2 text-ink" />
             </label>
             <button type="submit" disabled={estado === "enviando"}
-              className="rounded-md bg-accent px-4 py-2 font-semibold text-panel disabled:opacity-50">
+              className="rounded-md border border-line px-4 py-2 font-semibold hover:bg-accent-soft disabled:opacity-50">
               {estado === "enviando" ? "Enviando…" : "Receber link de acesso"}
             </button>
             {estado === "erro" && <p className="text-sm text-danger" role="alert">{erro}</p>}
