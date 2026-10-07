@@ -6,6 +6,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { DataTable } from "../components/DataTable";
 import { useMetaAnuncios, useMetaResumo } from "../lib/metaHooks";
 import { TemasCriativos } from "../components/TemasCriativos";
+import { GastoTopo } from "../components/GastoTopo";
 import { AnunciosVotos } from "../components/AnunciosVotos";
 import { EIXOS, normalizarTexto, rotuloDe, temasDoTexto } from "../lib/temas";
 import { L, getLang } from "../lib/i18n";
@@ -314,6 +315,7 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
             </li>
           ))}
         </ul>
+        <GastoTopo candId={cand.id} />
       </header>
 
       <Segmented label={L("Fonte dos anúncios", "Ad source")} value={fonte} onChange={(f) => { setFonte(f); setParceira("todas"); setMunicipio(null); }} options={[

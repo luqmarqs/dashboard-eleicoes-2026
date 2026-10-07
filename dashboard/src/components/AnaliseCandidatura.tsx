@@ -69,7 +69,8 @@ export function AnaliseCandidatura({ base, cand, dados }: { base: Base; cand: Ca
 
     // 4. tráfego pago (próprio; sem próprio, dobradas)
     const recebe = (dob.data ?? []).filter((m) => m.papel === "recebe");
-    const lista: MetaAnuncio[] = proprios ? ads.data ?? [] : [...new Map(recebe.map((m) => [m.ad.id, m.ad])).values()];
+    // sem anúncios próprios: dobradas com nome e número (o mesmo critério da faixa de gasto no topo)
+    const lista: MetaAnuncio[] = proprios ? ads.data ?? [] : [...new Map(recebe.filter((m) => m.cita_numero).map((m) => [m.ad.id, m.ad])).values()];
     if (lista.length) {
       const g = somaFaixas(lista, "gasto").get("BRL");
       const t = contarTemas(lista);
@@ -82,8 +83,8 @@ export function AnaliseCandidatura({ base, cand, dados }: { base: Base; cand: Ca
       const votosNasSeg = [...mun.values()].filter((x) => x.inclui.size + x.bairro.size > 0).reduce((s, x) => s + (vm.get(x.cd)?.votos ?? 0), 0);
       const forca = !Number.isFinite(rho) ? null : Math.abs(rho) >= 0.5 ? L("forte", "strong") : Math.abs(rho) >= 0.3 ? L("moderada", "moderate") : L("fraca", "weak");
       out.push(en()
-        ? <><b>Paid ads{proprios ? "" : " (by allies)"}:</b> {fmt(lista.length)} ads ({fmt(t.criativos)} distinct creatives){g ? <>, declared spend {fmtFaixa(g.min, g.max, "R$ ")}</> : null}{custoPorMil(lista) ? <>, {fmtCusto(custoPorMil(lista))} per 1,000 reached</> : null}{temaTop?.n ? <>; top policy theme: {rotuloDe(temaTop.x)} ({pct(temaTop.n / t.criativos, 0)} of creatives)</> : null}. {fmt(cidades)} cities targeted by name, holding {pct(votosNasSeg / total, 0)} of the votes{forca ? <>; {forca} correlation between ads per city and vote share ({dec(rho, 2)})</> : null}.</>
-        : <><b>Tráfego pago{proprios ? "" : " (de aliados)"}:</b> {fmt(lista.length)} anúncios ({fmt(t.criativos)} criativos distintos){g ? <>, gasto declarado {fmtFaixa(g.min, g.max, "R$ ")}</> : null}{custoPorMil(lista) ? <>, {fmtCusto(custoPorMil(lista))} por mil alcançados</> : null}{temaTop?.n ? <>; tema de política principal: {rotuloDe(temaTop.x)} ({pct(temaTop.n / t.criativos, 0)} dos criativos)</> : null}. {fmt(cidades)} cidades segmentadas pelo nome, com {pct(votosNasSeg / total, 0)} dos votos{forca ? <>; correlação {forca} entre anúncios por cidade e % dos válidos ({dec(rho, 2)})</> : null}.</>);
+        ? <><b>Paid ads{proprios ? "" : " (by allies, with name and number)"}:</b> {fmt(lista.length)} ads ({fmt(t.criativos)} distinct creatives){g ? <>, declared spend {fmtFaixa(g.min, g.max, "R$ ")}</> : null}{custoPorMil(lista) ? <>, {fmtCusto(custoPorMil(lista))} per 1,000 reached</> : null}{temaTop?.n ? <>; top policy theme: {rotuloDe(temaTop.x)} ({pct(temaTop.n / t.criativos, 0)} of creatives)</> : null}. {fmt(cidades)} cities targeted by name, holding {pct(votosNasSeg / total, 0)} of the votes{forca ? <>; {forca} correlation between ads per city and vote share ({dec(rho, 2)})</> : null}.</>
+        : <><b>Tráfego pago{proprios ? "" : " (de aliados, com nome e número)"}:</b> {fmt(lista.length)} anúncios ({fmt(t.criativos)} criativos distintos){g ? <>, gasto declarado {fmtFaixa(g.min, g.max, "R$ ")}</> : null}{custoPorMil(lista) ? <>, {fmtCusto(custoPorMil(lista))} por mil alcançados</> : null}{temaTop?.n ? <>; tema de política principal: {rotuloDe(temaTop.x)} ({pct(temaTop.n / t.criativos, 0)} dos criativos)</> : null}. {fmt(cidades)} cidades segmentadas pelo nome, com {pct(votosNasSeg / total, 0)} dos votos{forca ? <>; correlação {forca} entre anúncios por cidade e % dos válidos ({dec(rho, 2)})</> : null}.</>);
     }
 
     // 5. dobradas recebidas
