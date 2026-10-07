@@ -1,6 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import { useEffect, useState, type ReactNode } from "react";
-import { BrowserRouter, NavLink, Route, Routes, useNavigate } from "react-router-dom";
+import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { UFS, useUf } from "./lib/uf";
 import { CandidatePanel } from "./pages/CandidatePanel";
 import { Comparativo } from "./pages/Comparativo";
@@ -15,6 +15,7 @@ import { DigitalMG } from "./pages/DigitalMG";
 import { Apocalipse } from "./pages/Apocalipse";
 import { Esperanca } from "./pages/Esperanca";
 import { useSouAdmin } from "./lib/acessos";
+import { registrarVisita } from "./lib/visitas";
 import { isDev } from "./lib/source";
 import { L, SeletorIdioma, useLang } from "./lib/i18n";
 import { supabase } from "./lib/supabase";
@@ -142,6 +143,15 @@ function Login() {
   );
 }
 
+/** Registra a visita a cada rota aberta (só com sessão autorizada; ver lib/visitas.ts). */
+function RegistroVisitas() {
+  const { pathname } = useLocation();
+  const { uf } = useUf();
+  const { lang } = useLang();
+  useEffect(() => { registrarVisita(pathname, uf, lang); }, [pathname, uf, lang]);
+  return null;
+}
+
 function Rotas() {
   return (
     <Routes>
@@ -230,7 +240,7 @@ function AppComSessao() {
       ) : session === undefined || (session && autorizado === undefined) ? (
         <p className="py-20 text-center text-muted">{L("Verificando acesso…", "Checking access…")}</p>
       ) : session && autorizado ? (
-        <Shell onSair={sair}><Rotas /></Shell>
+        <Shell onSair={sair}><RegistroVisitas /><Rotas /></Shell>
       ) : session ? (
         <NaoAutorizado email={session.user.email} onSair={sair} />
       ) : (

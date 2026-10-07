@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ErrorBox, Loading } from "../components/ui";
+import { Visitas } from "../components/Visitas";
 import { acessos, useSouAdmin } from "../lib/acessos";
 import { L, locale } from "../lib/i18n";
 
@@ -32,7 +33,7 @@ export function Acessos() {
   if (!admin.data) return <ErrorBox error={L("Apenas administradores podem gerenciar os acessos.", "Only administrators can manage access.")} />;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex max-w-5xl flex-col gap-6">
       <header>
         <div className="eyebrow">{L("Administração", "Administration")}</div>
         <h1 className="display text-3xl">{L("Acessos ao painel", "Dashboard access")}</h1>
@@ -99,6 +100,8 @@ export function Acessos() {
           ))}
         </ul>
       </section>
+
+      <Visitas />
     </div>
   );
 }
