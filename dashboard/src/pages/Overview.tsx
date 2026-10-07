@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { PaineisProntos } from "../components/PaineisProntos";
 import { CandidatePicker, ErrorBox, Loading, SituacaoBadge, nomeCand } from "../components/ui";
 import { useBase, type Base } from "../lib/data";
-import { useUf } from "../lib/uf";
+import { deUf, emUf, useUf } from "../lib/uf";
 import { fmt, titulo } from "../lib/format";
 import { CARGOS, type Candidatura } from "../lib/types";
 
@@ -39,8 +39,8 @@ export function Overview() {
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-3">
-        <div className="eyebrow">Estado de {info.nome} · 1º turno · 4 de outubro de 2026</div>
-        <h1 className="display text-4xl">{partido} em {info.nome}</h1>
+        <div className="eyebrow">Estado {deUf(info)} · 1º turno · 4 de outubro de 2026</div>
+        <h1 className="display text-4xl">{partido} {emUf(info)}</h1>
       </header>
 
       <section aria-label="Candidaturas em destaque" className="grid gap-4 md:grid-cols-2">

@@ -5,13 +5,18 @@ export interface InfoUf {
   nome: string;
   /** Código TSE da capital. */
   capital: string;
+  /** Artigo para "em"/"de": "no Rio Grande do Sul", "de São Paulo". */
+  artigo?: "o";
 }
+
+/** "em São Paulo" / "no Rio Grande do Sul"; "de São Paulo" / "do Rio Grande do Sul". */
+export const emUf = (u: InfoUf) => `${u.artigo ? "no" : "em"} ${u.nome}`;
+export const deUf = (u: InfoUf) => `${u.artigo ? "do" : "de"} ${u.nome}`;
 
 export const UFS: InfoUf[] = [
   { sigla: "SP", nome: "São Paulo", capital: "71072" },
   { sigla: "MG", nome: "Minas Gerais", capital: "41238" },
-  // RS: reativar quando os dados do Rio Grande do Sul estiverem carregados no banco.
-  // { sigla: "RS", nome: "Rio Grande do Sul", capital: "88013" },
+  { sigla: "RS", nome: "Rio Grande do Sul", capital: "88013", artigo: "o" },
 ];
 
 const KEY = "uf-selecionada";

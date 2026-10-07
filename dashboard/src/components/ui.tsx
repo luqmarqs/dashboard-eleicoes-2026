@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import type { Base } from "../lib/data";
-import { useUf } from "../lib/uf";
+import { deUf, useUf } from "../lib/uf";
 import { fmt, normalizar, titulo } from "../lib/format";
 import { CARGOS, type Candidatura } from "../lib/types";
 import { MODOS, type Metrica, type Modo } from "./mapTypes";
@@ -55,7 +55,7 @@ export function MunicipioSelect({ base, value, onChange, id = "municipio" }: {
       Abrangência
       <select id={id} value={value ?? ""} onChange={(e) => onChange(e.target.value || null)}
         className="rounded-md border border-line bg-panel px-3 py-1.5 text-ink">
-        <option value="">Estado de {info.nome}</option>
+        <option value="">Estado {deUf(info)}</option>
         {opts.map((m) => <option key={m.cd} value={m.cd}>{titulo(m.nome)}</option>)}
       </select>
     </label>

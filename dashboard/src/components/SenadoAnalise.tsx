@@ -248,7 +248,7 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
         <div>
           <div className="font-semibold">{titulo(c.row.original.nome)}</div>
           {!municipio && (porBairro || c.row.original.regiao) && (
-            <div className="text-xs text-muted">{porBairro ? titulo(c.row.original.municipio) : c.row.original.regiao}</div>
+            <div className="text-xs text-muted">{porBairro ? titulo(c.row.original.municipio) : `região ${c.row.original.regiao}`}</div>
           )}
         </div>
       ) },
