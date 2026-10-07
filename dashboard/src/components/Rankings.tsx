@@ -73,7 +73,7 @@ export function Rankings({ base, dados, municipio, nomeArquivo }: {
   return (
     <section className="flex flex-col gap-3" aria-label={L("Tabelas", "Tables")}>
       <Segmented label={L("Nível da tabela", "Table level")} value={efetivo} onChange={setNivel} options={niveis} />
-      <DataTable data={linhas} columns={columns} exportCols={exportCols}
+      <DataTable titulo={L(`Votos da candidatura, por ${({ municipio: L("cidade", "city"), bairro: L("bairro", "neighborhood"), local: L("escola", "polling place") } as Record<string, string>)[efetivo]}`, `Candidacy votes, by ${({ municipio: L("cidade", "city"), bairro: L("bairro", "neighborhood"), local: L("escola", "polling place") } as Record<string, string>)[efetivo]}`)} data={linhas} columns={columns} exportCols={exportCols}
         nomeArquivo={`${nomeArquivo}_${efetivo}`} busca={(r) => `${r.nome} ${r.municipio} ${r.bairro ?? ""}`}
         initialSort={[{ id: "votos", desc: true }]} />
     </section>

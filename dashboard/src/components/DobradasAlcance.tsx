@@ -1,3 +1,5 @@
+import { candidaturaProvavel } from "../lib/paginas";
+import { TituloTabela } from "./DataTable";
 import { useMemo } from "react";
 import type { Base, LinhaAgregada } from "../lib/data";
 import { dec, fmt, pct, titulo } from "../lib/format";
@@ -43,7 +45,11 @@ export function DobradasAlcance({ base, mencoes, votosMun, nome }: {
       const cand = chave.startsWith("pag:") ? undefined : base.candById.get(Number(chave));
       return {
         chave, cand, nome: cand ? nomeCand(cand) : ads[0]?.page_name ?? L("página não identificada", "unidentified Page"),
-        sub: cand ? `${CARGOS[cand.cargo]} · ${cand.partido}` : L("financiador não identificado no TSE", "funder not identified in TSE records"),
+        sub: cand ? `${CARGOS[cand.cargo]} · ${cand.partido}` : (() => {
+          const pv = candidaturaProvavel(base, ads[0]?.page_name);
+          const sem = L("financiador não identificado no TSE", "funder not identified in TSE records");
+          return pv ? `${sem} · ${L("provável", "likely")}: ${nomeCand(pv)}, ${CARGOS[pv.cargo]}, ${pv.partido}` : sem;
+        })(),
         anuncios: ads.length, impMin: imp?.min ?? 0, impMax: imp ? imp.max : 0,
         alcMed: mediana(ads.map((a) => a.alcance).filter((x): x is number => x != null)),
         gasto: somaFaixas(ads, "gasto").get("BRL"), cidades: cds.size, pctDentro, pctFora,
@@ -67,16 +73,17 @@ export function DobradasAlcance({ base, mencoes, votosMun, nome }: {
         {top.dif != null && <> The largest exposure came from {titulo(top.nome.replace(/^\d+ · /, ""))} ({fmtFaixa(top.impMin, top.impMax)} impressions in {fmt(top.cidades)} cities),
           where {titulo(nome)} got <b>{pct(top.pctDentro!)}</b> of valid votes, versus {pct(top.pctFora!)} in the rest of the state.</>}
         {" "}Among the {fmt(r.nCidades)} campaigns with targeted cities, the rank correlation between impressions and the vote
-        difference (inside − outside) is <b>{Number.isFinite(r.rho) ? dec(r.rho, 2) : "–"}</b>.
+        difference (inside − outside) is {Number.isFinite(r.rho) ? <b>{dec(r.rho, 2)}</b> : <>not computed (at least 5 such campaigns are needed)</>}.
         </> : <>
         {fmt(r.linhas.length)} campanhas pagaram anúncios citando {titulo(nome)}, somando <b>{r.imp ? fmtFaixa(r.imp.min, r.imp.max) : "–"}</b> impressões.
         {top.dif != null && <> A maior exposição foi de {titulo(top.nome.replace(/^\d+ · /, ""))} ({fmtFaixa(top.impMin, top.impMax)} impressões em {fmt(top.cidades)} cidades),
           onde {titulo(nome)} teve <b>{pct(top.pctDentro!)}</b> dos válidos, contra {pct(top.pctFora!)} no restante do estado.</>}
         {" "}Entre as {fmt(r.nCidades)} campanhas com cidades segmentadas, a correlação de postos entre impressões e a diferença de
-        votação (dentro − fora) é <b>{Number.isFinite(r.rho) ? dec(r.rho, 2) : "–"}</b>.
+        votação (dentro − fora) {Number.isFinite(r.rho) ? <>é <b>{dec(r.rho, 2)}</b></> : <>não foi calculada (são necessárias pelo menos 5 campanhas assim)</>}.
         </>}
       </p>
       <div className="overflow-x-auto">
+        <TituloTabela>{L("Anúncios pagos de dobrada (Meta), por campanha que pagou: exposição e votação", "Paid joint-ticket ads (Meta), by paying campaign: exposure and votes")}</TituloTabela>
         <table className="w-full text-sm">
           <thead><tr className="text-left text-xs text-muted">
             <th className="py-1 pr-3">{L("Campanha que pagou", "Paying campaign")}</th><th className="pr-3 text-right">{L("Anúncios", "Ads")}</th><th className="pr-3 text-right">{L("Impressões", "Impressions")}</th>
@@ -91,12 +98,19 @@ export function DobradasAlcance({ base, mencoes, votosMun, nome }: {
               <td className="num whitespace-nowrap pr-3 text-right">{fmtFaixa(l.impMin, l.impMax)}</td>
               <td className="num whitespace-nowrap pr-3 text-right">{l.alcMed != null ? fmtNum(l.alcMed) : "–"}</td>
               <td className="num whitespace-nowrap pr-3 text-right">{l.gasto ? fmtFaixa(l.gasto.min, l.gasto.max, "R$ ") : "–"}</td>
-              <td className="num whitespace-nowrap pr-3 text-right">{fmt(l.cidades)}</td>
-              <td className="num whitespace-nowrap pr-3 text-right">{l.pctDentro != null && l.cidades ? pct(l.pctDentro) : "–"}</td>
-              <td className="num whitespace-nowrap pr-3 text-right">{l.pctFora != null && l.cidades ? pct(l.pctFora) : "–"}</td>
-              <td className={`num whitespace-nowrap text-right ${l.dif == null ? "" : l.dif >= 0 ? "text-accent" : "text-danger"}`}>
-                {l.dif != null ? `${l.dif > 0 ? "+" : ""}${dec(l.dif * 100, 1)} ${L("p.p.", "pp")}` : "–"}
-              </td>
+              <td className="num whitespace-nowrap pr-3 text-right">{l.cidades ? fmt(l.cidades) : <span className="text-xs text-muted">{L("nenhuma (estado inteiro)", "none (whole state)")}</span>}</td>
+              {l.cidades && l.dif != null ? <>
+                <td className="num whitespace-nowrap pr-3 text-right">{pct(l.pctDentro!)}</td>
+                <td className="num whitespace-nowrap pr-3 text-right">{pct(l.pctFora!)}</td>
+                <td className={`num whitespace-nowrap text-right ${l.dif >= 0 ? "text-accent" : "text-danger"}`}>
+                  {`${l.dif > 0 ? "+" : ""}${dec(l.dif * 100, 1)} ${L("p.p.", "pp")}`}
+                </td>
+              </> : (
+                <td colSpan={3} className="text-right text-xs text-muted">
+                  {L("anúncios para o estado inteiro, sem cidades escolhidas: não há como comparar dentro × fora",
+                    "whole-state ads, no cities chosen: no inside × outside comparison possible")}
+                </td>
+              )}
             </tr>
           ))}</tbody>
         </table>

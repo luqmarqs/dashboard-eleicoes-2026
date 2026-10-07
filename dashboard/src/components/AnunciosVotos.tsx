@@ -1,3 +1,4 @@
+import { TituloTabela } from "./DataTable";
 import { useMemo } from "react";
 import type { Base, LinhaAgregada } from "../lib/data";
 import { dec, fmt, pct, titulo } from "../lib/format";
@@ -56,8 +57,8 @@ export function spearman(x: number[], y: number[]): number {
   return sxx && syy ? sxy / Math.sqrt(sxx * syy) : NaN;
 }
 
-const forca = (r: number) => (!Number.isFinite(r) ? L("indefinida", "undefined") : Math.abs(r) >= 0.5 ? L("forte", "strong") : Math.abs(r) >= 0.3 ? L("moderada", "moderate") : Math.abs(r) >= 0.1 ? L("fraca", "weak") : L("praticamente nula", "practically none"));
-const fmtR = (r: number) => (Number.isFinite(r) ? dec(r, 2) : "–");
+const forca = (r: number) => (!Number.isFinite(r) ? L("não calculada: menos de 5 cidades", "not computed: fewer than 5 cities") : Math.abs(r) >= 0.5 ? L("forte", "strong") : Math.abs(r) >= 0.3 ? L("moderada", "moderate") : Math.abs(r) >= 0.1 ? L("fraca", "weak") : L("praticamente nula", "practically none"));
+const fmtR = (r: number) => (Number.isFinite(r) ? dec(r, 2) : L("n/d", "n/a"));
 
 interface Ponto { cd: string; nome: string; n: number; votos: number; validos: number; pct: number }
 
@@ -115,6 +116,7 @@ export function AnunciosVotos({ base, ads, votosMun, nome, onMunicipio, deTercei
       </p>
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="overflow-x-auto">
+          <TituloTabela>{L("Votos por faixa de anúncios pagos (Meta) que incluem a cidade", "Votes by range of paid ads (Meta) that include the city")}</TituloTabela>
           <table className="w-full text-sm">
             <thead><tr className="text-left text-xs text-muted">
               <th className="py-1 pr-2">{L("Anúncios que incluem a cidade", "Ads that include the city")}</th><th className="pr-2 text-right">{L("Cidades", "Cities")}</th>

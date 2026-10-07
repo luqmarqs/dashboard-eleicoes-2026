@@ -1,3 +1,4 @@
+import { candidaturaProvavel } from "../lib/paginas";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
@@ -157,7 +158,7 @@ function TabelaCandidaturas({ base, r, selecionada, onEscolher }: {
   return (
     <section aria-label={L("Candidaturas", "Candidates")} className="flex flex-col gap-2">
       <h2 className="display text-2xl">{L("Candidaturas", "Candidates")}</h2>
-      <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo="trafego_pago_candidaturas"
+      <DataTable titulo={L("Anúncios pagos (Meta) e gasto declarado, por candidatura", "Paid ads (Meta) and declared spend, by candidacy")} data={linhas} columns={columns} exportCols={exportCols} nomeArquivo="trafego_pago_candidaturas"
         busca={(l) => `${l.c.numero} ${l.c.nome} ${l.c.partido ?? ""}`} initialSort={[{ id: "gasto", desc: true }]} pageSize={10} />
       <p className="text-xs text-muted">
         {getLang() === "en" ? <>
@@ -521,7 +522,7 @@ function Efetividade({ base, mun, votosMun, ads, cand, onMunicipio }: {
   return (
     <section aria-label={L("Segmentação e votação", "Targeting and votes")} className="flex flex-col gap-3">
       <h3 className="display text-xl">{L("Por cidade", "By city")}</h3>
-      <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`trafego_pago_${cand.numero}_municipios`}
+      <DataTable titulo={L(`Anúncios pagos (Meta) e votos de ${titulo(cand.nome)}, por cidade`, `Paid ads (Meta) and ${titulo(cand.nome)} votes, by city`)} data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`trafego_pago_${cand.numero}_municipios`}
         busca={(l) => normalizar(l.nome)} initialSort={[{ id: "inclui", desc: true }]} pageSize={15}
         atalhos={[
           { label: L("Mais anúncios", "Most ads"), sort: [{ id: "inclui", desc: true }] },
@@ -574,7 +575,7 @@ function CardAnuncio({ a, mencoes, base }: { a: MetaAnuncio; mencoes?: MetaMenca
         const outra = m.outra != null ? base.candById.get(m.outra) : undefined;
         return (
           <div key={i} className={`rounded-md px-2 py-1 text-xs ${m.confirmada ? "bg-accent-soft" : "border border-dashed border-line"}`}>
-            {m.papel === "recebe" ? <>{L("Pago por", "Paid for by")} {outra ? <b>{nomeCand(outra)} ({CARGOS[outra.cargo]}, {outra.partido})</b> : <b>{L("financiador não identificado no TSE", "funder not identified in TSE records")}</b>}</>
+            {m.papel === "recebe" ? <>{L("Pago por", "Paid for by")} {outra ? <b>{nomeCand(outra)} ({CARGOS[outra.cargo]}, {outra.partido})</b> : <><b>{L("financiador não identificado no TSE", "funder not identified in TSE records")}</b>{(() => { const pv = candidaturaProvavel(base, a.page_name); return pv ? <> · {L("provável", "likely")}: {nomeCand(pv)} ({CARGOS[pv.cargo]}, {pv.partido})</> : null; })()}</>}</>
               : <>{L("Cita", "Mentions")} {outra ? <b>{nomeCand(outra)} ({CARGOS[outra.cargo]}, {outra.partido})</b> : L("outra candidatura", "another candidate")}</>}
             {" · "}{m.cita_nome ? L("nome ✓", "name ✓") : L("sem nome", "no name")} · {m.cita_numero ? L("número ✓", "number ✓") : L("sem número", "no number")}
             {" · "}{m.confirmada ? L("dobrada confirmada", "joint ticket confirmed") : L("não confirmada", "not confirmed")}
@@ -615,7 +616,7 @@ function CardAnuncio({ a, mencoes, base }: { a: MetaAnuncio; mencoes?: MetaMenca
 const fmtCnpj = (c: string) => (c.length === 14 ? `${c.slice(0, 2)}.${c.slice(2, 5)}.${c.slice(5, 8)}/${c.slice(8, 12)}-${c.slice(12)}` : c);
 
 interface LinhaParceira {
-  chave: string; outra?: Candidatura; paginas: string; anuncios: number; confirmadas: number; soNome: number;
+  chave: string; outra?: Candidatura; paginas: string; paginasLista: string[]; anuncios: number; confirmadas: number; soNome: number;
   gasto: Map<string, Faixa>; cidades: number; inicio: string | null; fim: string | null; cnpjTexto: number;
 }
 
@@ -632,6 +633,7 @@ function Parceiras({ base, cand, mencoes, fonte, parceira, onParceira }: {
       return {
         chave, outra: chave === "sem" ? undefined : base.candById.get(Number(chave)),
         paginas: [...new Set(ads.map((a) => a.page_name ?? a.page_id))].slice(0, 3).join(", "),
+        paginasLista: [...new Set(ads.map((a) => a.page_name ?? a.page_id))].slice(0, 3),
         anuncios: ads.length, confirmadas: new Set(ms.filter((m) => m.confirmada).map((m) => m.ad.id)).size,
         soNome: new Set(ms.filter((m) => !m.cita_numero).map((m) => m.ad.id)).size,
         gasto: somaFaixas(ads, "gasto"), cidades: cds.size,
@@ -658,7 +660,7 @@ function Parceiras({ base, cand, mencoes, fonte, parceira, onParceira }: {
               onClick={() => onParceira(parceira === l.chave ? "todas" : l.chave)}>
               <td className="px-3 py-1.5">
                 {l.outra ? <>{nomeCand(l.outra)}<SituacaoBadge c={l.outra} compacto /><div className="text-xs font-normal text-muted">{CARGOS[l.outra.cargo]} · {l.outra.partido} · {L("página", "Page")} {l.paginas}</div></>
-                  : <>{L("Financiador não identificado no TSE", "Funder not identified in TSE records")}<div className="text-xs font-normal text-muted">{L("páginas", "Pages")}: {l.paginas}</div></>}
+                  : <>{L("Financiador não identificado no TSE", "Funder not identified in TSE records")}<div className="text-xs font-normal text-muted">{L("páginas", "Pages")}: {l.paginasLista.map((pn) => { const pv = candidaturaProvavel(base, pn); return pv ? `${pn} (${L("provável", "likely")}: ${nomeCand(pv)}, ${CARGOS[pv.cargo]}, ${pv.partido})` : pn; }).join(" · ")}</div></>}
               </td>
               <td className="num px-3 text-right">{fmt(l.anuncios)}</td><td className="num px-3 text-right">{fmt(l.confirmadas)}</td>
               <td className="num px-3 text-right">{fmt(l.soNome)}</td><td className="num px-3 text-right">{fmt(l.cnpjTexto)}</td>

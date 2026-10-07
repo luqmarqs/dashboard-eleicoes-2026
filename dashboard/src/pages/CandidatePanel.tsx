@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Historico, useHistorico } from "../components/Historico";
 import { LazyMap } from "../components/LazyMap";
@@ -8,6 +8,8 @@ import { SenadoAnalise } from "../components/SenadoAnalise";
 import { AnunciosVotos } from "../components/AnunciosVotos";
 import { DobradasAlcance } from "../components/DobradasAlcance";
 import { TerritorioAnuncios } from "../components/TerritorioAnuncios";
+import { TemasCriativos } from "../components/TemasCriativos";
+import { normalizarTexto, temasDoTexto } from "../lib/temas";
 import { useMetaAnuncios, useMetaResumo } from "../lib/metaHooks";
 import { useQuery } from "@tanstack/react-query";
 import { source, type MetaAnuncio } from "../lib/source";
@@ -147,11 +149,14 @@ function PublicidadeCandidatura({ cand, dados }: { cand: Candidatura; dados: Por
   }, [dob.data]);
   const votosMun = useMemo(() => new Map((base.data ? agregar(base.data, dados, "municipio") : []).map((l) => [l.key, l])), [base.data, dados]);
   const lista = proprios ? ads.data ?? [] : deTerceiros;
+  const [tema, setTema] = useState<string | null>(null);
+  const listaTema = useMemo(() => (tema ? lista.filter((a) => temasDoTexto(normalizarTexto(a)).has(tema)) : lista), [lista, tema]);
   if (!base.data || !item || !lista.length) return null;
   return (
     <div className="flex flex-col gap-4">
-      <TerritorioAnuncios base={base.data} ads={lista} votosMun={votosMun} nome={cand.nome} deTerceiros={!proprios} />
-      <AnunciosVotos base={base.data} ads={lista} votosMun={votosMun} nome={cand.nome} deTerceiros={!proprios} />
+      <TemasCriativos ads={lista} tema={tema} onTema={setTema} />
+      <TerritorioAnuncios base={base.data} ads={lista} votosMun={votosMun} nome={cand.nome} deTerceiros={!proprios} tema={tema} onTema={setTema} />
+      <AnunciosVotos base={base.data} ads={listaTema} votosMun={votosMun} nome={cand.nome} deTerceiros={!proprios} />
       {(dob.data ?? []).some((m) => m.papel === "recebe") && (
         <DobradasAlcance base={base.data} mencoes={dob.data!} votosMun={votosMun} nome={cand.nome} />
       )}

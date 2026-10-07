@@ -143,7 +143,7 @@ export function Historico({ base, cand, dados, municipio }: {
         {L("votos (em 2022 ou 2026) · útil para a variação em %, que exagera em lugares com poucos votos",
           "votes (in 2022 or 2026) · useful for the % change, which is exaggerated in places with few votes")}
       </label>
-      <DataTable data={visiveis} columns={columns} exportCols={exportCols}
+      <DataTable titulo={L(`Votos de ${titulo(cand.nome)}: 2026 × 2022, por ${({ municipio: L("cidade", "city"), bairro: L("bairro", "neighborhood"), local: L("escola", "polling place") } as Record<string, string>)[efetivo]}`, `${titulo(cand.nome)} votes: 2026 × 2022, by ${({ municipio: L("cidade", "city"), bairro: L("bairro", "neighborhood"), local: L("escola", "polling place") } as Record<string, string>)[efetivo]}`)} data={visiveis} columns={columns} exportCols={exportCols}
         nomeArquivo={`${cand.numero}_2022x2026_${efetivo}${municipio ? `_${municipio}` : ""}`}
         busca={(r) => `${r.nome} ${r.municipio}`} initialSort={[{ id: "v26", desc: true }]}
         atalhos={[

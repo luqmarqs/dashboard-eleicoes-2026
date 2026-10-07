@@ -9,7 +9,7 @@ import { L, getLang } from "../lib/i18n";
 import { geoUrl } from "../lib/source";
 import type { Candidatura } from "../lib/types";
 import { useUf } from "../lib/uf";
-import { DataTable } from "./DataTable";
+import { DataTable, TituloTabela } from "./DataTable";
 import { LazyMap } from "./LazyMap";
 import { ErrorBox, Loading, MunicipioSelect, Segmented, SituacaoBadge, Stat } from "./ui";
 
@@ -336,6 +336,7 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
       <section aria-label={L("Resultado do Senado", "Senate result")} className="flex flex-col gap-2">
         <h2 className="display text-2xl">{L("Senado", "Senate")} {municipio ? L(`em ${nomeEscopo}`, `in ${nomeEscopo}`) : L("no estado", "in the state")}</h2>
         <div className="overflow-x-auto rounded-lg border border-line bg-panel">
+          <TituloTabela>{L(`Resultado do Senado ${municipio ? "na cidade" : "no estado"}: votos por candidatura`, `Senate result ${municipio ? "in the city" : "in the state"}: votes by candidacy`)}</TituloTabela>
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="text-left">
@@ -479,7 +480,7 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="display text-2xl">{porBairro ? (municipio ? L("Por bairro", "By neighborhood") : L("Por bairro (todo o estado)", "By neighborhood (whole state)")) : L("Por cidade", "By city")}</h2>
         </div>
-        <DataTable data={filtradas} columns={columns} exportCols={exportCols}
+        <DataTable titulo={L(`Votos para o Senado por ${porBairro ? "bairro" : "cidade"}: posição de ${nomeS(iFoco)}`, `Senate votes by ${porBairro ? "neighborhood" : "city"}: ${nomeS(iFoco)}'s position`)} data={filtradas} columns={columns} exportCols={exportCols}
           nomeArquivo={`senado_${cand.numero}_${porBairro ? `bairros_${municipio ?? uf}` : "cidades"}`}
           busca={(a) => `${a.nome} ${a.municipio} ${a.regiao ?? ""}`} initialSort={[{ id: "v", desc: true }]} />
         {!municipio && !porBairro && <p className="text-xs text-muted">{L("Clique numa cidade do mapa ou escolha na abrangência para ver os bairros só dela.", "Click a city on the map or pick it in the scope selector to see only its neighborhoods.")}</p>}

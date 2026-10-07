@@ -236,7 +236,7 @@ function TabelaDobrada({ base, a, b, pa, pb, municipio }: { base: Base; a: Candi
     { header: L(`${b.numero} ${b.nome} (% válidos)`, `${b.numero} ${b.nome} (% valid votes)`), value: (r) => r.pb, type: "percent" },
   ];
   return (
-    <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`dobrada_${a.numero}_${b.numero}`}
+    <DataTable titulo={L(`Votos das duas candidaturas, por ${nivel === "local" ? "escola" : "cidade"}`, `Votes of both candidacies, by ${nivel === "local" ? "polling place" : "city"}`)} data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`dobrada_${a.numero}_${b.numero}`}
       busca={(r) => `${r.nome} ${r.municipio} ${r.bairro ?? ""}`} initialSort={[{ id: "va", desc: true }]} />
   );
 }

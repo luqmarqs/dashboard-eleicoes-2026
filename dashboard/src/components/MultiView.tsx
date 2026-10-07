@@ -167,7 +167,7 @@ export function MultiView({ ids, municipio, nomeArquivo, onMunicipio }: {
           ...(municipio ? [] : [{ id: "municipio" as Nivel, label: L("Por cidade", "By city") }]),
           { id: "bairro", label: L("Por bairro", "By neighborhood") }, { id: "local", label: L("Por escola", "By polling place") },
         ]} />
-      <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`${nomeArquivo}_${efetivoNivel}`}
+      <DataTable titulo={L(`Votos das candidaturas do painel, por ${({ municipio: L("cidade", "city"), bairro: L("bairro", "neighborhood"), local: L("escola", "polling place") } as Record<string, string>)[efetivoNivel]}`, `Votes of the panel candidacies, by ${({ municipio: L("cidade", "city"), bairro: L("bairro", "neighborhood"), local: L("escola", "polling place") } as Record<string, string>)[efetivoNivel]}`)} data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`${nomeArquivo}_${efetivoNivel}`}
         busca={(r) => `${r.nome} ${r.municipio} ${r.bairro ?? ""}`} initialSort={[{ id: "soma", desc: true }]} />
     </div>
   );

@@ -2,7 +2,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { DataTable } from "../components/DataTable";
+import { DataTable, TituloTabela } from "../components/DataTable";
 import { ErrorBox, Loading, Segmented, SituacaoBadge, Stat, nomeCand, situacaoTexto } from "../components/ui";
 import { useBase, type Base } from "../lib/data";
 import type { ExportCol } from "../lib/export";
@@ -236,7 +236,7 @@ function Painel({ base, d, plataforma, setPlataforma, partido, setPartido, de, s
         </p>
       )}
 
-      <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`evolucao_digital_mg_${plataforma}_${deEf}_${ateEf}`}
+      <DataTable titulo={L(`Seguidores no ${PLATAFORMAS[plataforma] ?? plataforma} e votos, por candidatura acompanhada`, `${PLATAFORMAS[plataforma] ?? plataforma} followers and votes, by tracked candidacy`)} data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`evolucao_digital_mg_${plataforma}_${deEf}_${ateEf}`}
         busca={(l) => `${l.cand?.nome ?? ""} ${l.perfil.username} ${l.cand?.partido ?? ""}`} initialSort={[{ id: "ganho", desc: true }]} pageSize={20}
         atalhos={[
           { label: L("Maior ganho", "Largest gain"), sort: [{ id: "ganho", desc: true }] }, { label: L("Maior crescimento %", "Highest growth %"), sort: [{ id: "pct", desc: true }] },
@@ -380,7 +380,7 @@ function Organico({ d, base, perfis, onSel }: { d: Digital; base: Base; perfis: 
   return (
     <section aria-label={L("Orgânico no Instagram", "Organic on Instagram")} className="flex flex-col gap-2">
       <h2 className="display text-2xl">{L("Orgânico no Instagram", "Organic on Instagram")}</h2>
-      <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo="organico_instagram_mg" initialSort={[{ id: "med", desc: true }]} pageSize={20} />
+      <DataTable titulo={L("Postagens no Instagram por candidatura (orgânico, desde 16/08)", "Instagram posts by candidacy (organic, since Aug 16)")} data={linhas} columns={columns} exportCols={exportCols} nomeArquivo="organico_instagram_mg" initialSort={[{ id: "med", desc: true }]} pageSize={20} />
       <p className="text-xs text-muted">
         {getLang() === "en" ? <>
           Posts published since {fmtData("2026-08-16")} (start of the campaign), collected on {fmtDataHora(exec.terminada_em ?? exec.iniciada_em)}. Likes and
@@ -422,6 +422,7 @@ function Detalhe({ l, d, dias, onFechar }: { l: Linha; d: Digital; dias: Map<str
       </div>
       {pontos.length >= 2 && <Serie pontos={pontos} />}
       <div className="overflow-x-auto">
+        <TituloTabela>{L("Observações de seguidores do perfil (histórico e snapshot atual)", "Profile follower observations (history and current snapshot)")}</TituloTabela>
         <table className="w-full text-sm">
           <thead><tr className="text-left text-xs text-muted"><th className="py-1 pr-3">{L("Data", "Date")}</th><th className="pr-3 text-right">{L("Seguidores", "Followers")}</th><th className="pr-3 text-right">{L("Seguindo", "Following")}</th><th className="pr-3 text-right">{L("Publicações", "Posts")}</th><th className="pr-3">{L("Origem da data", "Date origin")}</th><th className="pr-3">{L("Fonte", "Source")}</th><th>Status</th></tr></thead>
           <tbody>{obs.map((o, i) => (

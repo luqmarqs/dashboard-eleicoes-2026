@@ -1,3 +1,4 @@
+import type React from "react";
 import {
   flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable,
   type ColumnDef, type SortingState,
@@ -8,6 +9,8 @@ import { fmt, normalizar } from "../lib/format";
 import { L } from "../lib/i18n";
 
 interface Props<T> {
+  /** Nome da tabela, visível acima dela: diga o que ela contém (votos, anúncios…) e o recorte. */
+  titulo: string;
   data: T[];
   columns: ColumnDef<T, unknown>[];
   exportCols: ExportCol<T>[];
@@ -19,7 +22,7 @@ interface Props<T> {
   atalhos?: { label: string; sort: SortingState }[];
 }
 
-export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, initialSort = [], pageSize = 25, atalhos }: Props<T>) {
+export function DataTable<T>({ titulo, data, columns, exportCols, nomeArquivo, busca, initialSort = [], pageSize = 25, atalhos }: Props<T>) {
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [filtro, setFiltro] = useState("");
   const table = useReactTable({
@@ -39,6 +42,7 @@ export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, in
 
   return (
     <div className="flex flex-col gap-3">
+      <TituloTabela>{titulo}</TituloTabela>
       <div className="flex flex-wrap items-center gap-2">
         {busca && (
           <input
@@ -74,7 +78,7 @@ export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, in
         </div>
       )}
       <div className="overflow-x-auto rounded-lg border border-line bg-panel">
-        <table className="w-full border-collapse text-sm">
+        <table className="w-full border-collapse text-sm" aria-label={titulo}>
           <thead>
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
@@ -129,4 +133,9 @@ export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, in
       )}
     </div>
   );
+}
+
+/** Título de tabela (padrão do painel): toda tabela tem um nome visível que diz o que ela mostra. */
+export function TituloTabela({ children }: { children: React.ReactNode }) {
+  return <h4 className="flex items-baseline gap-2 text-sm font-bold"><span className="eyebrow text-accent">{L("Tabela", "Table")}</span>{children}</h4>;
 }

@@ -339,7 +339,7 @@ function TabelaArea({ base, cand, pl, ref_, municipio, analise, presCands }: {
       <h2 className="display text-lg">
         {cand.nome} <span className="text-muted">({CARGOS[cand.cargo]})</span> · {nivel === "municipio" ? L("por município", "by city") : L("por bairro", "by neighborhood")}
       </h2>
-      <DataTable data={linhas} columns={columns} exportCols={exportCols}
+      <DataTable titulo={L(`Votos de ${cand.nome} e de ${ref_.nome}, por ${nivel === "municipio" ? "cidade" : "bairro"}`, `Votes for ${cand.nome} and ${ref_.nome}, by ${nivel === "municipio" ? "city" : "neighborhood"}`)} data={linhas} columns={columns} exportCols={exportCols}
         nomeArquivo={`presidente_${ref_.numero}_x_${cand.numero}${municipio ? `_${municipio}` : ""}`}
         busca={(r) => r.nome} initialSort={[{ id: "vCand", desc: true }]} />
     </section>
