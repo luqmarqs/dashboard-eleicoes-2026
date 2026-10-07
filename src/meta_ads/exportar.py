@@ -172,6 +172,23 @@ def _rodar_sql(root: Path, sql: str, rotulo: str) -> None:
         os.unlink(path)
 
 
+def _consultar(root: Path, sql: str) -> list[dict[str, Any]]:
+    """Roda um SELECT pelo CLI vinculado e devolve as linhas (o CLI imprime JSON com "rows")."""
+    npx = shutil.which("npx") or "npx"
+    with tempfile.NamedTemporaryFile("w", suffix=".sql", delete=False, encoding="utf-8") as fh:
+        fh.write(sql)
+        path = fh.name
+    try:
+        r = subprocess.run([npx, "--yes", "supabase@latest", "db", "query", "--linked", "-f", path],
+                           cwd=root, capture_output=True, text=True, encoding="utf-8", stdin=subprocess.DEVNULL)
+        if r.returncode != 0:
+            raise RuntimeError(f"consulta falhou: {(r.stderr or r.stdout)[-300:]}")
+        out = r.stdout
+        return json.loads(out[out.index("{"):]).get("rows", [])
+    finally:
+        os.unlink(path)
+
+
 def _inserir(root: Path, tabela: str, cols: list[str], linhas: list[list[Any]], conflito: str | None,
              atualizar: bool = True, max_bytes: int = 1_500_000, paralelo: int = 6) -> None:
     """Insere em lotes de SQL pelo CLI, vários lotes em paralelo (cada chamada do CLI leva segundos de ida e volta)."""
@@ -220,8 +237,9 @@ def carregar_temas(b: Banco, root: Path) -> None:
 
 
 def carregar_supabase(b: Banco, root: Path, retomar: bool = False) -> None:
-    """Carga completa (substitui vínculos, segmentação, entrega e menções) ou retomada (retomar=True: não apaga nada,
-    pula vínculos e anúncios e só acrescenta o que falta, com ON CONFLICT DO NOTHING)."""
+    """Carga completa (substitui vínculos, segmentação, entrega e menções) ou retomada (retomar=True: não apaga nada;
+    faz upsert dos vínculos, insere só os anúncios das páginas cuja contagem difere do Supabase (páginas novas ou
+    coleta interrompida) e acrescenta o que falta nas demais tabelas, com ON CONFLICT DO NOTHING)."""
     ibge_tse = _mapa_ibge_tse(root)
     q = lambda sql, *p: [list(r) for r in b.con.execute(sql, p)]
     print("carga no Supabase:" + (" (retomada)" if retomar else ""), flush=True)
@@ -247,6 +265,25 @@ def carregar_supabase(b: Banco, root: Path, retomar: bool = False) -> None:
             list(ex.map(lambda bl: _rodar_sql(root, f"DELETE FROM public.meta_localidades WHERE ad_id IN ({bl}); "
                                                     f"DELETE FROM public.meta_entrega_regional WHERE ad_id IN ({bl});",
                                               "limpeza de localidades"), blocos))
+    else:
+        _inserir(root, "meta_vinculos", ["page_id", "candidatura_id", "uf", "page_name", "natureza", "evidencia",
+                                         "status_revisao", "coletar"],
+                 [[r[0], r[1], r[2], r[3], r[4], r[5], r[6], bool(r[7])] for r in
+                  q("SELECT page_id, candidatura_id, uf, page_name, natureza, evidencia, status_revisao, coletar FROM vinculos")],
+                 "page_id, candidatura_id")
+        remoto = {r["page_id"]: int(r["n"]) for r in _consultar(root, "select page_id, count(*) as n from public.meta_anuncios group by page_id;")}
+        faltam = [pid for pid, n in b.con.execute("SELECT page_id, COUNT(*) FROM anuncios GROUP BY page_id") if remoto.get(pid, 0) < n]
+        print(f"  páginas com anúncios a carregar: {len(faltam)}", flush=True)
+        if faltam:
+            cols = ["ad_id", "page_id", "page_name", "bylines", "criado_em", "inicio_veiculacao", "fim_veiculacao", "textos",
+                    "titulos_link", "descricoes_link", "legendas_link", "plataformas", "idiomas", "moeda", "gasto_min", "gasto_max",
+                    "impressoes_min", "impressoes_max", "alcance_br", "publico_estimado_min", "publico_estimado_max", "idades_alvo",
+                    "genero_alvo", "link_biblioteca", "primeira_coleta", "ultima_coleta", "ultima_execucao"]
+            jcols = {"textos", "titulos_link", "descricoes_link", "legendas_link", "plataformas", "idiomas", "idades_alvo"}
+            ph = ",".join("?" * len(faltam))
+            linhas = [[_jl(r[c]) if c in jcols else r[c] for c in cols]
+                      for r in b.con.execute(f"SELECT {', '.join(cols)} FROM anuncios WHERE page_id IN ({ph})", faltam)]
+            _inserir(root, "meta_anuncios", cols, linhas, "ad_id", atualizar=False)
     _inserir(root, "meta_localidades",
              ["ad_id", "ordem", "nome_original", "tipo", "excluida", "num_obfuscated", "nivel", "uf", "municipio_nome",
               "cd_ibge", "cd_municipio", "bairro_nome", "cep_prefixo", "status", "metodo"],
