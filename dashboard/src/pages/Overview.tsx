@@ -57,6 +57,8 @@ export function Overview() {
         ))}
       </section>
 
+      <Dobradas base={b} pares={info.dobradas ?? []} />
+
       <Senado base={b} destaques={destaques} />
 
       <PaineisProntos />
@@ -140,6 +142,31 @@ function Senado({ base, destaques }: { base: Base; destaques: Candidatura[] }) {
         )))}
       </ol>
       <p className="text-xs text-muted">{sen.length > 10 ? `Os 10 mais votados de ${sen.length}. ` : ""}Cada eleitor votou em 2 nomes: as porcentagens dos válidos somam 200%. Clique numa candidatura para ver a análise do Senado do ponto de vista dela.</p>
+    </section>
+  );
+}
+
+/** Dobradas fixas da UF (federal × estadual), em cards que abrem a página Dobrada já preenchida. */
+function Dobradas({ base, pares }: { base: Base; pares: [number, number][] }) {
+  const cards = pares
+    .map(([a, b]) => [base.candById.get(a), base.candById.get(b)] as const)
+    .filter((p): p is readonly [Candidatura, Candidatura] => !!p[0] && !!p[1]);
+  if (!cards.length) return null;
+  return (
+    <section aria-label="Dobradas" className="grid gap-4 md:grid-cols-2">
+      {cards.map(([a, b]) => (
+        <Link key={`${a.id}-${b.id}`} to={`/dobrada?a=${a.id}&b=${b.id}`}
+          className="rounded-lg border border-line bg-panel p-5 hover:border-accent">
+          <div className="eyebrow">Dobrada · {CARGOS[a.cargo]} × {CARGOS[b.cargo]}</div>
+          <div className="display mt-1 text-2xl">{titulo(a.nome)} × {titulo(b.nome)}</div>
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted">
+            {[a, b].map((c) => (
+              <span key={c.id}><b className="display num text-xl text-ink">{fmt(c.votos)}</b> {titulo(c.nome)} ({c.numero})</span>
+            ))}
+          </div>
+          <div className="mt-3 text-sm text-accent">Ver no mapa onde as candidaturas são fortes juntas →</div>
+        </Link>
+      ))}
     </section>
   );
 }

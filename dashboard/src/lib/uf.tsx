@@ -7,6 +7,8 @@ export interface InfoUf {
   capital: string;
   /** Artigo para "em"/"de": "no Rio Grande do Sul", "de São Paulo". */
   artigo?: "o";
+  /** Dobradas fixas na visão geral: [candidatura A (eixo roxo), candidatura B (eixo verde-azulado)]. */
+  dobradas?: [number, number][];
 }
 
 /** "em São Paulo" / "no Rio Grande do Sul"; "de São Paulo" / "do Rio Grande do Sul". */
@@ -14,7 +16,10 @@ export const emUf = (u: InfoUf) => `${u.artigo ? "no" : "em"} ${u.nome}`;
 export const deUf = (u: InfoUf) => `${u.artigo ? "do" : "de"} ${u.nome}`;
 
 export const UFS: InfoUf[] = [
-  { sigla: "SP", nome: "São Paulo", capital: "71072" },
+  {
+    sigla: "SP", nome: "São Paulo", capital: "71072",
+    dobradas: [[895, 2230], [919, 2230]], // Guilherme Cortez × Bancada Feminista; Erika Hilton × Bancada Feminista
+  },
   { sigla: "MG", nome: "Minas Gerais", capital: "41238" },
   { sigla: "RS", nome: "Rio Grande do Sul", capital: "88013", artigo: "o" },
 ];
