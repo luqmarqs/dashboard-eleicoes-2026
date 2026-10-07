@@ -153,7 +153,11 @@ export interface MetaPrioritaria { id: number; uf: string; nome: string; cargo: 
 export interface Apocalipse {
   votos: { cargo: number[]; mun: string[]; partido: string[]; votos: number[] };
   validos: { cargo: number[]; mun: string[]; validos: number[] };
+  /** candidaturas reclassificadas por cima do partido (anistia ou curadoria com fonte) e os votos delas por cidade */
+  classif?: ClassifCand[];
+  cand?: { id: number[]; mun: string[]; votos: number[] };
 }
+export interface ClassifCand { id: number; cargo: number; numero: number; nome: string; bloco: "esquerda" | "centrao" | "extrema" | "demais"; criterio: string; evidencia: string; fonte: string | null }
 /** Temas dos criativos por candidatura (criativos distintos com o tema; total de criativos da candidatura). */
 export interface MetaTemas { cand: number[]; tema: string[]; criativos: number[]; anuncios: number[]; total: number[] }
 

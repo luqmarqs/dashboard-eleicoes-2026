@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { DataTable, TituloTabela } from "../components/DataTable";
 import { LazyMap } from "../components/LazyMap";
 import { ErrorBox, Loading, Segmented, SituacaoBadge, nomeCand } from "../components/ui";
-import { BLOCOS, PADRAO, blocoDe, lerBlocos, salvarBlocos, zeroPorBloco, type Bloco } from "../lib/blocos";
+import { BLOCOS, PADRAO, blocoDe, lerBlocos, lerPorCand, salvarBlocos, salvarPorCand, zeroPorBloco, type Bloco } from "../lib/blocos";
 import { cssRgb, prefersDark, type RGB } from "../lib/colors";
 import { useBase, type Base, type PorLocal } from "../lib/data";
 import type { ExportCol } from "../lib/export";
@@ -12,7 +12,7 @@ import { dec, fmt, pct, titulo } from "../lib/format";
 import { L, getLang } from "../lib/i18n";
 import { fmtCusto, fmtFaixa } from "../lib/meta";
 import { useMetaResumo } from "../lib/metaHooks";
-import { source, type Apocalipse as DadosApoc, type MetaResumo, type MetaTemas } from "../lib/source";
+import { source, type Apocalipse as DadosApoc, type ClassifCand, type MetaResumo, type MetaTemas } from "../lib/source";
 import { EIXOS, rotuloDe } from "../lib/temas";
 import { CARGOS, type Candidatura } from "../lib/types";
 import { useUf } from "../lib/uf";
@@ -49,53 +49,72 @@ export function Apocalipse() {
   const temas = useTemas();
   const [blocos, setBlocosState] = useState<Record<string, Bloco>>(lerBlocos);
   const setBlocos = (b: Record<string, Bloco>) => { setBlocosState(b); salvarBlocos(b); };
+  const [porCand, setPorCandState] = useState<boolean>(lerPorCand);
+  const setPorCand = (v: boolean) => { setPorCandState(v); salvarPorCand(v); };
 
   if (base.error) return <ErrorBox error={base.error} />;
   if (apoc.error) return <ErrorBox error={apoc.error} />;
   if (!base.data || apoc.isLoading) return <Loading />;
   if (!apoc.data) return <p className="text-muted">{L("Dados do Apocalipse ainda não gerados para este estado.", "Apocalypse data not generated for this state yet.")}</p>;
-  return <Painel base={base.data} apoc={apoc.data} resumo={resumo.data} temas={temas.data} blocos={blocos} setBlocos={setBlocos} />;
+  return <Painel base={base.data} apoc={apoc.data} resumo={resumo.data} temas={temas.data} blocos={blocos} setBlocos={setBlocos} porCand={porCand} setPorCand={setPorCand} />;
 }
 
 interface Placar { cargo: number; validos: number; votos: Record<Bloco, number>; eleitos: Record<Bloco, number>; segundo: Record<Bloco, number> }
 
-function Painel({ base, apoc, resumo, temas, blocos, setBlocos }: {
+function Painel({ base, apoc, resumo, temas, blocos, setBlocos, porCand, setPorCand }: {
   base: Base; apoc: DadosApoc; resumo?: MetaResumo; temas?: MetaTemas; blocos: Record<string, Bloco>; setBlocos: (b: Record<string, Bloco>) => void;
+  porCand: boolean; setPorCand: (v: boolean) => void;
 }) {
   const { info } = useUf();
   const [cargoMapa, setCargoMapa] = useState(6);
   const cor = COR();
 
+  // ---- classificação por candidatura (por cima do partido) ----
+  const candPorId = useMemo(() => new Map(base.candidaturas.map((c) => [c.id, c])), [base]);
+  const override = useMemo(() => new Map<number, Bloco>(porCand ? (apoc.classif ?? []).map((k) => [k.id, k.bloco]) : []), [apoc, porCand]);
+  const blocoC = useCallback((c: Candidatura) => override.get(c.id) ?? blocoDe(blocos, c.partido), [override, blocos]);
+  // votos por cidade que mudam de bloco: saem do bloco do partido e vão para o da candidatura
+  const ajustes = useMemo(() => {
+    const out: { cargo: number; mun: string; de: Bloco; para: Bloco; votos: number }[] = [];
+    const cv = apoc.cand;
+    if (!cv) return out;
+    cv.id.forEach((id, i) => {
+      const c = candPorId.get(id), para = override.get(id);
+      if (!c || !para) return;
+      const de = blocoDe(blocos, c.partido);
+      if (de !== para) out.push({ cargo: c.cargo, mun: cv.mun[i], de, para, votos: cv.votos[i] });
+    });
+    return out;
+  }, [apoc, candPorId, override, blocos]);
+
   // ---- placar por cargo ----
   const placar = useMemo<Placar[]>(() => CARGOS_APOC.map((cargo) => {
     const votos = zeroPorBloco();
     apoc.votos.cargo.forEach((c, i) => { if (c === cargo) votos[blocoDe(blocos, apoc.votos.partido[i])] += apoc.votos.votos[i]; });
+    for (const a of ajustes) if (a.cargo === cargo) { votos[a.de] -= a.votos; votos[a.para] += a.votos; }
     let validos = 0;
     apoc.validos.cargo.forEach((c, i) => { if (c === cargo) validos += apoc.validos.validos[i]; });
     const eleitos = zeroPorBloco();
     const segundo = zeroPorBloco();
     for (const c of base.candidaturas) {
       if (c.cargo !== cargo || c.tipo !== "nominal") continue;
-      if (c.situacao?.startsWith("Eleito")) eleitos[blocoDe(blocos, c.partido)]++;
-      if (c.situacao === "2º turno") segundo[blocoDe(blocos, c.partido)]++;
+      if (c.situacao?.startsWith("Eleito")) eleitos[blocoC(c)]++;
+      if (c.situacao === "2º turno") segundo[blocoC(c)]++;
     }
     return { cargo, validos, votos, eleitos, segundo };
-  }).filter((p) => p.validos > 0), [apoc, base, blocos]);
+  }).filter((p) => p.validos > 0), [apoc, base, blocos, ajustes, blocoC]);
 
   // ---- território: margem por cidade no cargo escolhido ----
   const porMun = useMemo(() => {
+    const bruto = new Map<string, Record<Bloco, number>>();
+    const de = (k: string) => { let x = bruto.get(k); if (!x) { x = zeroPorBloco(); bruto.set(k, x); } return x; };
+    apoc.votos.cargo.forEach((c, i) => { if (c === cargoMapa) de(apoc.votos.mun[i])[blocoDe(blocos, apoc.votos.partido[i])] += apoc.votos.votos[i]; });
+    for (const a of ajustes) if (a.cargo === cargoMapa) { const x = de(a.mun); x[a.de] -= a.votos; x[a.para] += a.votos; }
     const m = new Map<string, { esq: number; cen: number; ext: number; dem: number; val: number }>();
-    apoc.votos.cargo.forEach((c, i) => {
-      if (c !== cargoMapa) return;
-      const k = apoc.votos.mun[i];
-      const x = m.get(k) ?? { esq: 0, cen: 0, ext: 0, dem: 0, val: 0 };
-      const b = blocoDe(blocos, apoc.votos.partido[i]);
-      if (b === "esquerda") x.esq += apoc.votos.votos[i]; else if (b === "centrao") x.cen += apoc.votos.votos[i]; else if (b === "extrema") x.ext += apoc.votos.votos[i]; else x.dem += apoc.votos.votos[i];
-      m.set(k, x);
-    });
+    for (const [k, x] of bruto) m.set(k, { esq: x.esquerda, cen: x.centrao, ext: x.extrema, dem: x.demais, val: 0 });
     apoc.validos.cargo.forEach((c, i) => { if (c === cargoMapa) { const x = m.get(apoc.validos.mun[i]); if (x) x.val += apoc.validos.validos[i]; } });
     return m;
-  }, [apoc, blocos, cargoMapa]);
+  }, [apoc, blocos, cargoMapa, ajustes]);
   const corPorMunicipio = useCallback((cd: string): RGB | null => {
     const x = porMun.get(cd);
     if (!x || !x.val) return null;
@@ -123,7 +142,7 @@ function Painel({ base, apoc, resumo, temas, blocos, setBlocos }: {
     for (const b of BLOCOS) tot[b] = { eleitos: 0, comAnuncio: 0, anuncios: 0, gmin: 0, gmax: 0, cgmin: 0, cgmax: 0, alc: 0, votos: 0, votosComAnuncio: 0 };
     for (const c of base.candidaturas) {
       if (c.tipo !== "nominal" || !c.situacao?.startsWith("Eleito") || ![3, 5, 6, 7].includes(c.cargo)) continue;
-      const b = blocoDe(blocos, c.partido), t = tot[b], r = porId.get(c.id);
+      const b = blocoC(c), t = tot[b], r = porId.get(c.id);
       t.eleitos++; t.votos += c.votos;
       if (!r || !r.anuncios) continue;
       t.comAnuncio++; t.anuncios += r.anuncios; t.votosComAnuncio += c.votos;
@@ -131,7 +150,7 @@ function Painel({ base, apoc, resumo, temas, blocos, setBlocos }: {
       if (r.c_alc) { t.cgmin += r.c_gmin ?? 0; t.cgmax = t.cgmax == null || r.c_aberto ? null : t.cgmax + (r.c_gmax ?? 0); t.alc += r.c_alc; }
     }
     return tot;
-  }, [resumo, base, blocos]);
+  }, [resumo, base, blocoC]);
 
   // ---- temas por bloco (eleitos) ----
   const temasBloco = useMemo(() => {
@@ -142,12 +161,12 @@ function Painel({ base, apoc, resumo, temas, blocos, setBlocos }: {
     temas?.cand.forEach((cid, i) => {
       const c = eleitos.get(cid);
       if (!c) return;
-      const o = out[blocoDe(blocos, c.partido)];
+      const o = out[blocoC(c)];
       if (!vistos.has(cid)) { vistos.add(cid); o.total += temas.total[i]; }
       o.por.set(temas.tema[i], (o.por.get(temas.tema[i]) ?? 0) + temas.criativos[i]);
     });
     return out;
-  }, [temas, base, blocos]);
+  }, [temas, base, blocoC]);
 
   const custo = (t: { cgmin: number; cgmax: number | null; alc: number }) => (t.alc ? { min: t.cgmin / t.alc * 1000, max: t.cgmax == null ? null : t.cgmax / t.alc * 1000 } : null);
   const porVoto = (t: { gmin: number; gmax: number | null; votosComAnuncio: number }) => (t.votosComAnuncio ? { min: t.gmin / t.votosComAnuncio, max: t.gmax == null ? null : t.gmax / t.votosComAnuncio } : null);
@@ -158,7 +177,7 @@ function Painel({ base, apoc, resumo, temas, blocos, setBlocos }: {
   const dep = placar.find((p) => p.cargo === 6), est = placar.find((p) => p.cargo === 7), sen = placar.find((p) => p.cargo === 5);
   const gov = placar.find((p) => p.cargo === 3), pres = placar.find((p) => p.cargo === 1);
   const vencedores = (cargo: number) => base.candidaturas.filter((c) => c.cargo === cargo && c.tipo === "nominal" && (c.situacao?.startsWith("Eleito") || c.situacao === "2º turno"))
-    .sort((a, b2) => b2.votos - a.votos).map((c) => `${titulo(c.nome)} (${c.partido}, ${NOME_BLOCO(blocoDe(blocos, c.partido)).toLowerCase()})`);
+    .sort((a, b2) => b2.votos - a.votos).map((c) => `${titulo(c.nome)} (${c.partido}, ${NOME_BLOCO(blocoC(c)).toLowerCase()}${override.has(c.id) ? L(" pela candidatura", " by candidacy") : ""})`);
   const linhaPlacar = (p: Placar | undefined, rot: string) => {
     if (!p) return;
     const sh = (b: Bloco) => pct(p.votos[b] / p.validos, 1);
@@ -226,12 +245,13 @@ function Painel({ base, apoc, resumo, temas, blocos, setBlocos }: {
         <h2 className="eyebrow mb-2 text-danger">{L("Leitura apocalíptica", "Apocalyptic reading")}</h2>
         <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed">{leitura.map((x, i) => <li key={i}>{x}</li>)}</ul>
         <p className="mt-2 text-xs text-muted">
-          {L("Números do TSE (1º turno) e da Biblioteca de Anúncios da Meta (só candidaturas eleitas foram coletadas). Blocos conforme a classificação abaixo, que pode ser ajustada. Cruzamentos descritivos.",
-            "TSE figures (1st round) and Meta Ad Library (only elected candidacies were collected). Blocs follow the classification below, which can be adjusted. Descriptive cross-tabulations.")}
+          {L("Números do TSE (1º turno) e da Biblioteca de Anúncios da Meta (só candidaturas eleitas foram coletadas). Blocos conforme a classificação abaixo (partido e, quando ligada, candidatura), que pode ser ajustada. Cruzamentos descritivos.",
+            "TSE figures (1st round) and Meta Ad Library (only elected candidacies were collected). Blocs follow the classification below (party and, when on, candidacy), which can be adjusted. Descriptive cross-tabulations.")}
         </p>
       </section>
 
       <Blocos base={base} blocos={blocos} setBlocos={setBlocos} />
+      <PorCandidatura base={base} classif={apoc.classif ?? []} porCand={porCand} setPorCand={setPorCand} blocos={blocos} />
 
       <section aria-label={L("Placar", "Scoreboard")} className="flex flex-col gap-2">
         <h2 className="display text-2xl">{L("Placar", "Scoreboard")}</h2>
@@ -315,7 +335,7 @@ function Painel({ base, apoc, resumo, temas, blocos, setBlocos }: {
         <TemasBlocos temasBloco={temasBloco} cor={cor} />
       </section>
 
-      <MaisVotados base={base} blocos={blocos} resumo={resumo} />
+      <MaisVotados base={base} blocoC={blocoC} resumo={resumo} />
     </div>
   );
 }
@@ -355,6 +375,69 @@ function Blocos({ base, blocos, setBlocos }: { base: Base; blocos: Record<string
         <a className="text-accent" href="https://scielo.br/j/dados/a/zzyM3gzHD4P45WWdytXjZWg/?format=pdf" target="_blank" rel="noreferrer">Bolognesi, Ribeiro &amp; Codato, Dados, 2023</a>
         {L("). PSDB e Cidadania ficam em Demais (centro-direita programática).", "). PSDB and Cidadania stay in Others (programmatic centre-right).")}
       </p>
+    </details>
+  );
+}
+
+const CRITERIO: Record<string, [string, string]> = {
+  anistia: ["Votou Sim na urgência da anistia do 8/1", "Voted Yes on the Jan 8 amnesty urgency"],
+  "curadoria-1": ["Apoio declarado da família Bolsonaro / ex-governo Bolsonaro", "Declared Bolsonaro family support / former Bolsonaro government"],
+  "curadoria-2": ["Defesa da anistia, atos golpistas ou ataques ao processo eleitoral", "Amnesty advocacy, coup rallies or attacks on the electoral process"],
+  "curadoria-3": ["Trajetória bolsonarista", "Bolsonarist track record"],
+  "curadoria-4": ["Moção ou bancada bolsonarista na Assembleia", "Bolsonarist motion or caucus in the state assembly"],
+};
+const rotuloCriterio = (k: string) => { const x = CRITERIO[k]; return x ? L(x[0], x[1]) : k; };
+
+interface LinhaClassif extends ClassifCand { partido: string; situacao: string; votos: number; c?: Candidatura }
+
+function PorCandidatura({ base, classif, porCand, setPorCand, blocos }: {
+  base: Base; classif: ClassifCand[]; porCand: boolean; setPorCand: (v: boolean) => void; blocos: Record<string, Bloco>;
+}) {
+  const linhas = useMemo<LinhaClassif[]>(() => {
+    const porId = new Map(base.candidaturas.map((c) => [c.id, c]));
+    return classif.map((k) => { const c = porId.get(k.id); return { ...k, c, partido: c?.partido ?? "", situacao: c?.situacao ?? "", votos: c?.votos ?? 0 }; })
+      .filter((l) => blocoDe(blocos, l.partido) !== l.bloco);
+  }, [base, classif, blocos]);
+  const columns = useMemo<ColumnDef<LinhaClassif, unknown>[]>(() => [
+    { id: "nome", accessorKey: "nome", header: L("Candidatura", "Candidacy"), cell: (x) => <span className="font-semibold">{x.row.original.c ? nomeCand(x.row.original.c) : titulo(x.row.original.nome)}{x.row.original.c && <SituacaoBadge c={x.row.original.c} compacto />}</span> },
+    { id: "partido", accessorKey: "partido", header: L("Partido", "Party") },
+    { id: "cargo", accessorFn: (l) => CARGOS[l.cargo], header: L("Cargo", "Office") },
+    { id: "votos", accessorKey: "votos", header: L("Votos", "Votes"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
+    { id: "bloco", accessorFn: (l) => NOME_BLOCO(l.bloco), header: L("Bloco", "Bloc") },
+    { id: "criterio", accessorFn: (l) => rotuloCriterio(l.criterio), header: L("Critério", "Criterion") },
+    { id: "evidencia", accessorKey: "evidencia", header: L("Evidência", "Evidence"), enableSorting: false, cell: (x) => (
+      <span className="text-xs">{String(x.getValue())}{x.row.original.fonte && <> <a className="text-accent" href={x.row.original.fonte} target="_blank" rel="noreferrer">{L("fonte", "source")}</a></>}</span>
+    ) },
+  ], []);
+  const exportCols: ExportCol<LinhaClassif>[] = [
+    { header: L("Candidatura", "Candidacy"), value: (l) => l.nome }, { header: L("Número", "Number"), value: (l) => l.numero, type: "number" },
+    { header: L("Partido", "Party"), value: (l) => l.partido }, { header: L("Cargo", "Office"), value: (l) => CARGOS[l.cargo] },
+    { header: L("Votos", "Votes"), value: (l) => l.votos, type: "number" }, { header: L("Bloco", "Bloc"), value: (l) => NOME_BLOCO(l.bloco) },
+    { header: L("Critério", "Criterion"), value: (l) => rotuloCriterio(l.criterio) }, { header: L("Evidência", "Evidence"), value: (l) => l.evidencia },
+    { header: L("Fonte", "Source"), value: (l) => l.fonte ?? "" },
+  ];
+  return (
+    <details className="rounded-lg border border-line bg-panel p-3 text-sm">
+      <summary className="cursor-pointer font-semibold">
+        {L(`Classificação por candidatura (${linhas.length} candidaturas fora do bloco do partido)`, `Classification by candidacy (${linhas.length} candidacies outside their party's bloc)`)}
+      </summary>
+      <label className="mt-2 flex items-center gap-2">
+        <input type="checkbox" checked={porCand} onChange={(e) => setPorCand(e.target.checked)} />
+        {L("Aplicar a classificação por candidatura em toda a página", "Apply the classification by candidacy across the page")}
+      </label>
+      <p className="mt-2 text-xs text-muted">
+        {L("O partido define o bloco por padrão, mas há bolsonaristas fora do PL. Duas regras, nesta ordem: (1) curadoria com fonte pública: apoio declarado da família Bolsonaro ou ex-integrante do governo Bolsonaro, defesa da anistia ou ataques ao processo eleitoral, trajetória bolsonarista recorrente na imprensa ou moção/bancada bolsonarista na Assembleia; (2) quem era deputado federal e votou Sim na urgência da anistia aos réus do 8 de janeiro (",
+          "Party sets the bloc by default, but there are Bolsonarists outside PL. Two rules, in this order: (1) curation with a public source: declared support from the Bolsonaro family or former member of the Bolsonaro government, amnesty advocacy or attacks on the electoral process, a recurring Bolsonarist record in the press, or a Bolsonarist motion/caucus in the state assembly; (2) those who were federal deputies and voted Yes on the urgency of the amnesty for the Jan 8 defendants (")}
+        <a className="text-accent" href="https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos" target="_blank" rel="noreferrer">{L("Câmara, 17/09/2025, 311 a 163", "Chamber of Deputies, Sep 17 2025, 311 to 163")}</a>
+        {L("). Na dúvida, fica o partido. Votos, eleitos, anúncios e temas dessas candidaturas passam para o bloco delas.",
+          "). When in doubt, the party prevails. These candidacies' votes, seats, ads and themes move to their bloc.")}
+      </p>
+      {linhas.length > 0 && (
+        <div className="mt-2">
+          <DataTable titulo={L("Candidaturas reclassificadas por cima do partido", "Candidacies reclassified over their party")} data={linhas} columns={columns}
+            exportCols={exportCols} nomeArquivo="apocalipse_candidaturas" busca={(l) => `${l.nome} ${l.partido}`} initialSort={[{ id: "votos", desc: true }]} pageSize={10} />
+        </div>
+      )}
     </details>
   );
 }
@@ -426,9 +509,9 @@ function TemasBlocos({ temasBloco, cor }: { temasBloco: Record<Bloco, { total: n
   );
 }
 
-function MaisVotados({ base, blocos, resumo }: { base: Base; blocos: Record<string, Bloco>; resumo?: MetaResumo }) {
+function MaisVotados({ base, blocoC, resumo }: { base: Base; blocoC: (c: Candidatura) => Bloco; resumo?: MetaResumo }) {
   const porId = new Map((resumo?.candidaturas ?? []).map((c) => [c.candidatura_id, c]));
-  const lista = (cargo: number, b: Bloco) => base.candidaturas.filter((c) => c.cargo === cargo && c.tipo === "nominal" && blocoDe(blocos, c.partido) === b)
+  const lista = (cargo: number, b: Bloco) => base.candidaturas.filter((c) => c.cargo === cargo && c.tipo === "nominal" && blocoC(c) === b)
     .sort((a, b2) => b2.votos - a.votos).slice(0, 5);
   const linha = (c: Candidatura) => {
     const r = porId.get(c.id);

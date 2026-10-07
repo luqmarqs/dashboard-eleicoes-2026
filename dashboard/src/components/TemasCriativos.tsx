@@ -18,6 +18,12 @@ export function TemasCriativos({ ads, tema, onTema }: { ads: MetaAnuncio[]; tema
           {tema && <> · <button type="button" className="text-accent" onClick={() => onTema(null)}>{L("limpar filtro de tema", "clear theme filter")}</button></>}
         </span>
       </div>
+      {c.semPolitica / c.criativos >= 0.5 && (
+        <p className="rounded-md border border-line bg-accent-soft px-3 py-2 text-sm">
+          {L(`${pct(c.semPolitica / c.criativos, 0)} dos criativos não citam nenhuma política pública no texto (em geral só o pedido de voto). A mensagem desses anúncios está no vídeo ou na imagem, que esta classificação não lê: os percentuais abaixo descrevem só o texto escrito.`,
+            `${pct(c.semPolitica / c.criativos, 0)} of creatives mention no public policy in their text (usually just a vote request). Their message is in the video or image, which this classification does not read: the shares below describe the written text only.`)}
+        </p>
+      )}
       <div className="grid gap-5 md:grid-cols-3">
         {EIXOS.map((e) => {
           const linhas = e.temas.map((t) => ({ t, r: c.porTema.get(t.id) })).filter((x) => x.r).sort((a, b) => b.r!.criativos - a.r!.criativos);

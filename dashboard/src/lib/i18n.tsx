@@ -25,7 +25,7 @@ document.documentElement.lang = atual === "en" ? "en" : "pt-BR";
 
 export const getLang = () => atual;
 /** Texto no idioma atual. */
-export const L = (pt: string, en: string) => (atual === "en" ? en : pt);
+export const L = <T = string>(pt: T, en: T): T => (atual === "en" ? en : pt);
 /** Locale para Intl (números e datas). */
 export const locale = () => (atual === "en" ? "en-US" : "pt-BR");
 

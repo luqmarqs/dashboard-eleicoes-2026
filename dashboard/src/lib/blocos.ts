@@ -40,5 +40,21 @@ export function salvarBlocos(b: Record<string, Bloco>): void {
   }
 }
 
+const KEY_CAND = "apocalipse-por-candidatura";
+export function lerPorCand(): boolean {
+  try {
+    return localStorage.getItem(KEY_CAND) !== "0";
+  } catch {
+    return true;
+  }
+}
+export function salvarPorCand(v: boolean): void {
+  try {
+    localStorage.setItem(KEY_CAND, v ? "1" : "0");
+  } catch {
+    /* ignora */
+  }
+}
+
 export const blocoDe = (map: Record<string, Bloco>, partido: string | null | undefined): Bloco =>
   map[(partido ?? "").toUpperCase()] ?? "demais";

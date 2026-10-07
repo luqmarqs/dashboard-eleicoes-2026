@@ -1,0 +1,522 @@
+[
+ {
+  "chave": "MG:3:10",
+  "nome": "CLEITINHO AZEVEDO",
+  "bloco": "extrema",
+  "criterio": "curadoria-2",
+  "evidencia": "Como senador, defendeu publicamente e de forma reiterada a anistia aos condenados do 8 de janeiro (2024-2025); em 2026 declarou apoio a Flávio Bolsonaro para presidente.",
+  "fonte": "https://www12.senado.leg.br/noticias/materias/2025/09/16/cleitinho-pede-mobilizacao-por-anistia-a-condenados-pelo-8-de-janeiro"
+ },
+ {
+  "chave": "MG:5:555",
+  "nome": "CARLOS VIANA",
+  "bloco": "extrema",
+  "criterio": "curadoria-1",
+  "evidencia": "Foi líder do governo Bolsonaro no Senado e candidato de Bolsonaro ao governo de MG pelo PL em 2022; em 2026 apoia Flávio Bolsonaro.",
+  "fonte": "https://www.congressoemfoco.com.br/noticia/12159/bolsonaro-escolhe-como-carlos-viana-novo-lider-do-governo-no-senado"
+ },
+ {
+  "chave": "MG:6:1000",
+  "nome": "GLEIDSON AZEVEDO",
+  "bloco": "extrema",
+  "criterio": "curadoria-3",
+  "evidencia": "Como prefeito de Divinópolis pelo PL (2022), alinhado ao governo Bolsonaro, convocou 'jejum' pela reeleição de Bolsonaro; irmão de Cleitinho.",
+  "fonte": "https://www.correiobraziliense.com.br/politica/2022/10/5043478-prefeito-de-divinopolis-convoca-jejum-de-coca-cola-por-bolsonaro.html"
+ },
+ {
+  "chave": "MG:6:1010",
+  "nome": "GILBERTO ABRAMO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Gilberto Abramo, REPUBLICANOS), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:1015",
+  "nome": "EUCLYDES PETTERSEN",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Euclydes Pettersen, REPUBLICANOS), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:1077",
+  "nome": "BRUNO FARIAS",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Bruno Farias, AVANTE), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:1111",
+  "nome": "DIMAS FABIANO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Dimas Fabiano, PP), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:1122",
+  "nome": "PINHEIRINHO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Pinheirinho, PP), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:1193",
+  "nome": "PEDRO AIHARA",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Pedro Aihara, PRD), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:1199",
+  "nome": "ANA PAULA LEÃO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Ana Paula Leão, PP), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:1510",
+  "nome": "NEWTON CARDOSO JR",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Newton Cardoso Jr, MDB), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:2020",
+  "nome": "NELY AQUINO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Nely Aquino, PODE), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:2533",
+  "nome": "FRED COSTA",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Fred Costa, PRD), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:4433",
+  "nome": "SAMUEL VIANA",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Samuel Viana, REPUBLICANOS), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:4444",
+  "nome": "DELEGADO MARCELO FREITAS",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Delegado Marcelo Freitas, UNIÃO), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:4445",
+  "nome": "RAFAEL SIMÕES",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Rafael Simoes, UNIÃO), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:4450",
+  "nome": "RODRIGO DE CASTRO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Rodrigo de Castro, UNIÃO), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:4455",
+  "nome": "IGOR TIMO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Igor Timo, PSD), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:4477",
+  "nome": "ZÉ SILVA",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Zé Silva, SOLIDARIEDADE), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:4545",
+  "nome": "PAULO ABI-ACKEL",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Paulo Abi-Ackel, PSDB), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:5510",
+  "nome": "WELITON PRADO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Weliton Prado, SOLIDARIEDADE), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:5544",
+  "nome": "STEFANO AGUIAR",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Stefano Aguiar, PSD), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:5555",
+  "nome": "DIEGO ANDRADE",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Diego Andrade, PSD), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "MG:6:7070",
+  "nome": "LUIS TIBÉ",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Luis Tibé, AVANTE), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:6:1012",
+  "nome": "FRAN BAYER",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Franciane Bayer, REPUBLICANOS), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:6:1014",
+  "nome": "RONALDO NOGUEIRA",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Ronaldo Nogueira, REPUBLICANOS), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:6:1022",
+  "nome": "GUSTAVO VICTORINO",
+  "bloco": "extrema",
+  "criterio": "curadoria-4",
+  "evidencia": "Deputado estadual do bloco de direita de oposição com PL e NOVO na Assembleia (2025); descrito pela imprensa em 2022 como representante da extrema direita bolsonarista no RS.",
+  "fonte": "https://www.jornaldocomercio.com/politica/2025/09/1217695-deputados-oficializam-bloco-de-direita.html"
+ },
+ {
+  "chave": "RS:6:1111",
+  "nome": "COVATTI FILHO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Covatti Filho, PP), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:6:1123",
+  "nome": "ANY ORTIZ",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Any Ortiz, CIDADANIA), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:6:1144",
+  "nome": "PEDRO WESTPHALEN",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Pedro Westphalen, PP), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:6:1166",
+  "nome": "AFONSO HAMM",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Afonso Hamm, PP), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:6:1500",
+  "nome": "ALCEU MOREIRA",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Alceu Moreira, MDB), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:6:2022",
+  "nome": "RONY GABRIEL",
+  "bloco": "extrema",
+  "criterio": "curadoria-3",
+  "evidencia": "Vereador do PL em Erechim e influenciador bolsonarista (crítico de Lula e Moraes); foi para o Podemos por 'missão' dada por Zucco (PL).",
+  "fonte": "https://jovempan.com.br/colunistas/bruno-pinheiro/zucco-atrai-pp-e-podemos-e-amplia-base-de-flavio-no-rs/"
+ },
+ {
+  "chave": "RS:6:4444",
+  "nome": "BUSATO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Luiz Carlos Busato, UNIÃO), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:6:4500",
+  "nome": "DANIEL TRZECIAK \"DANIEL DA TV\"",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Daniel Trzeciak, PSDB), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:6:5501",
+  "nome": "DANRLEI",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Danrlei de Deus Hinterholz, PSD), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:6:5511",
+  "nome": "LUCAS REDECKER",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Lucas Redecker, PSDB), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "RS:7:10122",
+  "nome": "CAPITÃO MARTIM",
+  "bloco": "extrema",
+  "criterio": "curadoria-4",
+  "evidencia": "Vice-líder do bloco de direita de oposição com PL e NOVO na Assembleia; em 2026 repetiu no RS a caminhada de Nikolas Ferreira pela anistia.",
+  "fonte": "https://www.jornaldocomercio.com/politica/2025/09/1217695-deputados-oficializam-bloco-de-direita.html"
+ },
+ {
+  "chave": "RS:7:10222",
+  "nome": "DELEGADO ZUCCO",
+  "bloco": "extrema",
+  "criterio": "curadoria-4",
+  "evidencia": "Irmão de Luciano Zucco (PL); integra o bloco de direita de oposição com PL e NOVO na Assembleia.",
+  "fonte": "https://www.jornaldocomercio.com/politica/2025/09/1217695-deputados-oficializam-bloco-de-direita.html"
+ },
+ {
+  "chave": "SP:3:10",
+  "nome": "TARCÍSIO",
+  "bloco": "extrema",
+  "criterio": "curadoria-1",
+  "evidencia": "Foi ministro da Infraestrutura de Bolsonaro; em 2026 disputou a reeleição alinhado ao bolsonarismo e declarou apoio a Flávio Bolsonaro para presidente.",
+  "fonte": "https://www.poder360.com.br/poder-eleicoes/tarcisio-apoia-candidatura-de-flavio-bolsonaro-a-presidencia/"
+ },
+ {
+  "chave": "SP:5:111",
+  "nome": "GUILHERME DERRITE",
+  "bloco": "extrema",
+  "criterio": "curadoria-1",
+  "evidencia": "Eleito deputado federal pelo PL em 2022; trocou de partido para disputar o Senado com aval de Jair Bolsonaro e Valdemar Costa Neto.",
+  "fonte": "https://istoe.com.br/derrite-deixa-partido-de-bolsonaro-para-lancar-candidatura-ao-senado-em-2026/"
+ },
+ {
+  "chave": "SP:6:1000",
+  "nome": "CELSO RUSSOMANNO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Celso Russomanno, REPUBLICANOS), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:1010",
+  "nome": "MARCOS PEREIRA",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Marcos Pereira, REPUBLICANOS), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:1022",
+  "nome": "MARIA ROSAS",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Maria Rosas, REPUBLICANOS), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:1100",
+  "nome": "CORONEL TELHADA",
+  "bloco": "extrema",
+  "criterio": "curadoria-3",
+  "evidencia": "Identificado pela imprensa como deputado bolsonarista; em 2022 ameaçou Lula com arma em vídeo.",
+  "fonte": "https://brasildefato.com.br/2022/04/06/deputados-bolsonaristas-ameacam-lula-com-armas-de-fogo-apos-cairem-em-fake-news/"
+ },
+ {
+  "chave": "SP:6:1111",
+  "nome": "MAURICIO NEVES",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Mauricio Neves, PP), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:1550",
+  "nome": "JOÃO CURY",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (João Cury, MDB), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:2000",
+  "nome": "DELEGADO PALUMBO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Delegado Palumbo, MDB), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:2007",
+  "nome": "FELIPE BECARI",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Felipe Becari, UNIÃO), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:2011",
+  "nome": "DELEGADO BRUNO LIMA",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Delegado Bruno Lima, PP), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:2019",
+  "nome": "RIBAMAR SILVA",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Ribamar Silva, PSD), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:2022",
+  "nome": "GILBERTO NASCIMENTO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Gilberto Nascimento, PSD), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:2030",
+  "nome": "DAVID RR SOARES",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (David Soares, UNIÃO), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:2034",
+  "nome": "DOUGLAS VIEGAS",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Douglas Viegas, UNIÃO), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:2044",
+  "nome": "MARANGONI",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Marangoni, UNIÃO), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:2077",
+  "nome": "RODRIGO GAMBALE",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Rodrigo Gambale, PODE), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:2323",
+  "nome": "ALEX MANENTE",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Alex Manente, CIDADANIA), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:4422",
+  "nome": "DELEGADO DA CUNHA",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Delegado da Cunha, PP), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:5501",
+  "nome": "VITOR LIPPI",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Vitor Lippi, PSDB), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:5515",
+  "nome": "SAULO PEDROSO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Saulo Pedroso, PSD), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:6:5585",
+  "nome": "CARLOS SAMPAIO",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Carlos Sampaio, PSD), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:7:10023",
+  "nome": "ELY SANTOS",
+  "bloco": "extrema",
+  "criterio": "anistia",
+  "evidencia": "Como dep. federal (Ely Santos, REPUBLICANOS), votou Sim na urgência da anistia aos réus do 8 de janeiro (17/09/2025).",
+  "fonte": "https://dadosabertos.camara.leg.br/api/v2/votacoes/2562149-7/votos"
+ },
+ {
+  "chave": "SP:7:10222",
+  "nome": "DANILO CAMPETTI",
+  "bloco": "extrema",
+  "criterio": "curadoria-4",
+  "evidencia": "Membro da Frente Parlamentar pela Anistia aos Presos Políticos do 8 de Janeiro na Alesp; integrou a segurança de Bolsonaro na campanha de 2018.",
+  "fonte": "https://www.al.sp.gov.br/alesp/frentes-parlamentares-detalhe/?idFrente=4821"
+ },
+ {
+  "chave": "SP:7:11777",
+  "nome": "DELEGADO OLIM",
+  "bloco": "extrema",
+  "criterio": "curadoria-4",
+  "evidencia": "Membro da Frente Parlamentar pela Anistia aos Presos Políticos do 8 de Janeiro na Alesp.",
+  "fonte": "https://www.al.sp.gov.br/alesp/frentes-parlamentares-detalhe/?idFrente=4821"
+ },
+ {
+  "chave": "SP:7:44555",
+  "nome": "DOUGLAS GARCIA",
+  "bloco": "extrema",
+  "criterio": "curadoria-3",
+  "evidencia": "Eleito deputado estadual em 2018 pelo PSL como bolsonarista; chamado de bolsonarista pela imprensa em 2026.",
+  "fonte": "https://portaldeprefeitura.com.br/brasil/bolsonarista-ex-deputado-se-envolve-confusao-ato-contra-pl-dosimetria/612509/"
+ }
+]

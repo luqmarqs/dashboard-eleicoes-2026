@@ -13,6 +13,7 @@ import { Presidente } from "./pages/Presidente";
 import { Publicidade } from "./pages/Publicidade";
 import { DigitalMG } from "./pages/DigitalMG";
 import { Apocalipse } from "./pages/Apocalipse";
+import { Esperanca } from "./pages/Esperanca";
 import { useSouAdmin } from "./lib/acessos";
 import { isDev } from "./lib/source";
 import { L, SeletorIdioma, useLang } from "./lib/i18n";
@@ -20,7 +21,7 @@ import { supabase } from "./lib/supabase";
 
 const NAV_PT_EN: [string, string, string, boolean?][] = [
   ["/", "Visão geral", "Overview", true], ["/comparativo", "Comparativo", "Compare"], ["/dobrada", "Dobrada", "Joint ticket"],
-  ["/presidente", "Presidente", "President"], ["/publicidade", "Publicidade", "Paid ads"], ["/apocalipse", "Apocalipse", "Apocalypse"], ["/paineis", "Painéis", "Panels"],
+  ["/presidente", "Presidente", "President"], ["/publicidade", "Publicidade", "Paid ads"], ["/apocalipse", "Apocalipse", "Apocalypse"], ["/esperanca", "Ainda há esperança", "Still hope"], ["/paineis", "Painéis", "Panels"],
   ["/metodologia", "Metodologia", "Methodology"],
 ];
 const NAV_ITENS = () => NAV_PT_EN.map(([to, pt, en, end]) => ({ to, label: L(pt, en), end }));
@@ -152,6 +153,7 @@ function Rotas() {
       <Route path="/publicidade" element={<Publicidade />} />
       <Route path="/digital-mg" element={<DigitalMG />} />
       <Route path="/apocalipse" element={<Apocalipse />} />
+      <Route path="/esperanca" element={<Esperanca />} />
       <Route path="/paineis" element={<Paineis />} />
       <Route path="/paineis/:id" element={<PainelView />} />
       <Route path="/metodologia" element={<Metodologia />} />
