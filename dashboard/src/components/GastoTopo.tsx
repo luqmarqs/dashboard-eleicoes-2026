@@ -41,15 +41,17 @@ export function GastoTopo({ candId }: { candId: number }) {
     <div className="flex flex-wrap items-stretch gap-2 text-sm" aria-label={L("Gasto em anúncios", "Ad spend")}>
       <Bloco rotulo={L("Gasto próprio em anúncios", "Own ad spend")} valor={faixa(r.gp)} sub={L(`${fmt(r.prop.length)} anúncios das páginas da candidatura`, `${fmt(r.prop.length)} ads from the candidacy's Pages`)} />
       <span className="self-center text-muted" aria-hidden>+</span>
-      <Bloco rotulo={L("Dobradas", "Joint tickets")} valor={faixa(r.gd)}
-        sub={L(`${fmt(r.comNumero.length)} anúncios de outras campanhas com nome e número (gasto delas)`, `${fmt(r.comNumero.length)} ads by other campaigns with name and number (their spend)`)} />
+      <Bloco rotulo={proprios ? L("Dobradas", "Joint tickets") : L("Anúncios de terceiros", "Third-party ads")} valor={faixa(r.gd)}
+        sub={proprios
+          ? L(`${fmt(r.comNumero.length)} anúncios de outras campanhas com nome e número (gasto delas)`, `${fmt(r.comNumero.length)} ads by other campaigns with name and number (their spend)`)
+          : L(`${fmt(r.comNumero.length)} anúncios de outras campanhas que usaram por conta própria o nome e o número (gasto delas)`, `${fmt(r.comNumero.length)} ads by other campaigns that chose to use the name and number (their spend)`)} />
       <span className="self-center text-muted" aria-hidden>=</span>
-      <Bloco destaque rotulo={L("Total em anúncios", "Total in ads")} valor={r.total ? fmtFaixa(r.total.min, r.total.max, "R$ ") : "R$ 0"}
+      <Bloco destaque rotulo={proprios ? L("Total em anúncios", "Total in ads") : L("Total em anúncios que a citam", "Total in ads featuring it")} valor={r.total ? fmtFaixa(r.total.min, r.total.max, "R$ ") : "R$ 0"}
         sub={r.custo ? L(`${fmtCusto(r.custo)} por mil alcançados`, `${fmtCusto(r.custo)} per 1,000 reached`) : ""} />
       <p className="w-full text-xs text-muted">
         {getLang() === "en"
-          ? <>Meta Ad Library, accumulated ranges since Aug 16. Joint-ticket spend belongs to the campaign that paid and the ad may promote several candidacies.{r.soNome.length ? <> Not in the total: {fmt(r.soNome.length)} ads that mention the name only ({faixa(r.gs)}).</> : null}{" "}</>
-          : <>Biblioteca de Anúncios da Meta, faixas acumuladas desde 16/08. O gasto das dobradas é da campanha que pagou e o anúncio pode promover várias candidaturas.{r.soNome.length ? <> Fora do total: {fmt(r.soNome.length)} anúncios que só citam o nome ({faixa(r.gs)}).</> : null}{" "}</>}
+          ? <>{!proprios && <><b>The candidacy ran no paid ads of its own:</b> all of this was paid by other campaigns that chose to use its image. </>}Meta Ad Library, accumulated ranges since Aug 16. Joint-ticket spend belongs to the campaign that paid and the ad may promote several candidacies.{r.soNome.length ? <> Not in the total: {fmt(r.soNome.length)} ads that mention the name only ({faixa(r.gs)}).</> : null}{" "}</>
+          : <>{!proprios && <><b>A candidatura não fez tráfego pago próprio:</b> todo o valor é de outras campanhas que escolheram usar a sua imagem. </>}Biblioteca de Anúncios da Meta, faixas acumuladas desde 16/08. O gasto das dobradas é da campanha que pagou e o anúncio pode promover várias candidaturas.{r.soNome.length ? <> Fora do total: {fmt(r.soNome.length)} anúncios que só citam o nome ({faixa(r.gs)}).</> : null}{" "}</>}
         <Link to={`/publicidade?c=${candId}`} className="text-accent">{L("Ver anúncios →", "See ads →")}</Link>
       </p>
     </div>
