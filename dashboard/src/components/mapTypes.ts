@@ -1,14 +1,16 @@
 import type { RGB } from "../lib/colors";
+import { L } from "../lib/i18n";
 
 export type Modo = "escolas" | "territorios" | "municipios" | "hexagonos" | "calor";
 export type Metrica = "pct" | "votos";
 
-export const MODOS: { id: Modo; label: string; ajuda: string }[] = [
-  { id: "escolas", label: "Escolas", ajuda: "Um círculo por local de votação: tamanho = votos, cor = métrica escolhida." },
-  { id: "territorios", label: "Territórios", ajuda: "Área mais próxima de cada local de votação (só com um município selecionado)." },
-  { id: "municipios", label: "Municípios", ajuda: "Cada município pintado pela métrica escolhida. Clique para entrar no município." },
-  { id: "hexagonos", label: "Hexágonos", ajuda: "Locais agregados em hexágonos de tamanho fixo." },
-  { id: "calor", label: "Calor", ajuda: "Densidade de votos, sem fronteiras." },
+/** Modos do mapa com rótulos no idioma atual (função: avaliada na renderização). */
+export const MODOS = (): { id: Modo; label: string; ajuda: string }[] => [
+  { id: "escolas", label: L("Escolas", "Polling places"), ajuda: L("Um círculo por local de votação: tamanho = votos, cor = métrica escolhida.", "One circle per polling place: size = votes, color = chosen metric.") },
+  { id: "territorios", label: L("Territórios", "Territories"), ajuda: L("Área mais próxima de cada local de votação (só com um município selecionado).", "Area closest to each polling place (only with a city selected).") },
+  { id: "municipios", label: L("Municípios", "Cities"), ajuda: L("Cada município pintado pela métrica escolhida. Clique para entrar no município.", "Each city colored by the chosen metric. Click to open the city.") },
+  { id: "hexagonos", label: L("Hexágonos", "Hexagons"), ajuda: L("Locais agregados em hexágonos de tamanho fixo.", "Polling places aggregated into fixed-size hexagons.") },
+  { id: "calor", label: L("Calor", "Heat map"), ajuda: L("Densidade de votos, sem fronteiras.", "Vote density, without boundaries.") },
 ];
 
 export interface Destaque {

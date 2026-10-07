@@ -12,6 +12,7 @@ import { corSequencial, cssRgb, prefersDark, quantis, ramp } from "../lib/colors
 import type { Base, PorLocal } from "../lib/data";
 import { fmt, pct, titulo } from "../lib/format";
 import { geoUrl } from "../lib/source";
+import { L } from "../lib/i18n";
 
 import type { CorPorLocal, Destaque, Metrica, Modo } from "./mapTypes";
 
@@ -45,7 +46,7 @@ const SP_BOUNDS: [[number, number], [number, number]] = [[-53.2, -25.4], [-44.1,
 type Geo = FeatureCollection<Geometry, Record<string, unknown>>;
 
 export function MapView({
-  base, dados, municipio, modo, metrica, destaques = [], corPorLocal, corPorMunicipio, infoExtra, rotuloSerie = "votos", onMunicipio,
+  base, dados, municipio, modo, metrica, destaques = [], corPorLocal, corPorMunicipio, infoExtra, rotuloSerie, onMunicipio,
   altura = "min(70vh, 720px)",
 }: Props) {
   const mapRef = useRef<MapRef>(null);
@@ -80,6 +81,34 @@ export function MapView({
     }
     return minX <= maxX ? [[minX, minY], [maxX, maxY]] : SP_BOUNDS; // SP_BOUNDS só como último recurso
   }, [municipio, noEscopo]);
+
+  // Contorno do estado inteiro: limite de navegação de todos os mapas (só zoom; nada fora da UF).
+  const boundsUf = useMemo<[[number, number], [number, number]]>(() => {
+    let [minX, minY, maxX, maxY] = [180, 90, -180, -90];
+    for (const l of base.locais) {
+      if (l.aprox) continue;
+      minX = Math.min(minX, l.lon); maxX = Math.max(maxX, l.lon);
+      minY = Math.min(minY, l.lat); maxY = Math.max(maxY, l.lat);
+    }
+    return minX <= maxX ? [[minX, minY], [maxX, maxY]] : SP_BOUNDS;
+  }, [base]);
+
+  /** Trava o mapa na moldura do estado inteiro, calculada no tamanho real da tela (estados altos não ficam cortados). */
+  const travarNoEstado = (e: { target: import("maplibre-gl").Map }) => {
+    const m = e.target;
+    const atual = { center: m.getCenter(), zoom: m.getZoom() };
+    const cam = m.cameraForBounds(boundsUf, { padding: 20 });
+    if (!cam) return;
+    m.jumpTo(cam);
+    const b = m.getBounds();
+    const z = m.getZoom();
+    m.setMaxBounds(b);
+    m.setMinZoom(z);
+    m.jumpTo(municipio ? atual : cam);
+    m.dragRotate.disable();
+    m.touchZoomRotate.disableRotation();
+    m.touchPitch.disable();
+  };
 
   const metricaDe = (v: number, val: number) => (metrica === "pct" ? (val ? v / val : 0) : v);
 
@@ -199,7 +228,7 @@ export function MapView({
     let titulo_ = "", sub = "", v = 0, val = 0, extra: string | null = null;
     if (layer.id === "escolas") {
       const l = object as Base["locais"][number];
-      titulo_ = l.nome; sub = `${titulo(l.bairro)} · ${titulo(l.munNome)} · zona ${l.zona}`;
+      titulo_ = l.nome; sub = `${titulo(l.bairro)} · ${titulo(l.munNome)} · ${L("zona", "zone")} ${l.zona}`;
       v = dados.votos[l.idx]; val = dados.validos[l.idx]; extra = infoExtra?.({ idx: l.idx }) ?? null;
     } else if (layer.id === "territorios") {
       const ids = (object as Feature).properties?.locais as number[];
@@ -209,17 +238,17 @@ export function MapView({
       if (ls[0]) extra = infoExtra?.({ idx: ls[0].idx }) ?? null;
     } else if (layer.id === "municipios") {
       const cd = (object as Feature).properties?.cd_municipio as string;
-      titulo_ = titulo(base.munByCd.get(cd)?.nome ?? ""); sub = "clique para ver o município";
+      titulo_ = titulo(base.munByCd.get(cd)?.nome ?? ""); sub = L("clique para ver o município", "click to open the city");
       for (const l of base.locais) if (l.mun === cd) { v += dados.votos[l.idx]; val += dados.validos[l.idx]; }
       extra = infoExtra?.({ municipio: cd }) ?? null;
     } else if (layer.id === "hex") {
       const d = object as { v: number; val: number };
-      titulo_ = "Hexágono"; v = d.v; val = d.val;
+      titulo_ = L("Hexágono", "Hexagon"); v = d.v; val = d.val;
     } else return null;
     return {
       html: `<div style="font-weight:700;margin-bottom:2px">${titulo_}</div>` +
         (sub ? `<div style="opacity:.75;font-size:12px">${sub}</div>` : "") +
-        `<div style="margin-top:4px">${fmt(v)} ${rotuloSerie} · ${val ? pct(v / val) : "–"} dos válidos</div>` +
+        `<div style="margin-top:4px">${fmt(v)} ${rotuloSerie ?? L("votos", "votes")} · ${val ? pct(v / val) : "–"} ${L("dos válidos", "of valid votes")}</div>` +
         (extra ? `<div style="margin-top:4px;opacity:.85;font-size:12px">${extra}</div>` : ""),
       style: {
         background: dark ? "#1f1826" : "#ffffff", color: dark ? "#f1eaf4" : "#241a2b", fontSize: "13px",
@@ -238,8 +267,12 @@ export function MapView({
           ref={mapRef}
           key={`${base.municipios[0]?.cd}-${municipio ?? "estado"}`}
           initialViewState={{ bounds, fitBoundsOptions: { padding: municipio ? 40 : 20, maxZoom: 14 } }}
+          onLoad={travarNoEstado}
+          dragRotate={false}
+          pitchWithRotate={false}
+          maxPitch={0}
           mapStyle={dark ? STYLE_DARK : STYLE_LIGHT}
-          attributionControl={{ compact: true, customAttribution: "Votos: TSE · Limites: IBGE" }}
+          attributionControl={{ compact: true, customAttribution: L("Votos: TSE · Limites: IBGE", "Votes: TSE · Boundaries: IBGE") }}
           style={{ width: "100%", height: "100%" }}
         >
           <NavigationControl position="top-right" showCompass={false} />
@@ -260,8 +293,8 @@ export function MapView({
         </MapGL>
       </div>
       {!corPorLocal && !corPorMunicipio && modo !== "calor" && breaks.length > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-label="Legenda">
-          <span>{metrica === "pct" ? "% dos válidos" : "votos"}:</span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-label={L("Legenda", "Legend")}>
+          <span>{metrica === "pct" ? L("% dos válidos", "% of valid votes") : L("votos", "votes")}:</span>
           <div className="flex items-center">
             {r.map((c, i) => (
               <div key={i} className="flex flex-col items-center">

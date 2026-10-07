@@ -1,17 +1,24 @@
-const nf = new Intl.NumberFormat("pt-BR");
+import { locale } from "./i18n";
 
-export const fmt = (n: number) => nf.format(Math.round(n));
+// Formatadores por idioma (pt-BR: 1.234,5 · en-US: 1,234.5)
+const cache = new Map<string, Intl.NumberFormat>();
+function nf(chave: string, opcoes?: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const k = `${locale()}|${chave}`;
+  let f = cache.get(k);
+  if (!f) { f = new Intl.NumberFormat(locale(), opcoes); cache.set(k, f); }
+  return f;
+}
 
-const pf = new Map<number, Intl.NumberFormat>();
+export const fmt = (n: number) => nf("int").format(Math.round(n));
+
 export const pct = (x: number, digits = 2) => {
   if (!Number.isFinite(x)) return "–";
-  let f = pf.get(digits);
-  if (!f) {
-    f = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-    pf.set(digits, f);
-  }
-  return f.format(x * 100) + "%";
+  return nf(`pct${digits}`, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(x * 100) + "%";
 };
+
+/** Número com casas decimais no idioma atual. */
+export const dec = (x: number, digits = 2) =>
+  nf(`dec${digits}`, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(x);
 
 const MINUSCULAS = new Set(["da", "das", "de", "do", "dos", "e"]);
 

@@ -1,3 +1,4 @@
+import { L } from "./i18n";
 import { createContext, useContext, useState, type ReactNode } from "react";
 
 export interface InfoUf {
@@ -12,8 +13,8 @@ export interface InfoUf {
 }
 
 /** "em São Paulo" / "no Rio Grande do Sul"; "de São Paulo" / "do Rio Grande do Sul". */
-export const emUf = (u: InfoUf) => `${u.artigo ? "no" : "em"} ${u.nome}`;
-export const deUf = (u: InfoUf) => `${u.artigo ? "do" : "de"} ${u.nome}`;
+export const emUf = (u: InfoUf) => L(`${u.artigo ? "no" : "em"} ${u.nome}`, `in ${u.nome}`);
+export const deUf = (u: InfoUf) => L(`${u.artigo ? "do" : "de"} ${u.nome}`, `of ${u.nome}`);
 
 export const UFS: InfoUf[] = [
   {

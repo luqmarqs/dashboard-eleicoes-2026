@@ -7,6 +7,7 @@
  * - um anúncio com várias cidades conta uma vez em cada cidade, mas o gasto dele não é dividido nem
  *   atribuído às cidades: "gasto dos anúncios associados" é o gasto total desses anúncios, em qualquer lugar.
  */
+import { L, getLang, locale } from "./i18n";
 import type { MetaAnuncio } from "./source";
 
 export interface Faixa { min: number; max: number | null; n: number }
@@ -89,16 +90,25 @@ export function mediana(v: number[]): number | null {
   return s.length % 2 ? s[k] : (s[k - 1] + s[k]) / 2;
 }
 
-const compacto = new Intl.NumberFormat("pt-BR", { notation: "compact", maximumFractionDigits: 1 });
-const inteiro = new Intl.NumberFormat("pt-BR");
+// formatação no idioma da interface
+const compactos = new Map<string, Intl.NumberFormat>();
+function nfMeta(compact: boolean): Intl.NumberFormat {
+  const k = `${locale()}|${compact}`;
+  let f = compactos.get(k);
+  if (!f) {
+    f = new Intl.NumberFormat(locale(), compact ? { notation: "compact", maximumFractionDigits: 1 } : undefined);
+    compactos.set(k, f);
+  }
+  return f;
+}
 
 export function fmtNum(n: number, compact = true): string {
-  return compact && Math.abs(n) >= 10_000 ? compacto.format(n) : inteiro.format(Math.round(n));
+  return compact && Math.abs(n) >= 10_000 ? nfMeta(true).format(n) : nfMeta(false).format(Math.round(n));
 }
 
 export function fmtFaixa(min: number | null, max: number | null, prefixo = ""): string {
-  if (min == null && max == null) return "não informado";
-  if (max == null) return `${prefixo}${fmtNum(min ?? 0)} ou mais`;
+  if (min == null && max == null) return L("não informado", "not reported");
+  if (max == null) return `${prefixo}${fmtNum(min ?? 0)} ${L("ou mais", "or more")}`;
   if (min === max) return `${prefixo}${fmtNum(min ?? 0)}`;
   return `${prefixo}${fmtNum(min ?? 0)} – ${prefixo}${fmtNum(max)}`;
 }
@@ -108,16 +118,23 @@ export const simbolo = (moeda: string) => (moeda === "BRL" ? "R$ " : moeda && mo
 export function fmtData(iso: string | null | undefined): string {
   if (!iso) return "–";
   const [y, m, d] = iso.slice(0, 10).split("-");
-  return `${d}/${m}/${y}`;
+  return getLang() === "en" ? `${m}/${d}/${y}` : `${d}/${m}/${y}`;
 }
 
 export function fmtDataHora(iso: string | null | undefined): string {
   if (!iso) return "–";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(locale(), { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" });
 }
 
-export const ROTULO_ABRANGENCIA: Record<Abrangencia, string> = {
-  bairro: "Bairros", cep: "CEPs", municipio: "Cidades", uf: "Estado inteiro", pais: "Brasil inteiro",
-  desconhecida: "Local não identificado pela Meta", sem_segmentacao: "Sem localidade informada",
-};
+export function rotuloAbrangencia(a: Abrangencia): string {
+  switch (a) {
+    case "bairro": return L("Bairros", "Neighborhoods");
+    case "cep": return L("CEPs", "ZIP codes");
+    case "municipio": return L("Cidades", "Cities");
+    case "uf": return L("Estado inteiro", "Whole state");
+    case "pais": return L("Brasil inteiro", "All of Brazil");
+    case "desconhecida": return L("Local não identificado pela Meta", "Location not identified by Meta");
+    case "sem_segmentacao": return L("Sem localidade informada", "No location reported");
+  }
+}

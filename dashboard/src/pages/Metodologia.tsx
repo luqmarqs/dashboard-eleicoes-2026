@@ -1,4 +1,7 @@
+import { L, getLang } from "../lib/i18n";
+
 export function Metodologia() {
+  if (getLang() === "en") return <MetodologiaEn />;
   return (
     <article className="flex max-w-3xl flex-col gap-4 leading-relaxed">
       <div className="eyebrow">Metodologia</div>
@@ -55,6 +58,71 @@ export function Metodologia() {
       <p className="text-sm text-muted">
         TSE (Boletins de Urna, resultados oficiais e cadastro de locais de votação) · IBGE (malhas municipais) ·
         Fundo de mapa: OpenFreeMap / © OpenStreetMap.
+      </p>
+    </article>
+  );
+}
+
+function MetodologiaEn() {
+  return (
+    <article className="flex max-w-3xl flex-col gap-4 leading-relaxed">
+      <div className="eyebrow">{L("Metodologia", "Methodology")}</div>
+      <h1 className="display text-3xl">Where these numbers come from</h1>
+      <h2 className="display text-xl">Votes</h2>
+      <p>
+        Votes were read directly from the <b>ballot-box reports (Boletins de Urna, BU)</b> of every polling section in São Paulo,
+        published by the TSE (Superior Electoral Court) at resultados.tse.jus.br (1st round, October 4, 2026). The sum of the sections was
+        checked against the TSE's official results by electoral zone, municipality and state: the difference is zero for every candidacy
+        and party.
+      </p>
+      <p>
+        "% of valid votes" is the vote count divided by the valid votes for the same office in the selected area (candidate and party
+        votes with a valid destination, across all parties). Votes for candidacies that were rejected by the electoral courts count as
+        technically null.
+      </p>
+      <h2 className="display text-xl">Polling place, neighborhood and school</h2>
+      <p>
+        Each section was matched to its polling place using the TSE's official registry
+        (<i>eleitorado_local_votacao_2026</i>, Open Data Portal), which lists the school, address, neighborhood and coordinates.
+        The <b>neighborhood is that of the polling place</b>, as spelled by the TSE: it is not the neighborhood where the voter lives,
+        nor an official neighborhood boundary. Polling places without valid coordinates in the registry were placed at a point inside
+        the municipality.
+      </p>
+      <h2 className="display text-xl">Map modes</h2>
+      <ul className="list-disc pl-5">
+        <li><b>Schools</b>: one circle per polling place; area proportional to votes.</li>
+        <li><b>Territories</b>: every point in the municipality is assigned to the nearest polling place (Voronoi polygons clipped to the IBGE municipal boundary). This is a geographic approximation, not the actual area where voters live.</li>
+        <li><b>Municipalities</b>, <b>Hexagons</b> and <b>Heat</b>: aggregations of polling places for reading at the state scale.</li>
+        <li>Colors use quantiles: each legend band contains roughly the same number of areas.</li>
+      </ul>
+      <h2 className="display text-xl">Paid ads (Meta Ad Library)</h2>
+      <ul className="list-disc pl-5">
+        <li><b>Collection</b>: the official <code>ads_archive</code> API (Graph API v26.0), political ads run since August 16, 2026 by the
+          pages of the elected candidacies in SP, MG and RS (and Manuela's). No screen scraping.</li>
+        <li><b>Page ↔ candidacy</b>: confirmed when the declared funder is the campaign's CNPJ (tax ID) ("ELEIÇÃO 2026 + full name
+          at the TSE"). Cases with a social name or a non-standard funder remain as links to be reviewed, flagged on the page.</li>
+        <li><b>Targeting ≠ delivery ≠ votes</b>: cities and neighborhoods are those chosen by the advertiser; the delivery reported by
+          Meta exists only by state; the comparison with votes is descriptive and does not measure the effect of the ads.</li>
+        <li><b>Spend and impressions</b> are cumulative ranges per ad; the range bounds are added up, with no midpoint. Reach is not
+          added up. The spend of an ad targeting several cities is never split among them.</li>
+        <li><b>Paid joint tickets</b>: an ad paid for by one campaign (funder = campaign CNPJ) that shows the name and ballot number of
+          another candidacy. The spend belongs to whoever paid.</li>
+        <li><b>Creative themes</b>: keyword-based classification, without AI, along three axes (public policy, electoral function,
+          tone), reviewed over the 110 thousand ads collected. Unit: distinct creative (the same text can reach hundreds of ads, one per
+          city). Legal footers (CNPJ, federation) are removed first; terms match at the start of words. Spend per theme is split among
+          the policy themes of each ad.</li>
+      </ul>
+      <h2 className="display text-xl">Digital growth (MG)</h2>
+      <ul className="list-disc pl-5">
+        <li>16 State Deputy candidacies from the September monitoring, linked to the TSE data by ballot number, office and state.</li>
+        <li>Followers observed on September 1, 4, 6, 13 and 20 (history) and in the current snapshot via Apify; only observed dates,
+          with no invented daily curve; platforms kept separate; followers are neither voters nor votes.</li>
+        <li>Instagram posts since August 16: likes and comments accumulated up to the collection; no engagement rate.</li>
+      </ul>
+      <h2 className="display text-xl">Sources</h2>
+      <p className="text-sm text-muted">
+        TSE (ballot-box reports, official results and polling place registry) · IBGE (municipal boundaries) ·
+        Basemap: OpenFreeMap / © OpenStreetMap.
       </p>
     </article>
   );

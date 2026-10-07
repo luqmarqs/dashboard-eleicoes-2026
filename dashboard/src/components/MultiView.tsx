@@ -6,10 +6,11 @@ import type { ExportCol } from "../lib/export";
 import { fmt, pct, titulo } from "../lib/format";
 import { CARGOS, type Candidatura } from "../lib/types";
 import { DataTable } from "./DataTable";
+import { L } from "../lib/i18n";
 import { LazyMap } from "./LazyMap";
 import type { Metrica, Modo } from "./mapTypes";
 import { TopLista } from "./Rankings";
-import { ErrorBox, Loading, MapControls, Segmented, SituacaoBadge, nomeCand } from "./ui";
+import { ErrorBox, Loading, MapControls, Segmented, SituacaoBadge, nomeCand, situacaoTexto } from "./ui";
 
 interface Linha {
   key: string;
@@ -71,7 +72,7 @@ export function MultiView({ ids, municipio, nomeArquivo, onMunicipio }: {
   const columns = useMemo<ColumnDef<Linha, unknown>[]>(() => [
     {
       id: "nome", accessorKey: "nome",
-      header: efetivoNivel === "municipio" ? "Município" : efetivoNivel === "bairro" ? "Bairro" : "Escola / local",
+      header: efetivoNivel === "municipio" ? L("Município", "City") : efetivoNivel === "bairro" ? L("Bairro", "Neighborhood") : L("Escola / local", "Polling place"),
       cell: (c) => (
         <div className="min-w-[12rem]">
           <div className="font-semibold">{efetivoNivel === "local" ? c.row.original.nome : titulo(c.row.original.nome)}</div>
@@ -83,7 +84,7 @@ export function MultiView({ ids, municipio, nomeArquivo, onMunicipio }: {
     ...cands.map((cand, i): ColumnDef<Linha, unknown> => ({
       id: `c${cand.id}`, accessorFn: (r) => r.porCand[i], meta: { numeric: true },
       header: () => (
-        <span title={[cand.nomeCompleto, cand.situacao].filter(Boolean).join(" · ")}>
+        <span title={[cand.nomeCompleto, cand.situacao && situacaoTexto(cand.situacao)].filter(Boolean).join(" · ")}>
           {cand.numero}<br /><span className="font-normal">{cand.nome}</span>
           {cand.situacao?.startsWith("Eleito") && <><br /><SituacaoBadge c={cand} compacto /></>}
         </span>
@@ -93,57 +94,58 @@ export function MultiView({ ids, municipio, nomeArquivo, onMunicipio }: {
       id: `t${cands[i].id}`, accessorFn: (r: Linha) => (totaisCand[i] ? r.porCand[i] / totaisCand[i] : 0),
       meta: { numeric: true },
       header: () => (
-        <span className="font-normal" title={`Parte do total de ${cands[i].nome} ${municipio ? "na cidade" : "no estado"}`}>
-          % do total{municipio ? " na cidade" : ""}<br />{cands[i].nome}
+        <span className="font-normal" title={L(`Parte do total de ${cands[i].nome} ${municipio ? "na cidade" : "no estado"}`, `Share of ${cands[i].nome}'s total ${municipio ? "in the city" : "in the state"}`)}>
+          {municipio ? L("% do total na cidade", "% of total in the city") : L("% do total", "% of total")}<br />{cands[i].nome}
         </span>
       ),
       cell: (c) => <span className="text-muted">{pct(Number(c.getValue()))}</span>,
     } as ColumnDef<Linha, unknown>]),
-    { id: "soma", accessorKey: "soma", header: "Soma", cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
+    { id: "soma", accessorKey: "soma", header: L("Soma", "Sum"), cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     {
-      id: "pct", accessorFn: (r) => (r.validos ? r.soma / r.validos : 0), header: "% dos válidos",
+      id: "pct", accessorFn: (r) => (r.validos ? r.soma / r.validos : 0), header: L("% dos válidos", "% of valid votes"),
       cell: (c) => pct(Number(c.getValue())), meta: { numeric: true },
     },
-    { id: "validos", accessorKey: "validos", header: "Válidos (todos)", cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
+    { id: "validos", accessorKey: "validos", header: L("Válidos (todos)", "Valid votes (all)"), cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
   ], [cands, efetivoNivel, municipio, totaisCand]);
 
   const exportCols = useMemo<ExportCol<Linha>[]>(() => [
-    { header: efetivoNivel === "municipio" ? "Município" : efetivoNivel === "bairro" ? "Bairro" : "Local de votação", value: (r) => r.nome },
-    { header: "Município", value: (r) => r.municipio },
-    ...(efetivoNivel === "local" ? [{ header: "Endereço", value: (r: Linha) => r.endereco ?? "" }, { header: "Bairro", value: (r: Linha) => r.bairro ?? "" }] : []),
+    { header: efetivoNivel === "municipio" ? L("Município", "City") : efetivoNivel === "bairro" ? L("Bairro", "Neighborhood") : L("Local de votação", "Polling place"), value: (r) => r.nome },
+    { header: L("Município", "City"), value: (r) => r.municipio },
+    ...(efetivoNivel === "local" ? [{ header: L("Endereço", "Address"), value: (r: Linha) => r.endereco ?? "" }, { header: L("Bairro", "Neighborhood"), value: (r: Linha) => r.bairro ?? "" }] : []),
     ...cands.flatMap((c, i): ExportCol<Linha>[] => [
       {
-        header: `${c.numero} ${c.nome}${c.situacao?.startsWith("Eleito") ? " (ELEITO)" : ""}`,
+        header: `${c.numero} ${c.nome}${c.situacao?.startsWith("Eleito") ? L(" (ELEITO)", " (ELECTED)") : ""}`,
         value: (r: Linha) => r.porCand[i], type: "number",
       },
       {
-        header: `% do total de ${c.nome}${municipio ? " na cidade" : ""}`,
+        header: L(`% do total de ${c.nome}${municipio ? " na cidade" : ""}`, `% of ${c.nome} total${municipio ? " in the city" : ""}`),
         value: (r: Linha) => (totaisCand[i] ? r.porCand[i] / totaisCand[i] : 0), type: "percent",
       },
     ]),
-    { header: "Soma das selecionadas", value: (r) => r.soma, type: "number" },
-    { header: "% dos válidos", value: (r) => (r.validos ? r.soma / r.validos : 0), type: "percent" },
-    { header: "Votos válidos (todos os candidatos)", value: (r) => r.validos, type: "number" },
+    { header: L("Soma das selecionadas", "Sum of selected"), value: (r) => r.soma, type: "number" },
+    { header: L("% dos válidos", "% of valid votes"), value: (r) => (r.validos ? r.soma / r.validos : 0), type: "percent" },
+    { header: L("Votos válidos (todos os candidatos)", "Valid votes (all candidates)"), value: (r) => r.validos, type: "number" },
   ], [cands, efetivoNivel, municipio, totaisCand]);
 
   if (base.error) return <ErrorBox error={base.error} />;
   if (votos.error) return <ErrorBox error={votos.error} />;
-  if (!base.data || !porCand) return <Loading texto="Carregando votos das candidaturas…" />;
+  if (!base.data || !porCand) return <Loading texto={L("Carregando votos das candidaturas…", "Loading candidate votes…")} />;
 
   return (
     <div className="flex flex-col gap-4">
       {cargos.length > 1 && (
         <p className="rounded-md border border-line bg-accent-soft px-3 py-2 text-sm">
-          Candidaturas de cargos diferentes: a soma e a "% dos válidos" usam os válidos de {CARGOS[cargos[0]]}. Compare de preferência dentro do mesmo cargo.
+          {L(`Candidaturas de cargos diferentes: a soma e a "% dos válidos" usam os válidos de ${CARGOS[cargos[0]]}. Compare de preferência dentro do mesmo cargo.`,
+            `Candidates for different offices: the sum and "% of valid votes" use the valid votes for ${CARGOS[cargos[0]]}. Prefer comparing within the same office.`)}
         </p>
       )}
       <ResumoCands base={base.data} cands={cands} porCand={porCand} municipio={municipio} />
       <div className="flex flex-wrap items-center gap-3">
         <label htmlFor="serie" className="flex items-center gap-2 text-sm text-muted">
-          Camada do mapa
+          {L("Camada do mapa", "Map layer")}
           <select id="serie" value={String(serie)} onChange={(e) => setSerie(e.target.value === "soma" ? "soma" : Number(e.target.value))}
             className="rounded-md border border-line bg-panel px-3 py-1.5 text-ink">
-            <option value="soma">Soma das {cands.length} selecionadas</option>
+            <option value="soma">{L(`Soma das ${cands.length} selecionadas`, `Sum of the ${cands.length} selected`)}</option>
             {cands.map((c) => <option key={c.id} value={c.id}>{nomeCand(c)}</option>)}
           </select>
         </label>
@@ -156,14 +158,14 @@ export function MultiView({ ids, municipio, nomeArquivo, onMunicipio }: {
             destaques={lista.slice(0, 20).map((l, i) => ({ rank: i + 1, nome: titulo(l.nome), lat: l.lat, lon: l.lon }))} />
         )}
         <aside className="min-w-0 lg:max-h-[min(70vh,720px)] lg:overflow-y-auto">
-          <h2 className="mb-1 text-sm font-bold uppercase tracking-wide">20 {municipio ? "bairros" : "cidades"} com mais votos</h2>
+          <h2 className="mb-1 text-sm font-bold uppercase tracking-wide">{municipio ? L("20 bairros com mais votos", "Top 20 neighborhoods by votes") : L("20 cidades com mais votos", "Top 20 cities by votes")}</h2>
           <TopLista linhas={lista} n={20} onClick={(l) => { if (!municipio && onMunicipio) onMunicipio(l.key); }} />
         </aside>
       </div>
-      <Segmented label="Nível da tabela" value={efetivoNivel} onChange={setNivel}
+      <Segmented label={L("Nível da tabela", "Table level")} value={efetivoNivel} onChange={setNivel}
         options={[
-          ...(municipio ? [] : [{ id: "municipio" as Nivel, label: "Por cidade" }]),
-          { id: "bairro", label: "Por bairro" }, { id: "local", label: "Por escola" },
+          ...(municipio ? [] : [{ id: "municipio" as Nivel, label: L("Por cidade", "By city") }]),
+          { id: "bairro", label: L("Por bairro", "By neighborhood") }, { id: "local", label: L("Por escola", "By polling place") },
         ]} />
       <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`${nomeArquivo}_${efetivoNivel}`}
         busca={(r) => `${r.nome} ${r.municipio} ${r.bairro ?? ""}`} initialSort={[{ id: "soma", desc: true }]} />

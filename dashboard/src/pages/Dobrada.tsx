@@ -7,11 +7,12 @@ import { CandidatePicker, ErrorBox, Loading, MunicipioSelect, Segmented, Situaca
 import { BIVAR, cssRgb, prefersDark, type RGB } from "../lib/colors";
 import { agregar, porLocal, useBase, useTotais, useVotos, type Base, type PorLocal } from "../lib/data";
 import type { ExportCol } from "../lib/export";
-import { fmt, pct, titulo } from "../lib/format";
+import { dec, fmt, pct, titulo } from "../lib/format";
+import { L, getLang } from "../lib/i18n";
 import { CARGOS, type Candidatura } from "../lib/types";
 import { useUf } from "../lib/uf";
 
-const NIVEL_TXT = ["baixo", "médio", "alto"];
+const nivelTxt = () => [L("baixo", "low"), L("médio", "medium"), L("alto", "high")];
 
 function tercis(vals: number[]): [number, number] {
   const s = vals.filter((v) => v > 0).sort((a, b) => a - b);
@@ -81,31 +82,34 @@ export function Dobrada() {
   return (
     <div className="flex flex-col gap-5">
       <header>
-        <div className="eyebrow">Dobrada</div>
+        <div className="eyebrow">{L("Dobrada", "Joint ticket")}</div>
         <h1 className="display text-3xl">
           {a ? <>{nomeCand(a)}<SituacaoBadge c={a} compacto /></> : "?"} × {b ? <>{nomeCand(b)}<SituacaoBadge c={b} compacto /></> : "?"}
         </h1>
         <p className="max-w-3xl text-muted">
-          Cada local de votação é classificado pelos tercis da % dos válidos de cada candidatura no recorte: onde as duas são fortes juntas, onde só uma é, e onde nenhuma é.
+          {L(
+            "Cada local de votação é classificado pelos tercis da % dos válidos de cada candidatura no recorte: onde as duas são fortes juntas, onde só uma é, e onde nenhuma é.",
+            "Each polling place is classified by the terciles of each candidate's % of valid votes in the selection: where both are strong together, where only one is, and where neither is.",
+          )}
         </p>
       </header>
       <div className="grid gap-3 md:grid-cols-3">
-        <div><div className="mb-1 text-sm text-muted">Candidatura A (eixo roxo)</div>
-          <CandidatePicker id="pick-a" base={B} onPick={(c) => set("a", String(c.id))} placeholder={a ? nomeCand(a) : "Escolher…"} /></div>
-        <div><div className="mb-1 text-sm text-muted">Candidatura B (eixo verde-azulado)</div>
-          <CandidatePicker id="pick-b" base={B} onPick={(c) => set("b", String(c.id))} placeholder={b ? nomeCand(b) : "Escolher…"} /></div>
+        <div><div className="mb-1 text-sm text-muted">{L("Candidatura A (eixo roxo)", "Candidate A (purple axis)")}</div>
+          <CandidatePicker id="pick-a" base={B} onPick={(c) => set("a", String(c.id))} placeholder={a ? nomeCand(a) : L("Escolher…", "Choose…")} /></div>
+        <div><div className="mb-1 text-sm text-muted">{L("Candidatura B (eixo verde-azulado)", "Candidate B (teal axis)")}</div>
+          <CandidatePicker id="pick-b" base={B} onPick={(c) => set("b", String(c.id))} placeholder={b ? nomeCand(b) : L("Escolher…", "Choose…")} /></div>
         <MunicipioSelect base={B} value={municipio} onChange={(cd) => set("mun", cd)} id="mun-dob" />
       </div>
       {votos.error && <ErrorBox error={votos.error} />}
-      {!analise || !a || !b || !soma ? <Loading texto="Cruzando as candidaturas…" /> : (
+      {!analise || !a || !b || !soma ? <Loading texto={L("Cruzando as candidaturas…", "Crossing the candidacies…")} /> : (
         <>
           {municipio && (
-            <Segmented label="Modo do mapa" value={modo} onChange={(m) => set("modo", m)}
-              options={[{ id: "escolas", label: "Escolas" }, { id: "territorios", label: "Territórios" }]} />
+            <Segmented label={L("Modo do mapa", "Map mode")} value={modo} onChange={(m) => set("modo", m)}
+              options={[{ id: "escolas", label: L("Escolas", "Polling places") }, { id: "territorios", label: L("Territórios", "Areas") }]} />
           )}
           <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
             <LazyMap base={B} dados={soma} municipio={municipio} modo={modo} metrica="votos" corPorLocal={corPorLocal}
-              rotuloSerie="votos somados" onMunicipio={(cd) => set("mun", cd)} />
+              rotuloSerie={L("votos somados", "combined votes")} onMunicipio={(cd) => set("mun", cd)} />
             <aside className="flex min-w-0 flex-col gap-4">
               <LegendaBivariada a={a} b={b} />
               <Dispersao analise={analise} a={a} b={b} />
@@ -122,8 +126,9 @@ export function Dobrada() {
 }
 
 function LegendaBivariada({ a, b }: { a: Candidatura; b: Candidatura }) {
+  const NIVEL_TXT = nivelTxt();
   return (
-    <div className="flex items-end gap-3" aria-label="Legenda bivariada">
+    <div className="flex items-end gap-3" aria-label={L("Legenda bivariada", "Bivariate legend")}>
       <div className="grid grid-cols-3" style={{ width: 96 }}>
         {[2, 1, 0].map((ia) => [0, 1, 2].map((ib) => (
           <span key={`${ia}${ib}`} className="h-8" style={{ background: cssRgb(BIVAR[ia][ib]) }}
@@ -133,7 +138,7 @@ function LegendaBivariada({ a, b }: { a: Candidatura; b: Candidatura }) {
       <div className="text-xs text-muted">
         <div>↑ {a.nome} ({CARGOS[a.cargo]})</div>
         <div>→ {b.nome} ({CARGOS[b.cargo]})</div>
-        <div className="mt-1">canto escuro = as duas fortes</div>
+        <div className="mt-1">{L("canto escuro = as duas fortes", "dark corner = both strong")}</div>
       </div>
     </div>
   );
@@ -144,14 +149,14 @@ function Contagem({ analise }: { analise: { classe: Int8Array } }) {
   analise.classe.forEach((k) => { if (k >= 0) n[k]++; });
   const total = n.reduce((x, y) => x + y, 0) || 1;
   const linhas = [
-    { k: 8, t: "As duas fortes" }, { k: 6, t: "Só A forte" }, { k: 2, t: "Só B forte" }, { k: 0, t: "As duas fracas" },
+    { k: 8, t: L("As duas fortes", "Both strong") }, { k: 6, t: L("Só A forte", "Only A strong") }, { k: 2, t: L("Só B forte", "Only B strong") }, { k: 0, t: L("As duas fracas", "Both weak") },
   ];
   return (
     <ul className="text-sm">
       {linhas.map(({ k, t }) => (
         <li key={k} className="flex items-center gap-2 border-b border-line py-1">
           <span className="h-3 w-3 rounded-sm" style={{ background: cssRgb(BIVAR[Math.floor(k / 3)][k % 3]) }} />
-          {t}<span className="num ml-auto">{fmt(n[k])} locais · {pct(n[k] / total, 0)}</span>
+          {t}<span className="num ml-auto">{fmt(n[k])} {L("locais", "places")} · {pct(n[k] / total, 0)}</span>
         </li>
       ))}
     </ul>
@@ -192,12 +197,12 @@ function Dispersao({ analise, a, b }: { analise: { xa: number[]; xb: number[]; t
     ctx.globalAlpha = 1;
     ctx.fillStyle = dark ? "#b3a6ba" : "#6b5f72";
     ctx.font = "11px 'Source Sans 3', sans-serif";
-    ctx.fillText(`${b.nome} (% válidos) →`, pad, H - 10);
+    ctx.fillText(L(`${b.nome} (% válidos) →`, `${b.nome} (% valid votes) →`), pad, H - 10);
     ctx.save(); ctx.translate(12, H - pad); ctx.rotate(-Math.PI / 2); ctx.fillText(`${a.nome} →`, 0, 0); ctx.restore();
     ctx.fillText(pct(mx, 1), W - 40, H - pad + 12);
     ctx.fillText(pct(my, 1), pad + 4, 12);
   }, [analise, a, b]);
-  return <canvas ref={ref} className="h-56 w-full" role="img" aria-label={`Dispersão por local: % de ${a.nome} × % de ${b.nome}`} />;
+  return <canvas ref={ref} className="h-56 w-full" role="img" aria-label={L(`Dispersão por local: % de ${a.nome} × % de ${b.nome}`, `Scatter by polling place: % for ${a.nome} × % for ${b.nome}`)} />;
 }
 
 interface LinhaD { key: string; nome: string; municipio: string; bairro?: string; va: number; vb: number; pa: number; pb: number }
@@ -213,22 +218,22 @@ function TabelaDobrada({ base, a, b, pa, pb, municipio }: { base: Base; a: Candi
     });
   }, [base, pa, pb, nivel, municipio]);
   const columns = useMemo<ColumnDef<LinhaD, unknown>[]>(() => [
-    { id: "nome", accessorKey: "nome", header: nivel === "local" ? "Escola / local" : "Município",
+    { id: "nome", accessorKey: "nome", header: nivel === "local" ? L("Escola / local", "Polling place") : L("Município", "City"),
       cell: (c) => <div><div className="font-semibold">{nivel === "local" ? c.row.original.nome : titulo(c.row.original.nome)}</div>
         {nivel === "local" && <div className="text-xs text-muted">{titulo(c.row.original.bairro ?? "")}</div>}</div> },
-    { id: "va", accessorKey: "va", header: `${a.nome} (votos)`, cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
+    { id: "va", accessorKey: "va", header: L(`${a.nome} (votos)`, `${a.nome} (votes)`), cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     { id: "pa", accessorKey: "pa", header: `${a.nome} (%)`, cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
-    { id: "vb", accessorKey: "vb", header: `${b.nome} (votos)`, cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
+    { id: "vb", accessorKey: "vb", header: L(`${b.nome} (votos)`, `${b.nome} (votes)`), cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     { id: "pb", accessorKey: "pb", header: `${b.nome} (%)`, cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
   ], [a, b, nivel]);
   const exportCols: ExportCol<LinhaD>[] = [
-    { header: nivel === "local" ? "Local de votação" : "Município", value: (r) => r.nome },
-    { header: "Município", value: (r) => r.municipio },
-    { header: "Bairro", value: (r) => r.bairro ?? "" },
-    { header: `${a.numero} ${a.nome} (votos)`, value: (r) => r.va, type: "number" },
-    { header: `${a.numero} ${a.nome} (% válidos)`, value: (r) => r.pa, type: "percent" },
-    { header: `${b.numero} ${b.nome} (votos)`, value: (r) => r.vb, type: "number" },
-    { header: `${b.numero} ${b.nome} (% válidos)`, value: (r) => r.pb, type: "percent" },
+    { header: nivel === "local" ? L("Local de votação", "Polling place") : L("Município", "City"), value: (r) => r.nome },
+    { header: L("Município", "City"), value: (r) => r.municipio },
+    { header: L("Bairro", "Neighborhood"), value: (r) => r.bairro ?? "" },
+    { header: L(`${a.numero} ${a.nome} (votos)`, `${a.numero} ${a.nome} (votes)`), value: (r) => r.va, type: "number" },
+    { header: L(`${a.numero} ${a.nome} (% válidos)`, `${a.numero} ${a.nome} (% valid votes)`), value: (r) => r.pa, type: "percent" },
+    { header: L(`${b.numero} ${b.nome} (votos)`, `${b.numero} ${b.nome} (votes)`), value: (r) => r.vb, type: "number" },
+    { header: L(`${b.numero} ${b.nome} (% válidos)`, `${b.numero} ${b.nome} (% valid votes)`), value: (r) => r.pb, type: "percent" },
   ];
   return (
     <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`dobrada_${a.numero}_${b.numero}`}
@@ -239,7 +244,21 @@ function TabelaDobrada({ base, a, b, pa, pb, municipio }: { base: Base; a: Candi
 function ComoLer({ a, b }: { a: Candidatura; b: Candidatura }) {
   return (
     <div className="flex flex-col gap-1.5 text-xs leading-relaxed text-muted">
-      <b className="text-ink">Como ler o gráfico</b>
+      <b className="text-ink">{L("Como ler o gráfico", "How to read the chart")}</b>
+      {getLang() === "en" ? (<>
+      <p>
+        Each dot is a polling place. Horizontally, the % of valid votes for {titulo(b.nome)} ({CARGOS[b.cargo]}) at that place;
+        vertically, the % for {titulo(a.nome)} ({CARGOS[a.cargo]}).
+      </p>
+      <p>
+        The dotted lines cut each axis into three bands with the same number of places (low, medium, high) — these are the map's
+        colors. Dots in the upper-right corner (dark blue) are places where both are in their strongest third.
+      </p>
+      <p>
+        If the cloud rises from left to right, both grow in the same places. "Arms" hugging one axis show strongholds of only
+        one. The chart describes where the votes coincide; it does not show that one vote pulled the other.
+      </p>
+      </>) : (<>
       <p>
         Cada ponto é um local de votação. Na horizontal, a % dos válidos de {titulo(b.nome)} ({CARGOS[b.cargo]}) naquele local;
         na vertical, a % de {titulo(a.nome)} ({CARGOS[a.cargo]}).
@@ -252,6 +271,7 @@ function ComoLer({ a, b }: { a: Candidatura; b: Candidatura }) {
         Se a nuvem sobe da esquerda para a direita, as duas crescem nos mesmos lugares. "Braços" colados a um eixo mostram
         redutos de uma só. O gráfico descreve onde os votos coincidem; não mostra que um voto puxou o outro.
       </p>
+      </>)}
     </div>
   );
 }
@@ -291,16 +311,46 @@ function AnaliseDobrada({ base, analise, pa, pb, a, b, municipio }: {
     return { rho, n, total, pAmbasA: totA ? ambasA / totA : 0, pAmbasB: totB ? ambasB / totB : 0, topA: top(soA), topB: top(soB) };
   }, [analise, pa, pb, municipio]);
 
-  const forca = !Number.isFinite(r.rho) ? "indefinida" : r.rho >= 0.6 ? "forte" : r.rho >= 0.3 ? "moderada" : r.rho > 0 ? "fraca" : "nula ou negativa";
+  const forca = !Number.isFinite(r.rho) ? L("indefinida", "Undefined") : r.rho >= 0.6 ? L("forte", "Strong") : r.rho >= 0.3 ? L("moderada", "Moderate") : r.rho > 0 ? L("fraca", "Weak") : L("nula ou negativa", "Null or negative");
   const A = titulo(a.nome), Bn = titulo(b.nome);
-  const onde = municipio ? `em ${titulo(base.munByCd.get(municipio)?.nome ?? "")}` : "no estado";
+  const nomeMun = municipio ? titulo(base.munByCd.get(municipio)?.nome ?? "") : "";
+  const onde = municipio ? L(`em ${nomeMun}`, `in ${nomeMun}`) : L("no estado", "in the state");
   const unid = municipio ? "bairros" : "cidades";
+  const rhoTxt = Number.isFinite(r.rho) ? dec(r.rho, 2) : "–";
+  if (getLang() === "en") return (
+    <section aria-label="Joint ticket analysis" className="flex flex-col gap-2 rounded-lg border border-line bg-panel p-4">
+      <h2 className="display text-xl">Joint ticket analysis {onde}</h2>
+      <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed">
+        <li>
+          <b>{forca} territorial overlap</b> (correlation of {rhoTxt} between
+          the % of valid votes, place by place; 1 would be a perfect match and 0, no relationship).
+        </li>
+        <li>
+          In <b className="num">{fmt(r.n[8])}</b> places ({pct(r.n[8] / r.total, 0)}) both are in their strongest third. These places
+          account for <b>{pct(r.pAmbasA, 0)}</b> of {A}'s votes and <b>{pct(r.pAmbasB, 0)}</b> of {Bn}'s votes {onde}.
+        </li>
+        <li>
+          Strongholds of {A} only: <b className="num">{fmt(r.n[6])}</b> places{r.topA.length ? <>, mainly in {r.topA.join(", ")}</> : null}.
+          {" "}Strongholds of {Bn} only: <b className="num">{fmt(r.n[2])}</b> places{r.topB.length ? <>, mainly in {r.topB.join(", ")}</> : null}.
+          {" "}These are the {municipio ? "neighborhoods" : "cities"} where one candidate has their own base and the other has not caught up yet.
+        </li>
+        <li>
+          In <b className="num">{fmt(r.n[0])}</b> places ({pct(r.n[0] / r.total, 0)}) both are in their weakest third.
+        </li>
+      </ul>
+      <p className="text-xs text-muted">
+        Descriptive reading aggregated by polling place: it shows where the votes coincide, not that voters voted for both nor
+        that one candidate transferred votes to the other. Different offices have different valid votes; that is why the comparison uses
+        the % of valid votes for each office.
+      </p>
+    </section>
+  );
   return (
     <section aria-label="Análise da dobrada" className="flex flex-col gap-2 rounded-lg border border-line bg-panel p-4">
       <h2 className="display text-xl">Análise da dobrada {onde}</h2>
       <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed">
         <li>
-          <b>Coincidência territorial {forca}</b> (correlação de {Number.isFinite(r.rho) ? r.rho.toFixed(2).replace(".", ",") : "–"} entre
+          <b>Coincidência territorial {forca}</b> (correlação de {rhoTxt} entre
           as % dos válidos, local a local; 1 seria coincidência perfeita e 0, nenhuma relação).
         </li>
         <li>

@@ -1,3 +1,4 @@
+import { getLang } from "./i18n";
 /** Formatos colunares devolvidos pelas funções do Supabase (e pelos arquivos de dev-data). */
 
 export interface LocaisCols {
@@ -116,10 +117,13 @@ export interface Municipio {
   lon: number;
 }
 
-export const CARGOS: Record<number, string> = {
-  1: "Presidente",
-  3: "Governador",
-  5: "Senador",
-  6: "Deputado Federal",
-  7: "Deputado Estadual",
-};
+const CARGOS_PT: Record<number, string> = { 1: "Presidente", 3: "Governador", 5: "Senador", 6: "Deputado Federal", 7: "Deputado Estadual" };
+const CARGOS_EN: Record<number, string> = { 1: "President", 3: "Governor", 5: "Senator", 6: "Federal Deputy", 7: "State Deputy" };
+/** Nome do cargo no idioma da interface. */
+export const CARGOS: Record<number, string> = new Proxy({} as Record<number, string>, {
+  get: (_t, k) => (getLang() === "en" ? CARGOS_EN : CARGOS_PT)[Number(String(k))],
+  has: (_t, k) => Number(String(k)) in CARGOS_PT,
+  ownKeys: () => Object.keys(CARGOS_PT),
+  getOwnPropertyDescriptor: (_t, k) => ({ enumerable: true, configurable: true,
+    value: (getLang() === "en" ? CARGOS_EN : CARGOS_PT)[Number(String(k))] }),
+});

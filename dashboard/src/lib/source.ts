@@ -7,6 +7,7 @@ import type {
 } from "./types";
 import { supabase } from "./supabase";
 import { getUf } from "./uf";
+import { L } from "./i18n";
 export const isDev = import.meta.env.VITE_DATA_SOURCE === "dev" && import.meta.env.DEV;
 
 export interface DadosRegra {
@@ -160,12 +161,12 @@ export interface DataSource {
 
 async function getJson<T>(url: string): Promise<T> {
   const r = await fetch(url);
-  if (!r.ok) throw new Error(`Falha ao carregar ${url} (HTTP ${r.status})`);
+  if (!r.ok) throw new Error(L(`Falha ao carregar ${url} (HTTP ${r.status})`, `Failed to load ${url} (HTTP ${r.status})`));
   return r.json() as Promise<T>;
 }
 
 function rpcError(fn: string, error: { message: string } | null): never {
-  throw new Error(`Erro ao consultar ${fn}: ${error?.message ?? "resposta vazia"}`);
+  throw new Error(L(`Erro ao consultar ${fn}: ${error?.message ?? "resposta vazia"}`, `Error querying ${fn}: ${error?.message ?? "empty response"}`));
 }
 
 async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
@@ -344,7 +345,7 @@ const remote: DataSource = {
   digital: () => rpc("digital_json", { p_uf: getUf() }),
   async versao() {
     const { data, error } = await supabase().from("meta").select("valor").eq("chave", "versao_dados").maybeSingle();
-    if (error) rpcError("versão dos dados", error);
+    if (error) rpcError(L("versão dos dados", "data version"), error);
     return data?.valor ?? "sem-versao";
   },
   dadosRegra: (partido, cargo, cd, limite) =>
@@ -354,7 +355,7 @@ const remote: DataSource = {
   async municipios() {
     const { data, error } = await supabase().from("municipios").select("cd_municipio, cd_ibge, nome, lat, lon")
       .eq("uf", getUf()).order("cd_municipio").range(0, 999);
-    if (error || !data) rpcError("municipios", error);
+    if (error || !data) rpcError(L("municipios", "municipalities"), error);
     return {
       cd: data.map((r) => r.cd_municipio), ibge: data.map((r) => r.cd_ibge), nome: data.map((r) => r.nome),
       lat: data.map((r) => r.lat), lon: data.map((r) => r.lon),
@@ -365,7 +366,7 @@ const remote: DataSource = {
       supabase().from("partidos_destaque").select("sg_partido, ordem, cor").order("ordem"),
       supabase().from("candidaturas_destaque").select("candidatura_id, ordem").order("ordem"),
     ]);
-    if (p.error || c.error) rpcError("configuração", p.error ?? c.error);
+    if (p.error || c.error) rpcError(L("configuração", "configuration"), p.error ?? c.error);
     return {
       partidos: (p.data ?? []).map((r) => ({ sigla: r.sg_partido, ordem: r.ordem, cor: r.cor })),
       candidaturas: (c.data ?? []).map((r) => r.candidatura_id),
@@ -380,7 +381,7 @@ const remote: DataSource = {
       .select("id, titulo, candidatura_ids, regra, cd_municipio, autor, criado_em, grupo, ordem").eq("uf", getUf())
       .order("grupo", { ascending: true, nullsFirst: false }).order("ordem", { ascending: true, nullsFirst: false })
       .order("criado_em", { ascending: false });
-    if (error) rpcError("painéis", error);
+    if (error) rpcError(L("painéis", "dashboards"), error);
     return data ?? [];
   },
   async salvarPainel(p) {
@@ -389,12 +390,12 @@ const remote: DataSource = {
       ? supabase().from("paineis").update({ ...row, atualizado_em: new Date().toISOString() }).eq("id", p.id)
       : supabase().from("paineis").insert(row);
     const { data, error } = await q.select("id, titulo, candidatura_ids, regra, cd_municipio, autor, criado_em").single();
-    if (error || !data) rpcError("salvar painel", error);
+    if (error || !data) rpcError(L("salvar painel", "save dashboard"), error);
     return data;
   },
   async apagarPainel(id) {
     const { error } = await supabase().from("paineis").delete().eq("id", id);
-    if (error) rpcError("apagar painel", error);
+    if (error) rpcError(L("apagar painel", "delete dashboard"), error);
   },
 };
 

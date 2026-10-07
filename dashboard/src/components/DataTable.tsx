@@ -4,7 +4,8 @@ import {
 } from "@tanstack/react-table";
 import { useState } from "react";
 import { exportarCsv, exportarXlsx, type ExportCol } from "../lib/export";
-import { normalizar } from "../lib/format";
+import { fmt, normalizar } from "../lib/format";
+import { L } from "../lib/i18n";
 
 interface Props<T> {
   data: T[];
@@ -45,11 +46,11 @@ export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, in
             type="search"
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
-            placeholder="Buscar…"
+            placeholder={L("Buscar…", "Search…")}
             className="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-1.5"
           />
         )}
-        <span className="text-sm text-muted">{linhas.length.toLocaleString("pt-BR")} linhas</span>
+        <span className="text-sm text-muted">{fmt(linhas.length)} {L("linhas", "rows")}</span>
         <div className="ml-auto flex gap-2">
           <button type="button" className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-accent-soft"
             onClick={() => exportarCsv(linhas, exportCols, nomeArquivo)}>CSV</button>
@@ -59,7 +60,7 @@ export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, in
       </div>
       {atalhos && atalhos.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted">Ordenar por:</span>
+          <span className="text-muted">{L("Ordenar por:", "Sort by:")}</span>
           {atalhos.map((a) => {
             const ativo = JSON.stringify(a.sort) === JSON.stringify(sorting);
             return (
@@ -86,8 +87,8 @@ export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, in
                       {h.isPlaceholder ? null : (
                         h.column.getCanSort() ? (
                           <button type="button" className="group inline-flex items-center gap-1" onClick={h.column.getToggleSortingHandler()}
-                            title="Clique para ordenar; clique de novo para inverter"
-                            aria-label={`Ordenar por ${String(h.column.columnDef.header)}`}>
+                            title={L("Clique para ordenar; clique de novo para inverter", "Click to sort; click again to reverse")}
+                            aria-label={L(`Ordenar por ${String(h.column.columnDef.header)}`, `Sort by ${String(h.column.columnDef.header)}`)}>
                             {flexRender(h.column.columnDef.header, h.getContext())}
                             <span className={sorted ? "text-accent" : "text-muted/60 group-hover:text-muted"} aria-hidden>
                               {sorted === "asc" ? "▲" : sorted === "desc" ? "▼" : "↕"}
@@ -120,10 +121,10 @@ export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, in
       {table.getPageCount() > 1 && (
         <div className="flex items-center justify-end gap-2 text-sm">
           <button type="button" className="rounded-md border border-line px-2 py-1 disabled:opacity-40"
-            onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>Anterior</button>
+            onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>{L("Anterior", "Previous")}</button>
           <span className="num text-muted">{pageIndex + 1} / {table.getPageCount()}</span>
           <button type="button" className="rounded-md border border-line px-2 py-1 disabled:opacity-40"
-            onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>Próxima</button>
+            onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>{L("Próxima", "Next")}</button>
         </div>
       )}
     </div>

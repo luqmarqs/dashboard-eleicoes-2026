@@ -5,6 +5,7 @@ import { cssRgb, prefersDark, quantis, ramp, type RGB, classe } from "../lib/col
 import { porLocal, useTotais, useVotos, type Base } from "../lib/data";
 import type { ExportCol } from "../lib/export";
 import { fmt, pct, titulo } from "../lib/format";
+import { L, getLang } from "../lib/i18n";
 import { geoUrl } from "../lib/source";
 import type { Candidatura } from "../lib/types";
 import { useUf } from "../lib/uf";
@@ -45,23 +46,27 @@ interface Area {
   vFoco: number;
 }
 
-const PORTES = {
+const PORTES = () => ({
   municipio: [
-    { id: "p1", label: "até 5 mil eleitores", max: 5_000 },
-    { id: "p2", label: "5 a 20 mil", max: 20_000 },
-    { id: "p3", label: "20 a 100 mil", max: 100_000 },
-    { id: "p4", label: "mais de 100 mil", max: Infinity },
+    { id: "p1", label: L("até 5 mil eleitores", "up to 5k voters"), max: 5_000 },
+    { id: "p2", label: L("5 a 20 mil", "5k to 20k"), max: 20_000 },
+    { id: "p3", label: L("20 a 100 mil", "20k to 100k"), max: 100_000 },
+    { id: "p4", label: L("mais de 100 mil", "over 100k"), max: Infinity },
   ],
   bairro: [
-    { id: "p1", label: "até 2 mil eleitores", max: 2_000 },
-    { id: "p2", label: "2 a 10 mil", max: 10_000 },
-    { id: "p3", label: "10 a 30 mil", max: 30_000 },
-    { id: "p4", label: "mais de 30 mil", max: Infinity },
+    { id: "p1", label: L("até 2 mil eleitores", "up to 2k voters"), max: 2_000 },
+    { id: "p2", label: L("2 a 10 mil", "2k to 10k"), max: 10_000 },
+    { id: "p3", label: L("10 a 30 mil", "10k to 30k"), max: 30_000 },
+    { id: "p4", label: L("mais de 30 mil", "over 30k"), max: Infinity },
   ],
-};
+});
 
 const sinal = (x: number) => (x > 0 ? "+" : "");
-const ord = (n: number) => `${n}º`;
+const ordEn = (n: number) => {
+  const r = n % 100;
+  return `${n}${r >= 11 && r <= 13 ? "th" : n % 10 === 1 ? "st" : n % 10 === 2 ? "nd" : n % 10 === 3 ? "rd" : "th"}`;
+};
+const ord = (n: number) => (getLang() === "en" ? ordEn(n) : `${n}º`);
 
 export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
   base: Base; cand: Candidatura; municipio: string | null; setMunicipio: (cd: string | null) => void;
@@ -176,7 +181,7 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
   const [fPorte, setFPorte] = useState<string>("");
   const [fRegiao, setFRegiao] = useState<string>("");
   const [modoMapa, setModoMapa] = useState<ModoMapa>("posicao");
-  const portes = PORTES[nivel];
+  const portes = PORTES()[nivel];
 
   const passa = useCallback((a: Area) => {
     if (fPos === "1" && a.pos !== 1) return false;
@@ -234,81 +239,81 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
   const infoExtra = useCallback(({ municipio: cd, idx }: { municipio?: string; idx?: number }) => {
     const a = cd ? porKey.get(cd) : idx != null ? areaDoLocal.get(idx) : undefined;
     if (!a) return null;
-    const top = a.ordem.slice(0, 3).map((s, k) => `${k + 1}º ${nomeS(s)} ${fmt(a.v[s])}`).join("<br>");
+    const top = a.ordem.slice(0, 3).map((s, k) => `${ord(k + 1)} ${nomeS(s)} ${fmt(a.v[s])}`).join("<br>");
     const lugar = a.pos <= 3 ? "" : `<br>${ord(a.pos)} ${nomeS(iFoco)} ${fmt(a.vFoco)}`;
-    return `${municipio ? `Bairro ${titulo(a.nome)}<br>` : ""}${top}${lugar}`;
+    return `${municipio ? `${L("Bairro", "Neighborhood")} ${titulo(a.nome)}<br>` : ""}${top}${lugar}`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [porKey, areaDoLocal, municipio, iFoco, senadores]);
 
   // ---- tabela ----
   const distVaga = (a: Area) => (a.pos <= vagas ? a.vFoco - a.v[a.ordem[vagas]] : a.vFoco - a.v[a.ordem[vagas - 1]]);
   const columns = useMemo<ColumnDef<Area, unknown>[]>(() => [
-    { id: "nome", accessorKey: "nome", header: porBairro ? "Bairro" : "Município",
+    { id: "nome", accessorKey: "nome", header: porBairro ? L("Bairro", "Neighborhood") : L("Município", "City"),
       cell: (c) => (
         <div>
           <div className="font-semibold">{titulo(c.row.original.nome)}</div>
           {!municipio && (porBairro || c.row.original.regiao) && (
-            <div className="text-xs text-muted">{porBairro ? titulo(c.row.original.municipio) : `região ${c.row.original.regiao}`}</div>
+            <div className="text-xs text-muted">{porBairro ? titulo(c.row.original.municipio) : `${L("região", "region")} ${c.row.original.regiao}`}</div>
           )}
         </div>
       ) },
-    { id: "pos", accessorKey: "pos", header: "Posição", cell: (c) => {
+    { id: "pos", accessorKey: "pos", header: L("Posição", "Position"), cell: (c) => {
       const p = Number(c.getValue());
       return <span className={p <= vagas ? "font-bold text-accent" : ""}>{ord(p)}</span>;
     }, meta: { numeric: true } },
-    { id: "v", accessorKey: "vFoco", header: `Votos ${nomeS(iFoco)}`, cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
-    { id: "pct", accessorFn: (a) => a.vFoco / a.validos, header: "% válidos", cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
-    { id: "share", accessorFn: (a) => (totalFocoEscopo ? a.vFoco / totalFocoEscopo : 0), header: "% do total",
+    { id: "v", accessorKey: "vFoco", header: L(`Votos ${nomeS(iFoco)}`, `${nomeS(iFoco)} votes`), cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
+    { id: "pct", accessorFn: (a) => a.vFoco / a.validos, header: L("% válidos", "% valid"), cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
+    { id: "share", accessorFn: (a) => (totalFocoEscopo ? a.vFoco / totalFocoEscopo : 0), header: L("% do total", "% of total"),
       cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
-    { id: "p1", accessorFn: (a) => a.v[a.ordem[0]], header: "1º lugar", cell: (c) => {
+    { id: "p1", accessorFn: (a) => a.v[a.ordem[0]], header: L("1º lugar", "1st place"), cell: (c) => {
       const a = c.row.original;
       return <span><span className="font-sans text-muted">{nomeS(a.ordem[0])}</span> {fmt(a.v[a.ordem[0]])}</span>;
     }, meta: { numeric: true } },
-    { id: "p2", accessorFn: (a) => a.v[a.ordem[1]], header: "2º lugar", cell: (c) => {
+    { id: "p2", accessorFn: (a) => a.v[a.ordem[1]], header: L("2º lugar", "2nd place"), cell: (c) => {
       const a = c.row.original;
       return <span><span className="font-sans text-muted">{nomeS(a.ordem[1])}</span> {fmt(a.v[a.ordem[1]])}</span>;
     }, meta: { numeric: true } },
-    { id: "vaga", accessorFn: distVaga, header: `Distância à ${vagas}ª vaga`, cell: (c) => {
+    { id: "vaga", accessorFn: distVaga, header: L(`Distância à ${vagas}ª vaga`, `Distance to ${ordEn(vagas)} seat`), cell: (c) => {
       const v = Number(c.getValue());
       return <span className={v >= 0 ? "text-accent" : "text-danger"}>{sinal(v)}{fmt(v)}</span>;
     }, meta: { numeric: true } },
     ...(iRival !== iFoco ? [
-      { id: "rv", accessorFn: (a: Area) => a.v[iRival], header: `Votos ${nomeS(iRival)}`, cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
+      { id: "rv", accessorFn: (a: Area) => a.v[iRival], header: L(`Votos ${nomeS(iRival)}`, `${nomeS(iRival)} votes`), cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
       { id: "rd", accessorFn: (a: Area) => a.vFoco - a.v[iRival], header: `× ${nomeS(iRival)}`, cell: (c) => {
         const v = Number(c.getValue());
         return <span className={v >= 0 ? "text-accent" : "text-danger"}>{sinal(v)}{fmt(v)}</span>;
       }, meta: { numeric: true } },
     ] as ColumnDef<Area, unknown>[] : []),
-    { id: "aptos", accessorKey: "aptos", header: "Eleitores", cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
+    { id: "aptos", accessorKey: "aptos", header: L("Eleitores", "Voters"), cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [municipio, porBairro, vagas, iFoco, iRival, totalFocoEscopo, senadores]);
 
   const exportCols: ExportCol<Area>[] = [
-    { header: porBairro ? "Bairro" : "Município", value: (a) => a.nome },
-    ...(porBairro && !municipio ? [{ header: "Município", value: (a: Area) => a.municipio }] : []),
-    ...(municipio ? [] : [{ header: "Região intermediária (IBGE)", value: (a: Area) => a.regiao ?? "" }]),
-    { header: "Eleitores", value: (a) => a.aptos, type: "number" },
-    { header: "Votos válidos (Senado)", value: (a) => a.validos, type: "number" },
-    { header: "Posição", value: (a) => a.pos, type: "number" },
-    { header: `Votos ${nomeS(iFoco)}`, value: (a) => a.vFoco, type: "number" },
-    { header: "% válidos", value: (a) => a.vFoco / a.validos, type: "percent" },
-    { header: "% do total", value: (a) => (totalFocoEscopo ? a.vFoco / totalFocoEscopo : 0), type: "percent" },
-    { header: "1º lugar", value: (a) => nomeS(a.ordem[0]) },
-    { header: "Votos 1º", value: (a) => a.v[a.ordem[0]], type: "number" },
-    { header: "2º lugar", value: (a) => nomeS(a.ordem[1]) },
-    { header: "Votos 2º", value: (a) => a.v[a.ordem[1]], type: "number" },
-    { header: `Distância à ${vagas}ª vaga`, value: distVaga, type: "number" },
+    { header: porBairro ? L("Bairro", "Neighborhood") : L("Município", "City"), value: (a) => a.nome },
+    ...(porBairro && !municipio ? [{ header: L("Município", "City"), value: (a: Area) => a.municipio }] : []),
+    ...(municipio ? [] : [{ header: L("Região intermediária (IBGE)", "IBGE intermediate region"), value: (a: Area) => a.regiao ?? "" }]),
+    { header: L("Eleitores", "Voters"), value: (a) => a.aptos, type: "number" },
+    { header: L("Votos válidos (Senado)", "Valid votes (Senate)"), value: (a) => a.validos, type: "number" },
+    { header: L("Posição", "Position"), value: (a) => a.pos, type: "number" },
+    { header: L(`Votos ${nomeS(iFoco)}`, `${nomeS(iFoco)} votes`), value: (a) => a.vFoco, type: "number" },
+    { header: L("% válidos", "% valid"), value: (a) => a.vFoco / a.validos, type: "percent" },
+    { header: L("% do total", "% of total"), value: (a) => (totalFocoEscopo ? a.vFoco / totalFocoEscopo : 0), type: "percent" },
+    { header: L("1º lugar", "1st place"), value: (a) => nomeS(a.ordem[0]) },
+    { header: L("Votos 1º", "1st place votes"), value: (a) => a.v[a.ordem[0]], type: "number" },
+    { header: L("2º lugar", "2nd place"), value: (a) => nomeS(a.ordem[1]) },
+    { header: L("Votos 2º", "2nd place votes"), value: (a) => a.v[a.ordem[1]], type: "number" },
+    { header: L(`Distância à ${vagas}ª vaga`, `Distance to ${ordEn(vagas)} seat`), value: distVaga, type: "number" },
     ...(iRival !== iFoco ? [
-      { header: `Votos ${nomeS(iRival)}`, value: (a: Area) => a.v[iRival], type: "number" as const },
-      { header: `Diferença para ${nomeS(iRival)}`, value: (a: Area) => a.vFoco - a.v[iRival], type: "number" as const },
+      { header: L(`Votos ${nomeS(iRival)}`, `${nomeS(iRival)} votes`), value: (a: Area) => a.v[iRival], type: "number" as const },
+      { header: L(`Diferença para ${nomeS(iRival)}`, `Difference vs. ${nomeS(iRival)}`), value: (a: Area) => a.vFoco - a.v[iRival], type: "number" as const },
     ] : []),
   ];
 
   if (votos.error || totais.error) return <ErrorBox error={votos.error ?? totais.error} />;
-  if (!porSenador) return <Loading texto="Carregando votos do Senado…" />;
+  if (!porSenador) return <Loading texto={L("Carregando votos do Senado…", "Loading Senate votes…")} />;
 
-  const nomeEscopo = municipio ? titulo(base.munByCd.get(municipio)?.nome ?? "") : `o estado (${uf})`;
-  const unid = porBairro ? "bairros" : "cidades";
+  const nomeEscopo = municipio ? titulo(base.munByCd.get(municipio)?.nome ?? "") : L(`o estado (${uf})`, `the state (${uf})`);
+  const unid = porBairro ? L("bairros", "neighborhoods") : L("cidades", "cities");
   const ultimaVaga = ranking.ordem[vagas - 1], primeiroFora = ranking.ordem[vagas];
   const margem = posEscopo <= vagas ? ranking.tot[iFoco] - ranking.tot[primeiroFora] : ranking.tot[iFoco] - ranking.tot[ultimaVaga];
   const dadosFoco = porSenador[iFoco];
@@ -317,29 +322,29 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
     <div className="flex flex-col gap-5">
       {/* ---- resumo ---- */}
       <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-        <Stat valor={fmt(ranking.tot[iFoco])} rotulo={municipio ? `votos em ${nomeEscopo}` : "votos no estado"} />
-        <Stat valor={ranking.validos ? pct(ranking.tot[iFoco] / ranking.validos) : "–"} rotulo="dos votos válidos para o Senado" />
-        <Stat valor={ord(posEscopo)} rotulo={`lugar ${municipio ? "na cidade" : "no estado"} (${vagas} vagas)`} />
+        <Stat valor={fmt(ranking.tot[iFoco])} rotulo={municipio ? L(`votos em ${nomeEscopo}`, `votes in ${nomeEscopo}`) : L("votos no estado", "votes in the state")} />
+        <Stat valor={ranking.validos ? pct(ranking.tot[iFoco] / ranking.validos) : "–"} rotulo={L("dos votos válidos para o Senado", "of valid votes for the Senate")} />
+        <Stat valor={ord(posEscopo)} rotulo={L(`lugar ${municipio ? "na cidade" : "no estado"} (${vagas} vagas)`, `place ${municipio ? "in the city" : "in the state"} (${vagas} seats)`)} />
         <Stat valor={<span className={margem >= 0 ? "text-accent" : "text-danger"}>{sinal(margem)}{fmt(margem)}</span>}
-          rotulo={posEscopo <= vagas ? `de vantagem sobre ${nomeS(primeiroFora)} (${ord(vagas + 1)})` : `para alcançar ${nomeS(ultimaVaga)} (${ord(vagas)})`} />
+          rotulo={posEscopo <= vagas ? L(`de vantagem sobre ${nomeS(primeiroFora)} (${ord(vagas + 1)})`, `lead over ${nomeS(primeiroFora)} (${ord(vagas + 1)})`) : L(`para alcançar ${nomeS(ultimaVaga)} (${ord(vagas)})`, `to catch ${nomeS(ultimaVaga)} (${ord(vagas)})`)} />
         <div className="ml-auto">
           <MunicipioSelect base={base} value={municipio} onChange={setMunicipio} />
         </div>
       </div>
 
       {/* ---- ranking do Senado no escopo ---- */}
-      <section aria-label="Resultado do Senado" className="flex flex-col gap-2">
-        <h2 className="display text-2xl">Senado {municipio ? `em ${nomeEscopo}` : "no estado"}</h2>
+      <section aria-label={L("Resultado do Senado", "Senate result")} className="flex flex-col gap-2">
+        <h2 className="display text-2xl">{L("Senado", "Senate")} {municipio ? L(`em ${nomeEscopo}`, `in ${nomeEscopo}`) : L("no estado", "in the state")}</h2>
         <div className="overflow-x-auto rounded-lg border border-line bg-panel">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="text-left">
                 <th className="border-b border-line px-3 py-2">#</th>
-                <th className="border-b border-line px-3 py-2">Candidatura</th>
-                <th className="border-b border-line px-3 py-2 text-right">Votos</th>
-                <th className="border-b border-line px-3 py-2 text-right">% válidos</th>
-                <th className="border-b border-line px-3 py-2 text-right">{unid} em 1º</th>
-                <th className="border-b border-line px-3 py-2 text-right">{unid} no top {vagas}</th>
+                <th className="border-b border-line px-3 py-2">{L("Candidatura", "Candidate")}</th>
+                <th className="border-b border-line px-3 py-2 text-right">{L("Votos", "Votes")}</th>
+                <th className="border-b border-line px-3 py-2 text-right">{L("% válidos", "% valid")}</th>
+                <th className="border-b border-line px-3 py-2 text-right">{L(`${unid} em 1º`, `${unid} in 1st`)}</th>
+                <th className="border-b border-line px-3 py-2 text-right">{L(`${unid} no top ${vagas}`, `${unid} in top ${vagas}`)}</th>
               </tr>
             </thead>
             <tbody>
@@ -365,31 +370,32 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
           </table>
         </div>
         <p className="text-xs text-muted">
-          Cada eleitor vota em {vagas} nomes para o Senado: as porcentagens dos válidos somam {vagas * 100}%.
-          {municipio ? "" : " Situação (eleito) conforme o TSE."}
+          {L(`Cada eleitor vota em ${vagas} nomes para o Senado: as porcentagens dos válidos somam ${vagas * 100}%.`,
+            `Each voter picks ${vagas} names for the Senate: the valid-vote percentages add up to ${vagas * 100}%.`)}
+          {municipio ? "" : L(" Situação (eleito) conforme o TSE.", " Status (elected) as reported by TSE.")}
         </p>
       </section>
 
       {/* ---- filtros ---- */}
-      <section aria-label="Filtros" className="flex flex-col gap-3 rounded-lg border border-line bg-panel p-3">
+      <section aria-label={L("Filtros", "Filters")} className="flex flex-col gap-3 rounded-lg border border-line bg-panel p-3">
         <div className="flex flex-wrap items-end gap-3">
           {!municipio && (
             <label className="flex flex-col gap-1 text-sm text-muted">
-              Ver por
-              <Segmented label="Nível" value={nivelEstado} onChange={(v) => { setNivelEstado(v); setFPorte(""); }} options={[
-                { id: "municipio", label: "Cidade" }, { id: "bairro", label: "Bairro" },
+              {L("Ver por", "View by")}
+              <Segmented label={L("Nível", "Level")} value={nivelEstado} onChange={(v) => { setNivelEstado(v); setFPorte(""); }} options={[
+                { id: "municipio", label: L("Cidade", "City") }, { id: "bairro", label: L("Bairro", "Neighborhood") },
               ]} />
             </label>
           )}
           <label className="flex flex-col gap-1 text-sm text-muted">
-            Posição de {nomeS(iFoco)}
-            <Segmented label="Posição" value={fPos} onChange={setFPos} options={[
-              { id: "todas", label: "Todas" }, { id: "1", label: "1º lugar" },
-              { id: "top", label: `Top ${vagas}` }, { id: "fora", label: `Fora do top ${vagas}` },
+            {L(`Posição de ${nomeS(iFoco)}`, `${nomeS(iFoco)}'s position`)}
+            <Segmented label={L("Posição", "Position")} value={fPos} onChange={setFPos} options={[
+              { id: "todas", label: L("Todas", "All") }, { id: "1", label: L("1º lugar", "1st place") },
+              { id: "top", label: `Top ${vagas}` }, { id: "fora", label: L(`Fora do top ${vagas}`, `Outside top ${vagas}`) },
             ]} />
           </label>
           <label htmlFor="rival" className="flex flex-col gap-1 text-sm text-muted">
-            Comparar com
+            {L("Comparar com", "Compare with")}
             <select id="rival" value={rival?.id ?? ""} onChange={(e) => setRivalSel(Number(e.target.value))}
               className="rounded-md border border-line bg-panel px-3 py-1.5 text-ink">
               {ranking.ordem.filter((s) => s !== iFoco).map((s) => (
@@ -398,74 +404,85 @@ export function SenadoAnalise({ base, cand, municipio, setMunicipio }: {
             </select>
           </label>
           <label className="flex flex-col gap-1 text-sm text-muted">
-            Contra {nomeS(iRival)}
-            <Segmented label="Contra o adversário" value={fRival} onChange={setFRival} options={[
-              { id: "todas", label: "Todas" }, { id: "frente", label: "À frente" }, { id: "atras", label: "Atrás" },
+            {L(`Contra ${nomeS(iRival)}`, `Against ${nomeS(iRival)}`)}
+            <Segmented label={L("Contra o adversário", "Against the opponent")} value={fRival} onChange={setFRival} options={[
+              { id: "todas", label: L("Todas", "All") }, { id: "frente", label: L("À frente", "Ahead") }, { id: "atras", label: L("Atrás", "Behind") },
             ]} />
           </label>
           <label htmlFor="porte" className="flex flex-col gap-1 text-sm text-muted">
-            Tamanho ({porBairro ? "bairro" : "cidade"})
+            {L(`Tamanho (${porBairro ? "bairro" : "cidade"})`, `Size (${porBairro ? "neighborhood" : "city"})`)}
             <select id="porte" value={fPorte} onChange={(e) => setFPorte(e.target.value)}
               className="rounded-md border border-line bg-panel px-3 py-1.5 text-ink">
-              <option value="">Todos</option>
+              <option value="">{L("Todos", "All")}</option>
               {portes.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </label>
           {!municipio && regioes.length > 0 && (
             <label htmlFor="regiao" className="flex flex-col gap-1 text-sm text-muted">
-              Região (IBGE)
+              {L("Região (IBGE)", "Region (IBGE)")}
               <select id="regiao" value={fRegiao} onChange={(e) => setFRegiao(e.target.value)}
                 className="rounded-md border border-line bg-panel px-3 py-1.5 text-ink">
-                <option value="">Todas</option>
+                <option value="">{L("Todas", "All")}</option>
                 {regioes.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </label>
           )}
           {filtroAtivo && (
             <button type="button" onClick={limpar} className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-accent-soft">
-              Limpar filtros
+              {L("Limpar filtros", "Clear filters")}
             </button>
           )}
         </div>
         <p className="text-sm">
+          {getLang() === "en" ? <>
+          <b className="num">{fmt(filtradas.length)}</b> of {fmt(areas.length)} {unid}
+          {" · "}<b className="num">{fmt(resumoFiltro.v)}</b> votes for {nomeS(iFoco)}
+          {totalFocoEscopo ? <> ({pct(resumoFiltro.v / totalFocoEscopo, 1)} of total)</> : null}
+          {" · "}{resumoFiltro.val ? pct(resumoFiltro.v / resumoFiltro.val) : "–"} of valid votes
+          {" · "}1st place in <b className="num">{fmt(resumoFiltro.p1)}</b>, top {vagas} in <b className="num">{fmt(resumoFiltro.top)}</b>
+          {iRival !== iFoco && <>{" · "}ahead of {nomeS(iRival)} in <b className="num">{fmt(resumoFiltro.frente)}</b></>}
+          </> : <>
           <b className="num">{fmt(filtradas.length)}</b> de {fmt(areas.length)} {unid}
           {" · "}<b className="num">{fmt(resumoFiltro.v)}</b> votos de {nomeS(iFoco)}
           {totalFocoEscopo ? <> ({pct(resumoFiltro.v / totalFocoEscopo, 1)} do total)</> : null}
           {" · "}{resumoFiltro.val ? pct(resumoFiltro.v / resumoFiltro.val) : "–"} dos válidos
           {" · "}1º lugar em <b className="num">{fmt(resumoFiltro.p1)}</b>, top {vagas} em <b className="num">{fmt(resumoFiltro.top)}</b>
           {iRival !== iFoco && <>{" · "}à frente de {nomeS(iRival)} em <b className="num">{fmt(resumoFiltro.frente)}</b></>}
+          </>}
         </p>
       </section>
 
       {/* ---- mapa ---- */}
-      <section aria-label="Mapa" className="flex flex-col gap-2">
-        <Segmented label="O que o mapa mostra" value={modoMapa} onChange={setModoMapa} options={[
-          { id: "posicao", label: `Posição de ${nomeS(iFoco)}` },
-          { id: "vencedor", label: "Quem ficou em 1º" },
-          { id: "pct", label: `% de ${nomeS(iFoco)}` },
+      <section aria-label={L("Mapa", "Map")} className="flex flex-col gap-2">
+        <Segmented label={L("O que o mapa mostra", "What the map shows")} value={modoMapa} onChange={setModoMapa} options={[
+          { id: "posicao", label: L(`Posição de ${nomeS(iFoco)}`, `${nomeS(iFoco)}'s position`) },
+          { id: "vencedor", label: L("Quem ficou em 1º", "Who came 1st") },
+          { id: "pct", label: L(`% de ${nomeS(iFoco)}`, `${nomeS(iFoco)} %`) },
           { id: "rival", label: `${nomeS(iFoco)} × ${nomeS(iRival)}` },
         ]} />
         <LazyMap base={base} dados={dadosFoco} municipio={municipio} modo={municipio ? "territorios" : porBairro ? "escolas" : "municipios"} metrica="pct"
           corPorMunicipio={porBairro ? undefined : corPorMunicipio} corPorLocal={porBairro ? corPorLocal : undefined}
-          infoExtra={infoExtra} rotuloSerie={`votos de ${nomeS(iFoco)}`}
+          infoExtra={infoExtra} rotuloSerie={L(`votos de ${nomeS(iFoco)}`, `${nomeS(iFoco)} votes`)}
           onMunicipio={(cd) => setMunicipio(cd)} />
         <Legenda modo={modoMapa} cat={[...corSenador.entries()].map(([s, c]) => ({ nome: nomeS(s), c }))} outros={OUTROS}
           div={DIV} foco={nomeS(iFoco)} rival={nomeS(iRival)} breaks={breaksPct} apagado={filtroAtivo ? APAGADO : null} />
         {porBairro && <p className="text-xs text-muted">
-          {municipio ? "Com uma cidade escolhida, cada território (área mais próxima de um local de votação) recebe a cor do seu bairro."
-            : "Por bairro no estado: cada ponto é um local de votação, com a cor do resultado do seu bairro."}
+          {municipio ? L("Com uma cidade escolhida, cada território (área mais próxima de um local de votação) recebe a cor do seu bairro.",
+            "With a city selected, each territory (area closest to a polling place) takes the color of its neighborhood.")
+            : L("Por bairro no estado: cada ponto é um local de votação, com a cor do resultado do seu bairro.",
+              "By neighborhood across the state: each dot is a polling place, colored by its neighborhood's result.")}
         </p>}
       </section>
 
       {/* ---- tabela ---- */}
-      <section aria-label="Tabela" className="flex flex-col gap-2">
+      <section aria-label={L("Tabela", "Table")} className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="display text-2xl">{porBairro ? (municipio ? "Por bairro" : "Por bairro (todo o estado)") : "Por cidade"}</h2>
+          <h2 className="display text-2xl">{porBairro ? (municipio ? L("Por bairro", "By neighborhood") : L("Por bairro (todo o estado)", "By neighborhood (whole state)")) : L("Por cidade", "By city")}</h2>
         </div>
         <DataTable data={filtradas} columns={columns} exportCols={exportCols}
           nomeArquivo={`senado_${cand.numero}_${porBairro ? `bairros_${municipio ?? uf}` : "cidades"}`}
           busca={(a) => `${a.nome} ${a.municipio} ${a.regiao ?? ""}`} initialSort={[{ id: "v", desc: true }]} />
-        {!municipio && !porBairro && <p className="text-xs text-muted">Clique numa cidade do mapa ou escolha na abrangência para ver os bairros só dela.</p>}
+        {!municipio && !porBairro && <p className="text-xs text-muted">{L("Clique numa cidade do mapa ou escolha na abrangência para ver os bairros só dela.", "Click a city on the map or pick it in the scope selector to see only its neighborhoods.")}</p>}
       </section>
     </div>
   );
@@ -477,14 +494,14 @@ function Legenda({ modo, cat, outros, div, foco, rival, breaks, apagado }: {
 }) {
   const r = ramp();
   const itens: { c: RGB; label: string }[] =
-    modo === "vencedor" ? [...cat.map((x) => ({ c: x.c, label: x.nome })), { c: outros, label: "Outros" }]
-    : modo === "posicao" ? [{ c: r[6], label: "1º" }, { c: r[4], label: "2º" }, { c: r[2], label: "3º" }, { c: r[1], label: "4º–5º" }, { c: r[0], label: "6º ou pior" }]
+    modo === "vencedor" ? [...cat.map((x) => ({ c: x.c, label: x.nome })), { c: outros, label: L("Outros", "Others") }]
+    : modo === "posicao" ? [{ c: r[6], label: ord(1) }, { c: r[4], label: ord(2) }, { c: r[2], label: ord(3) }, { c: r[1], label: `${ord(4)}–${ord(5)}` }, { c: r[0], label: L("6º ou pior", "6th or worse") }]
     : modo === "rival" ? [
-      { c: div[0], label: `${rival} +5 p.p. ou mais` }, { c: div[1], label: `${rival} +1 a 5` }, { c: div[2], label: "empate (±1 p.p.)" },
-      { c: div[3], label: `${foco} +1 a 5` }, { c: div[4], label: `${foco} +5 p.p. ou mais` }]
-    : r.map((c, i) => ({ c, label: i === 0 ? `até ${pct(breaks[0] ?? 0, 1)}` : i === r.length - 1 ? `${pct(breaks[i - 1] ?? 0, 1)}+` : `${pct(breaks[i - 1] ?? 0, 1)}` }));
+      { c: div[0], label: L(`${rival} +5 p.p. ou mais`, `${rival} +5 pp or more`) }, { c: div[1], label: L(`${rival} +1 a 5`, `${rival} +1 to 5`) }, { c: div[2], label: L("empate (±1 p.p.)", "tie (±1 pp)") },
+      { c: div[3], label: L(`${foco} +1 a 5`, `${foco} +1 to 5`) }, { c: div[4], label: L(`${foco} +5 p.p. ou mais`, `${foco} +5 pp or more`) }]
+    : r.map((c, i) => ({ c, label: i === 0 ? `${L("até", "up to")} ${pct(breaks[0] ?? 0, 1)}` : i === r.length - 1 ? `${pct(breaks[i - 1] ?? 0, 1)}+` : `${pct(breaks[i - 1] ?? 0, 1)}` }));
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted" aria-label="Legenda">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted" aria-label={L("Legenda", "Legend")}>
       {itens.map((x) => (
         <span key={x.label} className="inline-flex items-center gap-1.5">
           <span className="h-3 w-4 rounded-sm" style={{ background: cssRgb(x.c) }} aria-hidden />{x.label}
@@ -492,7 +509,7 @@ function Legenda({ modo, cat, outros, div, foco, rival, breaks, apagado }: {
       ))}
       {apagado && (
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-4 rounded-sm border border-line" style={{ background: cssRgb(apagado) }} aria-hidden />fora do filtro
+          <span className="h-3 w-4 rounded-sm border border-line" style={{ background: cssRgb(apagado) }} aria-hidden />{L("fora do filtro", "outside filter")}
         </span>
       )}
     </div>

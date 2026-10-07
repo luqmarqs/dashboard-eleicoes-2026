@@ -14,24 +14,22 @@ import { Publicidade } from "./pages/Publicidade";
 import { DigitalMG } from "./pages/DigitalMG";
 import { useSouAdmin } from "./lib/acessos";
 import { isDev } from "./lib/source";
+import { L, SeletorIdioma, useLang } from "./lib/i18n";
 import { supabase } from "./lib/supabase";
 
-const NAV = [
-  { to: "/", label: "Visão geral", end: true },
-  { to: "/comparativo", label: "Comparativo" },
-  { to: "/dobrada", label: "Dobrada" },
-  { to: "/presidente", label: "Presidente" },
-  { to: "/publicidade", label: "Publicidade" },
-  { to: "/paineis", label: "Painéis" },
-  { to: "/metodologia", label: "Metodologia" },
+const NAV_PT_EN: [string, string, string, boolean?][] = [
+  ["/", "Visão geral", "Overview", true], ["/comparativo", "Comparativo", "Compare"], ["/dobrada", "Dobrada", "Joint ticket"],
+  ["/presidente", "Presidente", "President"], ["/publicidade", "Publicidade", "Paid ads"], ["/paineis", "Painéis", "Panels"],
+  ["/metodologia", "Metodologia", "Methodology"],
 ];
+const NAV_ITENS = () => NAV_PT_EN.map(([to, pt, en, end]) => ({ to, label: L(pt, en), end }));
 
 function SeletorUf() {
   const { uf, setUf } = useUf();
   const navigate = useNavigate();
   if (UFS.length < 2) return null;
   return (
-    <div role="radiogroup" aria-label="Estado" className="inline-flex rounded-md border border-line p-0.5">
+    <div role="radiogroup" aria-label={L("Estado", "State")} className="inline-flex rounded-md border border-line p-0.5">
       {UFS.map((u) => (
         <button key={u.sigla} type="button" role="radio" aria-checked={uf === u.sigla} title={u.nome}
           onClick={() => { if (u.sigla !== uf) { setUf(u.sigla); navigate("/"); } }}
@@ -46,16 +44,18 @@ function SeletorUf() {
 function Shell({ children, onSair }: { children: ReactNode; onSair?: () => void }) {
   const admin = useSouAdmin();
   const { uf } = useUf();
-  const nav = admin.data ? [...NAV, { to: "/acessos", label: "Acessos" }] : NAV;
+  const { lang } = useLang();
+  const nav = admin.data ? [...NAV_ITENS(), { to: "/acessos", label: L("Acessos", "Access"), end: false }] : NAV_ITENS();
+  void lang; // re-render ao trocar idioma
   return (
     <div className="min-h-full">
       <header className="sticky top-0 z-30 border-b border-line bg-panel/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
           <div className="flex items-center gap-3">
-            <NavLink to="/" className="display text-lg">Painel Eleitoral <span className="text-accent">{uf} 2026</span></NavLink>
+            <NavLink to="/" className="display text-lg">{L("Painel Eleitoral", "Election Dashboard")} <span className="text-accent">{uf} 2026</span></NavLink>
             <SeletorUf />
           </div>
-          <nav aria-label="Principal" className="flex flex-wrap gap-1">
+          <nav aria-label={L("Principal", "Main")} className="flex flex-wrap gap-1">
             {nav.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end}
                 className={({ isActive }) => `rounded-md px-3 py-1.5 text-sm ${isActive ? "bg-accent-soft font-semibold text-accent" : "hover:bg-accent-soft"}`}>
@@ -64,12 +64,13 @@ function Shell({ children, onSair }: { children: ReactNode; onSair?: () => void 
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
-            {isDev && <span className="rounded bg-accent-soft px-2 py-0.5 text-xs text-accent">dados locais (dev)</span>}
-            {onSair && <button type="button" className="text-muted hover:text-ink" onClick={onSair}>Sair</button>}
+            {isDev && <span className="rounded bg-accent-soft px-2 py-0.5 text-xs text-accent">{L("dados locais (dev)", "local data (dev)")}</span>}
+            <SeletorIdioma />
+            {onSair && <button type="button" className="text-muted hover:text-ink" onClick={onSair}>{L("Sair", "Sign out")}</button>}
           </div>
         </div>
       </header>
-      <main key={uf} className="mx-auto max-w-[1500px] px-4 py-6">{children}</main>
+      <main key={`${uf}-${lang}`} className="mx-auto max-w-[1500px] px-4 py-6">{children}</main>
     </div>
   );
 }
@@ -87,8 +88,9 @@ function Login() {
     });
     if (error) {
       setErro(/rate limit/i.test(error.message)
-        ? "Muitos pedidos de link agora. Espere alguns minutos e tente de novo; se você já recebeu um link antes, use o mais recente."
-        : `Não foi possível enviar o link: ${error.message}`);
+        ? L("Muitos pedidos de link agora. Espere alguns minutos e tente de novo; se você já recebeu um link antes, use o mais recente.",
+          "Too many link requests right now. Wait a few minutes and try again; if you already received a link, use the most recent one.")
+        : L(`Não foi possível enviar o link: ${error.message}`, `Could not send the link: ${error.message}`));
       setEstado("erro");
     } else setEstado("enviado");
   };
@@ -98,15 +100,15 @@ function Login() {
     const { error } = await supabase().auth.signInWithOAuth({
       provider: "google", options: { redirectTo: window.location.origin + window.location.pathname },
     });
-    if (error) { setErro(`Não foi possível entrar com o Google: ${error.message}`); setEstado("erro"); }
+    if (error) { setErro(L(`Não foi possível entrar com o Google: ${error.message}`, `Could not sign in with Google: ${error.message}`)); setEstado("erro"); }
   };
   return (
     <div className="grid min-h-full place-items-center px-4">
       <form onSubmit={enviar} className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-line bg-panel p-6">
-        <div className="eyebrow">Acesso restrito à equipe</div>
-        <h1 className="display text-2xl">Painel Eleitoral 2026</h1>
+        <div className="eyebrow">{L("Acesso restrito à equipe", "Team-only access")}</div>
+        <h1 className="display text-2xl">{L("Painel Eleitoral 2026", "Election Dashboard 2026")}</h1>
         {estado === "enviado" ? (
-          <p role="status">Enviamos um link de acesso para <b>{email}</b>. Abra o e-mail neste mesmo navegador.</p>
+          <p role="status">{L("Enviamos um link de acesso para", "We sent a sign-in link to")} <b>{email}</b>. {L("Abra o e-mail neste mesmo navegador.", "Open the email in this same browser.")}</p>
         ) : (
           <>
             <button type="button" onClick={() => void google()}
@@ -117,18 +119,18 @@ function Login() {
                 <path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6h-4a12 12 0 0 0 0 10.8l4-3.1z" />
                 <path fill="#EA4335" d="M12 4.8c1.8 0 3.4.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.3 6.6l4 3.1c.9-2.9 3.6-4.9 6.7-4.9z" />
               </svg>
-              Entrar com Google
+              {L("Entrar com Google", "Sign in with Google")}
             </button>
             <div className="flex items-center gap-2 text-xs text-muted" aria-hidden>
-              <span className="h-px flex-1 bg-line" />ou receba um link por e-mail<span className="h-px flex-1 bg-line" />
+              <span className="h-px flex-1 bg-line" />{L("ou receba um link por e-mail", "or get a link by email")}<span className="h-px flex-1 bg-line" />
             </div>
-            <label htmlFor="email" className="flex flex-col gap-1 text-sm text-muted">E-mail
+            <label htmlFor="email" className="flex flex-col gap-1 text-sm text-muted">{L("E-mail", "Email")}
               <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email" className="rounded-md border border-line bg-bg px-3 py-2 text-ink" />
             </label>
             <button type="submit" disabled={estado === "enviando"}
               className="rounded-md border border-line px-4 py-2 font-semibold hover:bg-accent-soft disabled:opacity-50">
-              {estado === "enviando" ? "Enviando…" : "Receber link de acesso"}
+              {estado === "enviando" ? L("Enviando…", "Sending…") : L("Receber link de acesso", "Send me a sign-in link")}
             </button>
             {estado === "erro" && <p className="text-sm text-danger" role="alert">{erro}</p>}
           </>
@@ -152,7 +154,7 @@ function Rotas() {
       <Route path="/paineis/:id" element={<PainelView />} />
       <Route path="/metodologia" element={<Metodologia />} />
       <Route path="/acessos" element={<Acessos />} />
-      <Route path="*" element={<p className="text-muted">Página não encontrada.</p>} />
+      <Route path="*" element={<p className="text-muted">{L("Página não encontrada.", "Page not found.")}</p>} />
     </Routes>
   );
 }
@@ -161,10 +163,11 @@ function NaoAutorizado({ email, onSair }: { email?: string; onSair: () => void }
   return (
     <div className="grid min-h-full place-items-center px-4">
       <div className="flex w-full max-w-sm flex-col gap-3 rounded-lg border border-line bg-panel p-6" role="alert">
-        <div className="eyebrow">Acesso restrito à equipe</div>
-        <h1 className="display text-2xl">E-mail não autorizado</h1>
-        <p><b>{email}</b> entrou, mas não está na lista de e-mails autorizados. Peça a um administrador para incluí-lo.</p>
-        <button type="button" onClick={onSair} className="rounded-md border border-line px-4 py-2">Sair</button>
+        <div className="eyebrow">{L("Acesso restrito à equipe", "Team-only access")}</div>
+        <h1 className="display text-2xl">{L("E-mail não autorizado", "Email not authorized")}</h1>
+        <p><b>{email}</b> {L("entrou, mas não está na lista de e-mails autorizados. Peça a um administrador para incluí-lo.",
+          "signed in, but is not on the list of authorized emails. Ask an administrator to add it.")}</p>
+        <button type="button" onClick={onSair} className="rounded-md border border-line px-4 py-2">{L("Sair", "Sign out")}</button>
       </div>
     </div>
   );
@@ -186,9 +189,9 @@ export default function App() {
     return (
       <div className="grid min-h-full place-items-center px-4">
         <div className="max-w-md rounded-lg border border-danger bg-panel p-6" role="alert">
-          <h1 className="display text-2xl">Painel sem configuração</h1>
+          <h1 className="display text-2xl">{L("Painel sem configuração", "Dashboard not configured")}</h1>
           <p className="mt-2">{erroConfig}</p>
-          <p className="mt-2 text-sm text-muted">Na Vercel: Settings → Environment Variables, e depois um novo deploy.</p>
+          <p className="mt-2 text-sm text-muted">{L("Na Vercel: Settings → Environment Variables, e depois um novo deploy.", "On Vercel: Settings → Environment Variables, then redeploy.")}</p>
         </div>
       </div>
     );
@@ -221,7 +224,7 @@ function AppComSessao() {
       {isDev ? (
         <Shell><Rotas /></Shell>
       ) : session === undefined || (session && autorizado === undefined) ? (
-        <p className="py-20 text-center text-muted">Verificando acesso…</p>
+        <p className="py-20 text-center text-muted">{L("Verificando acesso…", "Checking access…")}</p>
       ) : session && autorizado ? (
         <Shell onSair={sair}><Rotas /></Shell>
       ) : session ? (

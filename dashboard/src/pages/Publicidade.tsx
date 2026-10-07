@@ -6,7 +6,8 @@ import { DataTable } from "../components/DataTable";
 import { useMetaAnuncios, useMetaResumo } from "../lib/metaHooks";
 import { TemasCriativos } from "../components/TemasCriativos";
 import { AnunciosVotos } from "../components/AnunciosVotos";
-import { EIXOS, normalizarTexto, temasDoTexto } from "../lib/temas";
+import { EIXOS, normalizarTexto, rotuloDe, temasDoTexto } from "../lib/temas";
+import { L, getLang } from "../lib/i18n";
 import { LazyMap } from "../components/LazyMap";
 import { ErrorBox, Loading, Segmented, SituacaoBadge, Stat, nomeCand } from "../components/ui";
 import { BIVAR, classe, cssRgb, prefersDark, quantis, ramp, type RGB } from "../lib/colors";
@@ -14,8 +15,8 @@ import { agregar, porLocal, useBase, useTotais, useVotos, type Base, type LinhaA
 import type { ExportCol } from "../lib/export";
 import { fmt, normalizar, pct, titulo } from "../lib/format";
 import {
-  LOC, ROTULO_ABRANGENCIA, abrangencia, circulou, fmtData, fmtDataHora, fmtFaixa, fmtNum, mediana, porMunicipio,
-  simbolo, somaFaixas, type Abrangencia, type Faixa, type PorMunicipio,
+  LOC, abrangencia, circulou, fmtData, fmtDataHora, fmtFaixa, fmtNum, mediana, porMunicipio,
+  rotuloAbrangencia, simbolo, somaFaixas, type Abrangencia, type Faixa, type PorMunicipio,
 } from "../lib/meta";
 import { source, type MetaAnuncio, type MetaMencao, type MetaResumo } from "../lib/source";
 import { CARGOS, type Candidatura } from "../lib/types";
@@ -25,7 +26,7 @@ const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3
 
 
 function FaixaTxt({ f, prefixo = "" }: { f: Map<string, Faixa>; prefixo?: string }) {
-  if (!f.size) return <>não informado</>;
+  if (!f.size) return <>{L("não informado", "not reported")}</>;
   return <>{[...f.entries()].map(([moeda, x], i) => (
     <span key={moeda}>{i > 0 && " + "}{fmtFaixa(x.min, x.max, prefixo || simbolo(moeda))}</span>
   ))}</>;
@@ -52,12 +53,23 @@ export function Publicidade() {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-2">
-        <div className="eyebrow">Biblioteca de Anúncios da Meta · anúncios políticos · candidaturas eleitas {deUf(info)}</div>
-        <h1 className="display text-3xl md:text-4xl">Tráfego pago</h1>
+        <div className="eyebrow">{L("Biblioteca de Anúncios da Meta · anúncios políticos · candidaturas eleitas", "Meta Ad Library · political ads · elected candidates")} {deUf(info)}</div>
+        <h1 className="display text-3xl md:text-4xl">{L("Tráfego pago", "Paid ads")}</h1>
         <Cobertura r={r} />
         <details className="max-w-4xl text-sm text-muted">
-          <summary className="cursor-pointer text-ink">O que estes dados são — e o que não são</summary>
+          <summary className="cursor-pointer text-ink">{L("O que estes dados são — e o que não são", "What this data is — and what it is not")}</summary>
           <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
+            {getLang() === "en" ? <>
+            <li><b>Targeting</b>: the locations the advertiser chose (included or excluded). Choosing a city does not prove
+              the ad was seen there.</li>
+            <li><b>Delivery</b>: the share of each ad's reach by state, reported by Meta. The API has no delivery by city
+              or neighborhood.</li>
+            <li><b>Votes</b>: TSE results. The cross-analysis is descriptive and aggregated: it shows where things coincide, not that the
+              ad caused votes.</li>
+            <li><b>Spend and impressions</b> are cumulative ranges per ad (from when it started until the last collection). The
+              date filter picks ads that ran during the period; it does not trim spend to the period.</li>
+            <li><b>Reach</b> is estimated per ad and is not summed (the same person may have seen several ads).</li>
+            </> : <>
             <li><b>Segmentação</b>: as localidades que o anunciante escolheu (incluídas ou excluídas). Escolher uma cidade não prova
               que o anúncio foi visto lá.</li>
             <li><b>Entrega</b>: a parcela do alcance de cada anúncio por estado, informada pela Meta. Não existe entrega por cidade
@@ -67,6 +79,7 @@ export function Publicidade() {
             <li><b>Gasto e impressões</b> são faixas acumuladas por anúncio (de quando começou até a última coleta). O filtro de
               período escolhe anúncios que circularam no período; não recorta o gasto para o período.</li>
             <li><b>Alcance</b> é estimado por anúncio e não se soma (a mesma pessoa pode ter visto vários anúncios).</li>
+            </>}
           </ul>
         </details>
       </header>
@@ -76,7 +89,7 @@ export function Publicidade() {
       {cand && item ? (
         <AnunciosCandidatura key={cand.id} base={b} cand={cand} item={item} />
       ) : (
-        <p className="text-muted">Nenhuma candidatura com anúncios coletados {deUf(info)}.</p>
+        <p className="text-muted">{L("Nenhuma candidatura com anúncios coletados", "No candidates with collected ads")} {deUf(info)}.</p>
       )}
     </div>
   );
@@ -84,14 +97,21 @@ export function Publicidade() {
 
 function Cobertura({ r }: { r: MetaResumo }) {
   const e = r.execucao;
-  if (!e) return <p className="rounded-md border border-line bg-panel px-3 py-2 text-sm">Ainda não há coleta carregada.</p>;
+  if (!e) return <p className="rounded-md border border-line bg-panel px-3 py-2 text-sm">{L("Ainda não há coleta carregada.", "No collection loaded yet.")}</p>;
   const parcial = e.status !== "completa";
   return (
     <p className={`max-w-4xl rounded-md border px-3 py-2 text-sm ${parcial ? "border-danger text-danger" : "border-line bg-panel text-muted"}`}>
+      {getLang() === "en" ? <>
+      Last collection: <b className="text-ink">{fmtDataHora(e.terminada_em ?? e.iniciada_em)}</b>
+      {" · "}{parcial ? <b>collection {e.status}: {e.paginas_concluidas ?? 0} of {e.paginas_alvo} Pages completed</b>
+        : <>{e.paginas_concluidas} of {e.paginas_alvo} Pages, pagination complete</>}
+      {" · "}ads running since {fmtData(e.periodo_min)} · Graph API {e.versao_api}
+      </> : <>
       Última coleta: <b className="text-ink">{fmtDataHora(e.terminada_em ?? e.iniciada_em)}</b>
       {" · "}{parcial ? <b>coleta {e.status}: {e.paginas_concluidas ?? 0} de {e.paginas_alvo} páginas concluídas</b>
         : <>{e.paginas_concluidas} de {e.paginas_alvo} páginas, paginação concluída</>}
       {" · "}anúncios veiculados desde {fmtData(e.periodo_min)} · Graph API {e.versao_api}
+      </>}
     </p>
   );
 }
@@ -112,41 +132,47 @@ function TabelaCandidaturas({ base, r, selecionada, onEscolher }: {
   const eleitas = base.candidaturas.filter((c) => c.tipo === "nominal" && c.situacao?.startsWith("Eleito"));
   const semPagina = eleitas.filter((c) => !r.candidaturas.some((x) => x.candidatura_id === c.id));
   const columns = useMemo<ColumnDef<LinhaCand, unknown>[]>(() => [
-    { id: "nome", accessorFn: (l) => l.c.nome, header: "Candidatura", cell: (x) => {
+    { id: "nome", accessorFn: (l) => l.c.nome, header: L("Candidatura", "Candidate"), cell: (x) => {
       const l = x.row.original;
       return (
         <button type="button" onClick={() => onEscolher(l.id)} className={`text-left ${l.id === selecionada ? "font-bold text-accent" : "font-semibold hover:text-accent"}`}>
           {nomeCand(l.c)}<SituacaoBadge c={l.c} compacto />
-          <div className="text-xs font-normal text-muted">{CARGOS[l.c.cargo]} · {l.c.partido}{l.naoConfirmada ? " · vínculo a revisar" : ""}</div>
+          <div className="text-xs font-normal text-muted">{CARGOS[l.c.cargo]} · {l.c.partido}{l.naoConfirmada ? L(" · vínculo a revisar", " · link pending review") : ""}</div>
         </button>
       );
     } },
-    { id: "anuncios", accessorKey: "anuncios", header: "Anúncios", cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
-    { id: "gasto", accessorFn: (l) => l.gmax ?? l.gmin ?? 0, header: "Gasto declarado (faixa)",
+    { id: "anuncios", accessorKey: "anuncios", header: L("Anúncios", "Ads"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
+    { id: "gasto", accessorFn: (l) => l.gmax ?? l.gmin ?? 0, header: L("Gasto declarado (faixa)", "Declared spend (range)"),
       cell: (x) => { const l = x.row.original; return fmtFaixa(l.gmin, l.aberto ? null : l.gmax, "R$ "); }, meta: { numeric: true } },
-    { id: "paginas", accessorKey: "paginas", header: "Páginas", meta: { numeric: true } },
+    { id: "paginas", accessorKey: "paginas", header: L("Páginas", "Pages"), meta: { numeric: true } },
   ], [onEscolher, selecionada]);
   const exportCols: ExportCol<LinhaCand>[] = [
-    { header: "Número", value: (l) => l.c.numero, type: "number" }, { header: "Candidatura", value: (l) => l.c.nome },
-    { header: "Cargo", value: (l) => CARGOS[l.c.cargo] }, { header: "Partido", value: (l) => l.c.partido ?? "" },
-    { header: "Anúncios", value: (l) => l.anuncios, type: "number" },
-    { header: "Gasto mínimo (soma das faixas, R$)", value: (l) => l.gmin, type: "number" },
-    { header: "Gasto máximo (soma das faixas, R$; vazio = sem teto)", value: (l) => (l.aberto ? null : l.gmax), type: "number" },
-    { header: "Vínculo a revisar", value: (l) => (l.naoConfirmada ? "sim" : "não") },
+    { header: L("Número", "Number"), value: (l) => l.c.numero, type: "number" }, { header: L("Candidatura", "Candidate"), value: (l) => l.c.nome },
+    { header: L("Cargo", "Office"), value: (l) => CARGOS[l.c.cargo] }, { header: L("Partido", "Party"), value: (l) => l.c.partido ?? "" },
+    { header: L("Anúncios", "Ads"), value: (l) => l.anuncios, type: "number" },
+    { header: L("Gasto mínimo (soma das faixas, R$)", "Minimum spend (sum of ranges, R$)"), value: (l) => l.gmin, type: "number" },
+    { header: L("Gasto máximo (soma das faixas, R$; vazio = sem teto)", "Maximum spend (sum of ranges, R$; empty = no upper bound)"), value: (l) => (l.aberto ? null : l.gmax), type: "number" },
+    { header: L("Vínculo a revisar", "Link pending review"), value: (l) => (l.naoConfirmada ? L("sim", "yes") : L("não", "no")) },
   ];
   return (
-    <section aria-label="Candidaturas" className="flex flex-col gap-2">
-      <h2 className="display text-2xl">Candidaturas</h2>
+    <section aria-label={L("Candidaturas", "Candidates")} className="flex flex-col gap-2">
+      <h2 className="display text-2xl">{L("Candidaturas", "Candidates")}</h2>
       <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo="trafego_pago_candidaturas"
         busca={(l) => `${l.c.numero} ${l.c.nome} ${l.c.partido ?? ""}`} initialSort={[{ id: "gasto", desc: true }]} pageSize={10} />
       <p className="text-xs text-muted">
+        {getLang() === "en" ? <>
+        A Page is linked to a candidate when the declared funder in the ads is that candidate's campaign CNPJ ("ELEIÇÃO 2026 + full
+        name at TSE"). {semPagina.length > 0 && <>{fmt(semPagina.length)} of {fmt(eleitas.length)} elected candidates with no
+        identified Page (they may not have advertised, or may advertise under another funder).</>}
+        </> : <>
         Página ligada à candidatura quando o financiador declarado nos anúncios é o CNPJ de campanha dela ("ELEIÇÃO 2026 + nome
         completo no TSE"). {semPagina.length > 0 && <>{fmt(semPagina.length)} de {fmt(eleitas.length)} candidaturas eleitas sem
         página identificada (podem não ter anunciado, ou anunciar com outro financiador).</>}
+        </>}
       </p>
       {semPagina.length > 0 && (
         <details className="text-xs text-muted">
-          <summary className="cursor-pointer">Ver eleitas sem página identificada</summary>
+          <summary className="cursor-pointer">{L("Ver eleitas sem página identificada", "Show elected candidates with no identified Page")}</summary>
           <p className="mt-1">{semPagina.map((c) => `${c.nome} (${c.numero})`).join(" · ")}</p>
         </details>
       )}
@@ -246,20 +272,20 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
   const infoExtra = useCallback(({ municipio: cd }: { municipio?: string }) => {
     if (!cd) return null;
     const x = mun.get(cd);
-    const partes = [`${x?.inclui.size ?? 0} anúncio(s) incluem a cidade`];
-    if (x?.bairro.size) partes.push(`${x.bairro.size} incluem bairro(s) dela`);
-    if (x?.exclui.size) partes.push(`${x.exclui.size} a excluem`);
+    const partes = [L(`${x?.inclui.size ?? 0} anúncio(s) incluem a cidade`, `${x?.inclui.size ?? 0} ad(s) include the city`)];
+    if (x?.bairro.size) partes.push(L(`${x.bairro.size} incluem bairro(s) dela`, `${x.bairro.size} include its neighborhood(s)`));
+    if (x?.exclui.size) partes.push(L(`${x.exclui.size} a excluem`, `${x.exclui.size} exclude it`));
     return partes.join("<br>");
   }, [mun]);
 
   if (ads.error) return <ErrorBox error={ads.error} />;
   if (dob.error) return <ErrorBox error={dob.error} />;
-  if (!ads.data || !dob.data) return <Loading texto="Carregando anúncios…" />;
+  if (!ads.data || !dob.data) return <Loading texto={L("Carregando anúncios…", "Loading ads…")} />;
   const nRecebe = new Set(mencoes.filter((m) => m.papel === "recebe").map((m) => m.ad.id)).size;
   const nFaz = new Set(mencoes.filter((m) => m.papel === "faz").map((m) => m.ad.id)).size;
-  const rotuloGasto = fonte === "proprios" ? "gasto declarado desses anúncios (soma das faixas, acumulado)"
-    : fonte === "recebe" ? "gasto das campanhas que pagaram esses anúncios (não é gasto desta candidatura)"
-    : "gasto desta candidatura nos anúncios que citam outras";
+  const rotuloGasto = fonte === "proprios" ? L("gasto declarado desses anúncios (soma das faixas, acumulado)", "declared spend on these ads (sum of ranges, cumulative)")
+    : fonte === "recebe" ? L("gasto das campanhas que pagaram esses anúncios (não é gasto desta candidatura)", "spend by the campaigns that paid for these ads (not this candidate's spend)")
+    : L("gasto desta candidatura nos anúncios que citam outras", "this candidate's spend on ads that mention others");
 
   const gasto = somaFaixas(lista, "gasto");
   const impr = somaFaixas(lista, "impressoes");
@@ -271,7 +297,7 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
   const munNome = municipio ? titulo(base.munByCd.get(municipio)?.nome ?? municipio) : null;
 
   return (
-    <section aria-label={`Anúncios de ${cand.nome}`} className="flex flex-col gap-5 border-t border-line pt-5">
+    <section aria-label={L(`Anúncios de ${cand.nome}`, `Ads by ${cand.nome}`)} className="flex flex-col gap-5 border-t border-line pt-5">
       <header className="flex flex-col gap-1">
         <div className="eyebrow">{CARGOS[cand.cargo]} · {cand.partido}</div>
         <h2 className="display text-2xl md:text-3xl">
@@ -281,36 +307,36 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
           {item.paginas.map((p) => (
             <li key={p.page_id} title={p.evidencia ?? ""}
               className={`rounded border px-2 py-0.5 ${p.status_revisao === "confirmado" ? "border-line" : "border-danger text-danger"}`}>
-              Página “{p.page_name}” · {p.status_revisao === "confirmado" ? "vínculo confirmado (financiador)" : "vínculo NÃO confirmado — a revisar"}
+              {L("Página", "Page")} “{p.page_name}” · {p.status_revisao === "confirmado" ? L("vínculo confirmado (financiador)", "link confirmed (funder)") : L("vínculo NÃO confirmado — a revisar", "link NOT confirmed — pending review")}
             </li>
           ))}
         </ul>
       </header>
 
-      <Segmented label="Fonte dos anúncios" value={fonte} onChange={(f) => { setFonte(f); setParceira("todas"); setMunicipio(null); }} options={[
-        { id: "proprios", label: `Anúncios próprios (${fmt(proprios.length)})` },
-        { id: "recebe", label: `Dobradas: outras campanhas citam (${fmt(nRecebe)})` },
-        { id: "faz", label: `Dobradas: cita outras (${fmt(nFaz)})` },
+      <Segmented label={L("Fonte dos anúncios", "Ad source")} value={fonte} onChange={(f) => { setFonte(f); setParceira("todas"); setMunicipio(null); }} options={[
+        { id: "proprios", label: L(`Anúncios próprios (${fmt(proprios.length)})`, `Own ads (${fmt(proprios.length)})`) },
+        { id: "recebe", label: L(`Dobradas: outras campanhas citam (${fmt(nRecebe)})`, `Joint tickets: other campaigns mention (${fmt(nRecebe)})`) },
+        { id: "faz", label: L(`Dobradas: cita outras (${fmt(nFaz)})`, `Joint tickets: mentions others (${fmt(nFaz)})`) },
       ]} />
       {fonte !== "proprios" && (
         <Parceiras base={base} cand={cand} mencoes={mencoesFonte} fonte={fonte} parceira={parceira} onParceira={setParceira} />
       )}
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-panel p-3 text-sm">
-        <label className="flex flex-col gap-1 text-muted">Circulou a partir de
+        <label className="flex flex-col gap-1 text-muted">{L("Circulou a partir de", "Ran from")}
           <input type="date" value={de} onChange={(e) => setDe(e.target.value)} className="rounded-md border border-line bg-panel px-2 py-1 text-ink" />
         </label>
-        <label className="flex flex-col gap-1 text-muted">até
+        <label className="flex flex-col gap-1 text-muted">{L("até", "to")}
           <input type="date" value={ate} onChange={(e) => setAte(e.target.value)} className="rounded-md border border-line bg-panel px-2 py-1 text-ink" />
         </label>
-        <label className="flex flex-col gap-1 text-muted">Plataforma
-          <Segmented label="Plataforma" value={plataforma} onChange={setPlataforma}
-            options={[{ id: "todas", label: "Todas" }, ...plataformas.map((p) => ({ id: p, label: titulo(p.replace(/_/g, " ")) }))]} />
+        <label className="flex flex-col gap-1 text-muted">{L("Plataforma", "Platform")}
+          <Segmented label={L("Plataforma", "Platform")} value={plataforma} onChange={setPlataforma}
+            options={[{ id: "todas", label: L("Todas", "All") }, ...plataformas.map((p) => ({ id: p, label: titulo(p.replace(/_/g, " ")) }))]} />
         </label>
-        <label htmlFor="pub-mun" className="flex flex-col gap-1 text-muted">Cidade segmentada
+        <label htmlFor="pub-mun" className="flex flex-col gap-1 text-muted">{L("Cidade segmentada", "Targeted city")}
           <select id="pub-mun" value={municipio ?? ""} onChange={(e) => setMunicipio(e.target.value || null)}
             className="rounded-md border border-line bg-panel px-2 py-1 text-ink">
-            <option value="">Todas</option>
+            <option value="">{L("Todas", "All")}</option>
             {[...mun.values()].filter((x) => x.inclui.size + x.bairro.size > 0 && base.munByCd.has(x.cd))
               .sort((a, b) => (b.inclui.size + b.bairro.size) - (a.inclui.size + a.bairro.size))
               .map((x) => <option key={x.cd} value={x.cd}>{titulo(base.munByCd.get(x.cd)!.nome)} ({x.inclui.size + x.bairro.size})</option>)}
@@ -318,21 +344,26 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
         </label>
         {(de || ate || plataforma !== "todas" || municipio) && (
           <button type="button" onClick={() => { setDe(""); setAte(""); setPlataforma("todas"); setMunicipio(null); }}
-            className="rounded-md border border-line px-3 py-1 hover:bg-accent-soft">Limpar</button>
+            className="rounded-md border border-line px-3 py-1 hover:bg-accent-soft">{L("Limpar", "Clear")}</button>
         )}
       </div>
 
       <div className="flex flex-wrap gap-x-8 gap-y-3">
-        <Stat valor={fmt(lista.length)} rotulo={<>anúncios{municipio ? <> que incluem {munNome}</> : null}{lista.length !== todas.length ? ` (de ${fmt(todas.length)})` : ""}</>} />
+        <Stat valor={fmt(lista.length)} rotulo={getLang() === "en" ? <>ads{municipio ? <> that include {munNome}</> : null}{lista.length !== todas.length ? ` (of ${fmt(todas.length)})` : ""}</> : <>anúncios{municipio ? <> que incluem {munNome}</> : null}{lista.length !== todas.length ? ` (de ${fmt(todas.length)})` : ""}</>} />
         <Stat valor={<FaixaTxt f={gasto} />} rotulo={rotuloGasto} />
-        <Stat valor={<FaixaTxt f={impr} prefixo=" " />} rotulo="impressões (soma das faixas)" />
-        <Stat valor={alcanceMed != null ? fmtNum(alcanceMed) : "–"} rotulo="alcance estimado por anúncio (mediana; não se soma)" />
-        <Stat valor={`${fmtData(inicio)} – ${fmtData(fim)}`} rotulo="veiculação" />
+        <Stat valor={<FaixaTxt f={impr} prefixo=" " />} rotulo={L("impressões (soma das faixas)", "impressions (sum of ranges)")} />
+        <Stat valor={alcanceMed != null ? fmtNum(alcanceMed) : "–"} rotulo={L("alcance estimado por anúncio (mediana; não se soma)", "estimated reach per ad (median; not summed)")} />
+        <Stat valor={`${fmtData(inicio)} – ${fmtData(fim)}`} rotulo={L("veiculação", "run dates")} />
       </div>
       {municipio && (
         <p className="text-xs text-muted">
+          {getLang() === "en" ? <>
+          The spend above is the total for these ads everywhere they ran, not the spend in {munNome}: Meta does not
+          report spend by city.
+          </> : <>
           O gasto acima é o total desses anúncios em todos os lugares em que circularam, não o gasto em {munNome}: a Meta não
           informa gasto por cidade.
+          </>}
         </p>
       )}
 
@@ -340,31 +371,36 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-2">
-          <Segmented label="O que o mapa mostra" value={modo} onChange={setModo} options={[
-            { id: "segmentacao", label: "Segmentação" }, { id: "votacao", label: "Votação" }, { id: "cruzamento", label: "Segmentação × votação" },
+          <Segmented label={L("O que o mapa mostra", "What the map shows")} value={modo} onChange={setModo} options={[
+            { id: "segmentacao", label: L("Segmentação", "Targeting") }, { id: "votacao", label: L("Votação", "Votes") }, { id: "cruzamento", label: L("Segmentação × votação", "Targeting × votes") },
           ]} />
           {pl ? (
             <LazyMap base={base} dados={pl} municipio={null} modo="municipios" metrica="pct" corPorMunicipio={corPorMunicipio}
-              infoExtra={infoExtra} rotuloSerie={`votos de ${titulo(cand.nome)}`} onMunicipio={(cd) => setMunicipio(cd)} altura="min(62vh, 640px)" />
-          ) : <Loading texto="Carregando votação…" />}
+              infoExtra={infoExtra} rotuloSerie={L(`votos de ${titulo(cand.nome)}`, `${titulo(cand.nome)} votes`)} onMunicipio={(cd) => setMunicipio(cd)} altura="min(62vh, 640px)" />
+          ) : <Loading texto={L("Carregando votação…", "Loading votes…")} />}
           <LegendaPub modo={modo} breaks={breaksSeg} breaksVoto={breaksVoto} excluida={EXCLUIDA} vazio={VAZIO} />
           <p className="text-xs text-muted">
+            {getLang() === "en" ? <>
+            Targeting by city (or by neighborhood with an identified city) {deUf(info)}; ads aimed at the whole state do not
+            color cities. Click a city to see the ads that include it.
+            </> : <>
             Segmentação por cidade (ou por bairro com cidade identificada) {deUf(info)}; anúncios que miram o estado inteiro não
             pintam cidades. Clique numa cidade para ver os anúncios que a incluem.
+            </>}
           </p>
         </div>
         <aside className="flex flex-col gap-4">
           <div>
-            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide">Recorte geográfico escolhido</h3>
+            <h3 className="mb-1 text-sm font-bold uppercase tracking-wide">{L("Recorte geográfico escolhido", "Chosen geographic targeting")}</h3>
             <ul className="text-sm">
               {(["municipio", "bairro", "cep", "uf", "pais", "desconhecida", "sem_segmentacao"] as Abrangencia[])
                 .filter((k) => porAbr.get(k)).map((k) => (
                   <li key={k} className="flex justify-between border-b border-line py-1">
-                    <span>{ROTULO_ABRANGENCIA[k]}</span><span className="num">{fmt(porAbr.get(k)!)} anúncios</span>
+                    <span>{rotuloAbrangencia(k)}</span><span className="num">{fmt(porAbr.get(k)!)} {L("anúncios", "ads")}</span>
                   </li>
                 ))}
             </ul>
-            <p className="mt-1 text-xs text-muted">Recorte mais fino entre as localidades incluídas de cada anúncio.</p>
+            <p className="mt-1 text-xs text-muted">{L("Recorte mais fino entre as localidades incluídas de cada anúncio.", "Finest level among each ad's included locations.")}</p>
           </div>
           <Entrega ads={lista} />
         </aside>
@@ -374,13 +410,13 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
 
       <Efetividade base={base} mun={mun} votosMun={votosMun} ads={filtrados} cand={cand} onMunicipio={setMunicipio} />
 
-      <section aria-label="Lista de anúncios" className="flex flex-col gap-3">
-        <h3 className="display text-xl">Anúncios{municipio ? ` que incluem ${munNome}` : ""}{tema ? ` · tema: ${EIXOS.flatMap((e) => e.temas).find((t) => t.id === tema)?.rotulo}` : ""}</h3>
+      <section aria-label={L("Lista de anúncios", "Ad list")} className="flex flex-col gap-3">
+        <h3 className="display text-xl">{L("Anúncios", "Ads")}{municipio ? L(` que incluem ${munNome}`, ` that include ${munNome}`) : ""}{tema ? ` · ${L("tema", "theme")}: ${(() => { const t = EIXOS.flatMap((e) => e.temas).find((t) => t.id === tema); return t ? rotuloDe(t) : ""; })()}` : ""}</h3>
         {lista.slice(0, mostrar).map((a) => <CardAnuncio key={a.id} a={a} mencoes={mencaoPorAd.get(a.id)} base={base} />)}
         {lista.length > mostrar && (
           <button type="button" onClick={() => setMostrar((m) => m + 20)}
             className="self-start rounded-md border border-line px-3 py-1.5 text-sm hover:bg-accent-soft">
-            Mostrar mais ({fmt(lista.length - mostrar)} restantes)
+            {L(`Mostrar mais (${fmt(lista.length - mostrar)} restantes)`, `Show more (${fmt(lista.length - mostrar)} remaining)`)}
           </button>
         )}
       </section>
@@ -398,15 +434,15 @@ function LegendaPub({ modo, breaks, breaksVoto, excluida, vazio }: {
   let itens: React.ReactNode[];
   if (modo === "segmentacao") {
     const lim = [1, ...breaks.map((b) => b + 1)];
-    itens = [sw(vazio, "nenhum anúncio inclui"), sw(excluida, "só excluída"),
-      ...[...new Set(lim)].slice(0, 6).map((v, i, arr) => sw(r[Math.min(i + 1, r.length - 1)], i === arr.length - 1 ? `${v}+ anúncios` : `${v}${arr[i + 1] - 1 > v ? `–${arr[i + 1] - 1}` : ""}`))];
+    itens = [sw(vazio, L("nenhum anúncio inclui", "no ad includes")), sw(excluida, L("só excluída", "excluded only")),
+      ...[...new Set(lim)].slice(0, 6).map((v, i, arr) => sw(r[Math.min(i + 1, r.length - 1)], i === arr.length - 1 ? L(`${v}+ anúncios`, `${v}+ ads`) : `${v}${arr[i + 1] - 1 > v ? `–${arr[i + 1] - 1}` : ""}`))];
   } else if (modo === "votacao") {
-    itens = r.map((c, i) => sw(c, i === 0 ? `até ${pct(breaksVoto[0] ?? 0, 1)}` : `${pct(breaksVoto[i - 1] ?? 0, 1)}+`));
+    itens = r.map((c, i) => sw(c, i === 0 ? `${L("até", "up to")} ${pct(breaksVoto[0] ?? 0, 1)}` : `${pct(breaksVoto[i - 1] ?? 0, 1)}+`));
   } else {
-    itens = [sw(BIVAR[2][2], "segmentada · votação alta"), sw(BIVAR[2][1], "segmentada · média"), sw(BIVAR[2][0], "segmentada · baixa"),
-      sw(BIVAR[0][2], "não segmentada · votação alta"), sw(BIVAR[0][1], "não segmentada · média"), sw(BIVAR[0][0], "não segmentada · baixa")];
+    itens = [sw(BIVAR[2][2], L("segmentada · votação alta", "targeted · high vote share")), sw(BIVAR[2][1], L("segmentada · média", "targeted · medium")), sw(BIVAR[2][0], L("segmentada · baixa", "targeted · low")),
+      sw(BIVAR[0][2], L("não segmentada · votação alta", "not targeted · high vote share")), sw(BIVAR[0][1], L("não segmentada · média", "not targeted · medium")), sw(BIVAR[0][0], L("não segmentada · baixa", "not targeted · low"))];
   }
-  return <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" aria-label="Legenda">{itens}</div>;
+  return <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" aria-label={L("Legenda", "Legend")}>{itens}</div>;
 }
 
 function Entrega({ ads }: { ads: MetaAnuncio[] }) {
@@ -421,9 +457,9 @@ function Entrega({ ads }: { ads: MetaAnuncio[] }) {
   }, [ads]);
   return (
     <div>
-      <h3 className="mb-1 text-sm font-bold uppercase tracking-wide">Entrega (onde a Meta diz que chegou)</h3>
+      <h3 className="mb-1 text-sm font-bold uppercase tracking-wide">{L("Entrega (onde a Meta diz que chegou)", "Delivery (where Meta says it reached)")}</h3>
       <table className="w-full text-sm">
-        <thead><tr className="text-left text-xs text-muted"><th className="py-1">Região</th><th className="text-right">Anúncios</th><th className="text-right">Mediana do alcance</th></tr></thead>
+        <thead><tr className="text-left text-xs text-muted"><th className="py-1">{L("Região", "Region")}</th><th className="text-right">{L("Anúncios", "Ads")}</th><th className="text-right">{L("Mediana do alcance", "Median reach share")}</th></tr></thead>
         <tbody>
           {linhas.ufs.slice(0, 8).map((l) => (
             <tr key={l.uf} className="border-t border-line"><td className="py-1">{l.uf}</td><td className="num text-right">{fmt(l.n)}</td><td className="num text-right">{l.med > 0 && l.med < 0.01 ? "<1%" : pct(l.med, 0)}</td></tr>
@@ -431,7 +467,7 @@ function Entrega({ ads }: { ads: MetaAnuncio[] }) {
         </tbody>
       </table>
       <p className="mt-1 text-xs text-muted">
-        Parcela do alcance de cada anúncio por estado (só há este nível). {linhas.sem > 0 && `${fmt(linhas.sem)} anúncios sem distribuição informada.`}
+        {L("Parcela do alcance de cada anúncio por estado (só há este nível).", "Share of each ad's reach by state (the only level available).")} {linhas.sem > 0 && L(`${fmt(linhas.sem)} anúncios sem distribuição informada.`, `${fmt(linhas.sem)} ads with no distribution reported.`)}
       </p>
     </div>
   );
@@ -458,43 +494,48 @@ function Efetividade({ base, mun, votosMun, ads, cand, onMunicipio }: {
 
 
   const columns = useMemo<ColumnDef<LinhaEf, unknown>[]>(() => [
-    { id: "nome", accessorKey: "nome", header: "Município", cell: (x) => (
+    { id: "nome", accessorKey: "nome", header: L("Município", "City"), cell: (x) => (
       <button type="button" className="text-left font-semibold hover:text-accent" onClick={() => onMunicipio(x.row.original.cd)}>{titulo(x.row.original.nome)}</button>
     ) },
-    { id: "inclui", accessorKey: "inclui", header: "Anúncios que incluem", cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
-    { id: "bairro", accessorKey: "bairro", header: "…via bairro", cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
-    { id: "exclui", accessorKey: "exclui", header: "Que excluem", cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
-    { id: "gasto", accessorFn: (l) => l.gmax ?? l.gmin, header: "Gasto total desses anúncios*",
+    { id: "inclui", accessorKey: "inclui", header: L("Anúncios que incluem", "Ads that include"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
+    { id: "bairro", accessorKey: "bairro", header: L("…via bairro", "…via neighborhood"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
+    { id: "exclui", accessorKey: "exclui", header: L("Que excluem", "That exclude"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
+    { id: "gasto", accessorFn: (l) => l.gmax ?? l.gmin, header: L("Gasto total desses anúncios*", "Total spend of these ads*"),
       cell: (x) => { const l = x.row.original; return l.inclui + l.bairro ? fmtFaixa(l.gmin, l.gmax, "R$ ") : "–"; }, meta: { numeric: true } },
-    { id: "periodo", accessorFn: (l) => l.inicio ?? "", header: "Veiculação", cell: (x) => { const l = x.row.original; return l.inicio ? `${fmtData(l.inicio)} – ${fmtData(l.fim)}` : "–"; } },
-    { id: "votos", accessorKey: "votos", header: "Votos", cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
-    { id: "pct", accessorKey: "pct", header: "% válidos", cell: (x) => pct(Number(x.getValue())), meta: { numeric: true } },
-    { id: "share", accessorFn: (l) => (total ? l.votos / total : 0), header: "% do total", cell: (x) => pct(Number(x.getValue())), meta: { numeric: true } },
+    { id: "periodo", accessorFn: (l) => l.inicio ?? "", header: L("Veiculação", "Run dates"), cell: (x) => { const l = x.row.original; return l.inicio ? `${fmtData(l.inicio)} – ${fmtData(l.fim)}` : "–"; } },
+    { id: "votos", accessorKey: "votos", header: L("Votos", "Votes"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
+    { id: "pct", accessorKey: "pct", header: L("% válidos", "% valid"), cell: (x) => pct(Number(x.getValue())), meta: { numeric: true } },
+    { id: "share", accessorFn: (l) => (total ? l.votos / total : 0), header: L("% do total", "% of total"), cell: (x) => pct(Number(x.getValue())), meta: { numeric: true } },
   ], [onMunicipio, total]);
   const exportCols: ExportCol<LinhaEf>[] = [
-    { header: "Município", value: (l) => l.nome }, { header: "Código TSE", value: (l) => l.cd },
-    { header: "Anúncios que incluem a cidade", value: (l) => l.inclui, type: "number" },
-    { header: "Anúncios que incluem bairro da cidade", value: (l) => l.bairro, type: "number" },
-    { header: "Anúncios que excluem a cidade", value: (l) => l.exclui, type: "number" },
-    { header: "Gasto total dos anúncios associados - mínimo (não é gasto na cidade)", value: (l) => (l.inclui + l.bairro ? l.gmin : null), type: "number" },
-    { header: "Gasto total dos anúncios associados - máximo (vazio = sem teto)", value: (l) => (l.inclui + l.bairro ? l.gmax : null), type: "number" },
-    { header: "Primeira veiculação", value: (l) => l.inicio ?? "" }, { header: "Última veiculação", value: (l) => l.fim ?? "" },
-    { header: "Votos", value: (l) => l.votos, type: "number" }, { header: "% válidos", value: (l) => l.pct, type: "percent" },
-    { header: "% do total da candidatura", value: (l) => (total ? l.votos / total : 0), type: "percent" },
+    { header: L("Município", "City"), value: (l) => l.nome }, { header: L("Código TSE", "TSE code"), value: (l) => l.cd },
+    { header: L("Anúncios que incluem a cidade", "Ads that include the city"), value: (l) => l.inclui, type: "number" },
+    { header: L("Anúncios que incluem bairro da cidade", "Ads that include a neighborhood of the city"), value: (l) => l.bairro, type: "number" },
+    { header: L("Anúncios que excluem a cidade", "Ads that exclude the city"), value: (l) => l.exclui, type: "number" },
+    { header: L("Gasto total dos anúncios associados - mínimo (não é gasto na cidade)", "Total spend of associated ads - minimum (not spend in the city)"), value: (l) => (l.inclui + l.bairro ? l.gmin : null), type: "number" },
+    { header: L("Gasto total dos anúncios associados - máximo (vazio = sem teto)", "Total spend of associated ads - maximum (empty = no upper bound)"), value: (l) => (l.inclui + l.bairro ? l.gmax : null), type: "number" },
+    { header: L("Primeira veiculação", "First run date"), value: (l) => l.inicio ?? "" }, { header: L("Última veiculação", "Last run date"), value: (l) => l.fim ?? "" },
+    { header: L("Votos", "Votes"), value: (l) => l.votos, type: "number" }, { header: L("% válidos", "% valid"), value: (l) => l.pct, type: "percent" },
+    { header: L("% do total da candidatura", "% of the candidate's total"), value: (l) => (total ? l.votos / total : 0), type: "percent" },
   ];
   return (
-    <section aria-label="Segmentação e votação" className="flex flex-col gap-3">
-      <h3 className="display text-xl">Por cidade</h3>
+    <section aria-label={L("Segmentação e votação", "Targeting and votes")} className="flex flex-col gap-3">
+      <h3 className="display text-xl">{L("Por cidade", "By city")}</h3>
       <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`trafego_pago_${cand.numero}_municipios`}
         busca={(l) => normalizar(l.nome)} initialSort={[{ id: "inclui", desc: true }]} pageSize={15}
         atalhos={[
-          { label: "Mais anúncios", sort: [{ id: "inclui", desc: true }] },
-          { label: "Mais votos", sort: [{ id: "votos", desc: true }] },
-          { label: "Maior % válidos", sort: [{ id: "pct", desc: true }] },
+          { label: L("Mais anúncios", "Most ads"), sort: [{ id: "inclui", desc: true }] },
+          { label: L("Mais votos", "Most votes"), sort: [{ id: "votos", desc: true }] },
+          { label: L("Maior % válidos", "Highest % valid"), sort: [{ id: "pct", desc: true }] },
         ]} />
       <p className="text-xs text-muted">
+        {getLang() === "en" ? <>
+        * Total spend (cumulative range) of the ads that include the city, summing what they spent everywhere. It is not the
+        spend in the city, and the same ad appears in every city it includes.
+        </> : <>
         * Gasto total (faixa acumulada) dos anúncios que incluem a cidade, somando o que gastaram em todos os lugares. Não é o
         gasto na cidade, e o mesmo anúncio aparece em todas as cidades que ele inclui.
+        </>}
       </p>
     </section>
   );
@@ -509,10 +550,10 @@ function CardAnuncio({ a, mencoes, base }: { a: MetaAnuncio; mencoes?: MetaMenca
   const nomeLoc = (l: MetaAnuncio["loc"][number]) => {
     const nivel = l[LOC.nivel];
     if (nivel === "municipio") return `${titulo(l[LOC.municipio] ?? "")}${l[LOC.uf] ? `/${l[LOC.uf]}` : ""}`;
-    if (nivel === "bairro") return `bairro ${l[LOC.bairro]}${l[LOC.municipio] ? ` (${l[LOC.municipio]})` : " (cidade não informada)"}`;
-    if (nivel === "cep") return `CEP ${l[LOC.cep]}-xxx`;
-    if (nivel === "uf") return `${l[LOC.uf] ?? l[LOC.nome]} (estado)`;
-    if (nivel === "pais") return "Brasil";
+    if (nivel === "bairro") return `${L("bairro", "neighborhood")} ${l[LOC.bairro]}${l[LOC.municipio] ? ` (${l[LOC.municipio]})` : L(" (cidade não informada)", " (city not reported)")}`;
+    if (nivel === "cep") return `${L("CEP", "ZIP code")} ${l[LOC.cep]}-xxx`;
+    if (nivel === "uf") return `${l[LOC.uf] ?? l[LOC.nome]} ${L("(estado)", "(state)")}`;
+    if (nivel === "pais") return L("Brasil", "Brazil");
     return l[LOC.nome];
   };
   return (
@@ -520,38 +561,38 @@ function CardAnuncio({ a, mencoes, base }: { a: MetaAnuncio; mencoes?: MetaMenca
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <b>{a.page_name}</b>
-          <span className="text-muted"> · Pago por: {a.bylines ?? "não informado"}</span>
+          <span className="text-muted"> · {L("Pago por", "Paid for by")}: {a.bylines ?? L("não informado", "not reported")}</span>
         </div>
-        <a href={a.link} target="_blank" rel="noopener noreferrer" className="text-accent">Ver na Biblioteca de Anúncios ↗</a>
+        <a href={a.link} target="_blank" rel="noopener noreferrer" className="text-accent">{L("Ver na Biblioteca de Anúncios ↗", "View in Meta Ad Library ↗")}</a>
       </div>
       <div className="text-xs text-muted">
-        Veiculação {fmtData(a.inicio)} – {a.fim ? fmtData(a.fim) : "em andamento na última coleta"} · criado em {fmtData(a.criado)}
-        {" · "}{(a.plataformas ?? []).map((p) => titulo(p)).join(", ") || "plataforma não informada"}
-        {" · "}coletado em {fmtDataHora(a.ultima_coleta)}
+        {L("Veiculação", "Ran")} {fmtData(a.inicio)} – {a.fim ? fmtData(a.fim) : L("em andamento na última coleta", "still running at last collection")} · {L("criado em", "created on")} {fmtData(a.criado)}
+        {" · "}{(a.plataformas ?? []).map((p) => titulo(p)).join(", ") || L("plataforma não informada", "platform not reported")}
+        {" · "}{L("coletado em", "collected on")} {fmtDataHora(a.ultima_coleta)}
       </div>
       {mencoes?.map((m, i) => {
         const outra = m.outra != null ? base.candById.get(m.outra) : undefined;
         return (
           <div key={i} className={`rounded-md px-2 py-1 text-xs ${m.confirmada ? "bg-accent-soft" : "border border-dashed border-line"}`}>
-            {m.papel === "recebe" ? <>Pago por {outra ? <b>{nomeCand(outra)} ({CARGOS[outra.cargo]}, {outra.partido})</b> : <b>financiador não identificado no TSE</b>}</>
-              : <>Cita {outra ? <b>{nomeCand(outra)} ({CARGOS[outra.cargo]}, {outra.partido})</b> : "outra candidatura"}</>}
-            {" · "}{m.cita_nome ? "nome ✓" : "sem nome"} · {m.cita_numero ? "número ✓" : "sem número"}
-            {" · "}{m.confirmada ? "dobrada confirmada" : "não confirmada"}
-            {m.cnpjs_texto && <> · CNPJ no texto: {m.cnpjs_texto.split(",").map(fmtCnpj).join(", ")}</>}
-            {m.cnpj_financiador && <> · CNPJ do financiador: {m.cnpj_financiador.split(",").map(fmtCnpj).join(", ")}</>}
+            {m.papel === "recebe" ? <>{L("Pago por", "Paid for by")} {outra ? <b>{nomeCand(outra)} ({CARGOS[outra.cargo]}, {outra.partido})</b> : <b>{L("financiador não identificado no TSE", "funder not identified in TSE records")}</b>}</>
+              : <>{L("Cita", "Mentions")} {outra ? <b>{nomeCand(outra)} ({CARGOS[outra.cargo]}, {outra.partido})</b> : L("outra candidatura", "another candidate")}</>}
+            {" · "}{m.cita_nome ? L("nome ✓", "name ✓") : L("sem nome", "no name")} · {m.cita_numero ? L("número ✓", "number ✓") : L("sem número", "no number")}
+            {" · "}{m.confirmada ? L("dobrada confirmada", "joint ticket confirmed") : L("não confirmada", "not confirmed")}
+            {m.cnpjs_texto && <> · {L("CNPJ no texto", "CNPJ in text")}: {m.cnpjs_texto.split(",").map(fmtCnpj).join(", ")}</>}
+            {m.cnpj_financiador && <> · {L("CNPJ do financiador", "Funder CNPJ")}: {m.cnpj_financiador.split(",").map(fmtCnpj).join(", ")}</>}
           </div>
         );
       })}
       {texto ? (
         <p className="whitespace-pre-line">{curto}{texto.length > 320 && (
-          <button type="button" className="ml-1 text-accent" onClick={() => setAberto(!aberto)}>{aberto ? "menos" : "mais"}</button>
+          <button type="button" className="ml-1 text-accent" onClick={() => setAberto(!aberto)}>{aberto ? L("menos", "less") : L("mais", "more")}</button>
         )}</p>
-      ) : <p className="text-muted">(sem texto no anúncio)</p>}
+      ) : <p className="text-muted">{L("(sem texto no anúncio)", "(no text in the ad)")}</p>}
       <div className="flex flex-wrap gap-x-6 gap-y-1">
-        <span>Gasto: <b>{fmtFaixa(a.gasto[0], a.gasto[1], simbolo(a.moeda ?? ""))}</b></span>
-        <span>Impressões: <b>{fmtFaixa(a.impressoes[0], a.impressoes[1])}</b></span>
-        <span>Alcance estimado: <b>{a.alcance != null ? fmtNum(a.alcance, false) : "não informado"}</b></span>
-        <span>Público potencial: <b>{fmtFaixa(a.publico[0], a.publico[1])}</b></span>
+        <span>{L("Gasto", "Spend")}: <b>{fmtFaixa(a.gasto[0], a.gasto[1], simbolo(a.moeda ?? ""))}</b></span>
+        <span>{L("Impressões", "Impressions")}: <b>{fmtFaixa(a.impressoes[0], a.impressoes[1])}</b></span>
+        <span>{L("Alcance estimado", "Estimated reach")}: <b>{a.alcance != null ? fmtNum(a.alcance, false) : L("não informado", "not reported")}</b></span>
+        <span>{L("Público potencial", "Potential audience")}: <b>{fmtFaixa(a.publico[0], a.publico[1])}</b></span>
       </div>
       <div className="flex flex-wrap gap-1.5 text-xs">
         {inc.map((l, i) => (
@@ -562,10 +603,10 @@ function CardAnuncio({ a, mencoes, base }: { a: MetaAnuncio; mencoes?: MetaMenca
         ))}
         {exc.map((l, i) => (
           <span key={`e${i}`} title={l[LOC.nome]} className="rounded border border-line px-1.5 py-0.5 text-muted line-through">
-            excluída: {nomeLoc(l)}
+            {L("excluída", "excluded")}: {nomeLoc(l)}
           </span>
         ))}
-        {!a.loc.length && <span className="text-muted">sem localidade informada</span>}
+        {!a.loc.length && <span className="text-muted">{L("sem localidade informada", "no location reported")}</span>}
       </div>
     </article>
   );
@@ -600,24 +641,24 @@ function Parceiras({ base, cand, mencoes, fonte, parceira, onParceira }: {
       };
     }).sort((a, b) => b.anuncios - a.anuncios);
   }, [mencoes, base]);
-  if (!linhas.length) return <p className="text-sm text-muted">Nenhuma dobrada encontrada nos anúncios coletados.</p>;
+  if (!linhas.length) return <p className="text-sm text-muted">{L("Nenhuma dobrada encontrada nos anúncios coletados.", "No joint tickets found in the collected ads.")}</p>;
   return (
-    <section aria-label="Dobradas pagas" className="flex flex-col gap-2">
-      <h3 className="display text-xl">{fonte === "recebe" ? `Campanhas que pagaram anúncios citando ${titulo(cand.nome)}` : `Candidaturas citadas nos anúncios de ${titulo(cand.nome)}`}</h3>
+    <section aria-label={L("Dobradas pagas", "Paid joint-ticket ads")} className="flex flex-col gap-2">
+      <h3 className="display text-xl">{fonte === "recebe" ? L(`Campanhas que pagaram anúncios citando ${titulo(cand.nome)}`, `Campaigns that paid for ads mentioning ${titulo(cand.nome)}`) : L(`Candidaturas citadas nos anúncios de ${titulo(cand.nome)}`, `Candidates mentioned in ${titulo(cand.nome)}'s ads`)}</h3>
       <div className="overflow-x-auto rounded-lg border border-line bg-panel">
         <table className="w-full text-sm">
           <thead><tr className="text-left text-xs text-muted">
-            <th className="px-3 py-2">{fonte === "recebe" ? "Pagou" : "Citada"}</th><th className="px-3 py-2 text-right">Anúncios</th>
-            <th className="px-3 py-2 text-right">Nome + número</th><th className="px-3 py-2 text-right">Só nome</th>
-            <th className="px-3 py-2 text-right">Com CNPJ no texto</th><th className="px-3 py-2 text-right">Gasto (do pagador)</th>
-            <th className="px-3 py-2 text-right">Cidades segmentadas</th><th className="px-3 py-2">Veiculação</th>
+            <th className="px-3 py-2">{fonte === "recebe" ? L("Pagou", "Paid") : L("Citada", "Mentioned")}</th><th className="px-3 py-2 text-right">{L("Anúncios", "Ads")}</th>
+            <th className="px-3 py-2 text-right">{L("Nome + número", "Name + number")}</th><th className="px-3 py-2 text-right">{L("Só nome", "Name only")}</th>
+            <th className="px-3 py-2 text-right">{L("Com CNPJ no texto", "With CNPJ in text")}</th><th className="px-3 py-2 text-right">{L("Gasto (do pagador)", "Spend (by payer)")}</th>
+            <th className="px-3 py-2 text-right">{L("Cidades segmentadas", "Targeted cities")}</th><th className="px-3 py-2">{L("Veiculação", "Run dates")}</th>
           </tr></thead>
           <tbody>{linhas.map((l) => (
             <tr key={l.chave} className={`cursor-pointer border-t border-line hover:bg-accent-soft ${parceira === l.chave ? "bg-accent-soft font-semibold" : ""}`}
               onClick={() => onParceira(parceira === l.chave ? "todas" : l.chave)}>
               <td className="px-3 py-1.5">
-                {l.outra ? <>{nomeCand(l.outra)}<SituacaoBadge c={l.outra} compacto /><div className="text-xs font-normal text-muted">{CARGOS[l.outra.cargo]} · {l.outra.partido} · página {l.paginas}</div></>
-                  : <>Financiador não identificado no TSE<div className="text-xs font-normal text-muted">páginas: {l.paginas}</div></>}
+                {l.outra ? <>{nomeCand(l.outra)}<SituacaoBadge c={l.outra} compacto /><div className="text-xs font-normal text-muted">{CARGOS[l.outra.cargo]} · {l.outra.partido} · {L("página", "Page")} {l.paginas}</div></>
+                  : <>{L("Financiador não identificado no TSE", "Funder not identified in TSE records")}<div className="text-xs font-normal text-muted">{L("páginas", "Pages")}: {l.paginas}</div></>}
               </td>
               <td className="num px-3 text-right">{fmt(l.anuncios)}</td><td className="num px-3 text-right">{fmt(l.confirmadas)}</td>
               <td className="num px-3 text-right">{fmt(l.soNome)}</td><td className="num px-3 text-right">{fmt(l.cnpjTexto)}</td>
@@ -628,10 +669,17 @@ function Parceiras({ base, cand, mencoes, fonte, parceira, onParceira }: {
         </table>
       </div>
       <p className="text-xs text-muted">
+        {getLang() === "en" ? <>
+        Click a row to filter the map, cities and ads by that joint ticket. "Name + number": the text has the ballot name and
+        ballot number of the mentioned candidate; the joint ticket is confirmed when, in addition, the declared funder is another
+        candidate's campaign CNPJ. The spend belongs to whoever paid (cumulative ranges of these ads) and is not counted in the
+        mentioned candidate's spend.
+        </> : <>
         Clique numa linha para filtrar mapa, cidades e anúncios por essa dobrada. "Nome + número": o texto traz o nome de urna e o
         número de urna da candidatura citada; a dobrada é confirmada quando, além disso, o financiador declarado é o CNPJ de
         campanha de outra candidatura. O gasto é de quem pagou (faixas acumuladas desses anúncios) e não entra no gasto da
         candidatura citada.
+        </>}
       </p>
     </section>
   );

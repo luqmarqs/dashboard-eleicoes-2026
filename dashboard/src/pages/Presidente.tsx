@@ -7,14 +7,16 @@ import { CandidatePicker, ErrorBox, Loading, MunicipioSelect, Segmented, Situaca
 import { cssRgb, type RGB } from "../lib/colors";
 import { porLocal, useBase, useTotais, useVotos, type Base, type PorLocal } from "../lib/data";
 import type { ExportCol } from "../lib/export";
-import { fmt, pct, titulo } from "../lib/format";
+import { dec, fmt, pct, titulo } from "../lib/format";
+import { L, getLang } from "../lib/i18n";
 import { CARGOS, type Candidatura } from "../lib/types";
 
 const VENCEU: RGB = [123, 31, 162];
 const NAO_VENCEU: RGB = [176, 168, 182];
 const FAIXAS = [
-  { ate: 0.3, rotulo: "menos de 30%" }, { ate: 0.4, rotulo: "30 a 40%" }, { ate: 0.5, rotulo: "40 a 50%" },
-  { ate: 0.6, rotulo: "50 a 60%" }, { ate: Infinity, rotulo: "60% ou mais" },
+  { ate: 0.3, rotulo: () => L("menos de 30%", "under 30%") }, { ate: 0.4, rotulo: () => L("30 a 40%", "30 to 40%") },
+  { ate: 0.5, rotulo: () => L("40 a 50%", "40 to 50%") }, { ate: 0.6, rotulo: () => L("50 a 60%", "50 to 60%") },
+  { ate: Infinity, rotulo: () => L("60% ou mais", "60% or more") },
 ];
 
 interface Analise {
@@ -41,9 +43,9 @@ function correlacao(xs: number[], ys: number[]): number {
 
 function lerCorrelacao(r: number): string {
   const a = Math.abs(r);
-  if (!Number.isFinite(r)) return "sem dados suficientes";
-  const forca = a < 0.1 ? "praticamente nenhuma" : a < 0.3 ? "fraca" : a < 0.5 ? "moderada" : "forte";
-  return `${forca}${a >= 0.1 ? (r > 0 ? " e positiva" : " e negativa") : ""}`;
+  if (!Number.isFinite(r)) return L("sem dados suficientes", "not enough data");
+  const forca = a < 0.1 ? L("praticamente nenhuma", "practically none") : a < 0.3 ? L("fraca", "weak") : a < 0.5 ? L("moderada", "moderate") : L("forte", "strong");
+  return `${forca}${a >= 0.1 ? (r > 0 ? L(" e positiva", " and positive") : L(" e negativa", " and negative")) : ""}`;
 }
 
 export function Presidente() {
@@ -102,26 +104,28 @@ export function Presidente() {
   return (
     <div className="flex flex-col gap-6">
       <header>
-        <div className="eyebrow">Presidente × candidatura</div>
+        <div className="eyebrow">{L("Presidente × candidatura", "President × candidate")}</div>
         <h1 className="display text-3xl">
-          {cand ? nomeCand(cand) : "?"} onde {ref ? ref.nome : "?"} venceu
+          {cand ? nomeCand(cand) : "?"} {L("onde", "where")} {ref ? ref.nome : "?"} {L("venceu", "won")}
         </h1>
         <p className="max-w-3xl text-muted">
-          Compara a votação da candidatura nos lugares em que {ref?.nome ?? "a referência"} ficou em 1º lugar para presidente
-          (1º turno) com os demais, e conforme cresce a % dele no local de votação.
+          {L(
+            `Compara a votação da candidatura nos lugares em que ${ref?.nome ?? "a referência"} ficou em 1º lugar para presidente (1º turno) com os demais, e conforme cresce a % dele no local de votação.`,
+            `Compares the candidate's votes in places where ${ref?.nome ?? "the reference"} came 1st for president (1st round) with the rest, and as their % at the polling place grows.`,
+          )}
         </p>
       </header>
 
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1 text-sm text-muted">
-          Candidatura analisada
+          {L("Candidatura analisada", "Candidate analyzed")}
           <div className="flex flex-wrap items-center gap-2">
-            <Segmented label="Candidatura" value={String(candId)} onChange={(v) => set("c", v)}
+            <Segmented label={L("Candidatura", "Candidacy")} value={String(candId)} onChange={(v) => set("c", v)}
               options={destaques.map((c) => ({ id: String(c.id), label: c.nome }))} />
-            <div className="w-72"><CandidatePicker id="pres-cand" base={b} onPick={(c) => set("c", String(c.id))} placeholder="ou outra candidatura…" /></div>
+            <div className="w-72"><CandidatePicker id="pres-cand" base={b} onPick={(c) => set("c", String(c.id))} placeholder={L("ou outra candidatura…", "or another candidacy…")} /></div>
           </div>
         </div>
-        <label htmlFor="pres-ref" className="flex flex-col gap-1 text-sm text-muted">Referência para presidente
+        <label htmlFor="pres-ref" className="flex flex-col gap-1 text-sm text-muted">{L("Referência para presidente", "Reference for president")}
           <select id="pres-ref" value={refId} onChange={(e) => set("ref", e.target.value)}
             className="rounded-md border border-line bg-panel px-3 py-1.5 text-ink">
             {presCands.map((c) => <option key={c.id} value={c.id}>{c.numero} · {c.nome}</option>)}
@@ -131,7 +135,7 @@ export function Presidente() {
       </div>
 
       {votos.error && <ErrorBox error={votos.error} />}
-      {!analise || !cand || !ref ? <Loading texto="Cruzando com a votação para presidente…" /> : (
+      {!analise || !cand || !ref ? <Loading texto={L("Cruzando com a votação para presidente…", "Crossing with the presidential vote…")} /> : (
         <Conteudo base={b} cand={cand} ref_={ref} municipio={municipio} analise={analise}
           presCands={presCands} onMunicipio={(cd) => set("mun", cd)} />
       )}
@@ -148,8 +152,8 @@ function Conteudo({ base, cand, ref_, municipio, analise, presCands, onMunicipio
   const pr = pres[iRef];
   const locais = base.locais.filter((l) => (!municipio || l.mun === municipio) && pr.validos[l.idx] > 0);
 
-  const grupos = [novoGrupo(`${ref_.nome} venceu`), novoGrupo(`${ref_.nome} não venceu`)];
-  const faixas = FAIXAS.map((f) => novoGrupo(f.rotulo));
+  const grupos = [novoGrupo(L(`${ref_.nome} venceu`, `${ref_.nome} won`)), novoGrupo(L(`${ref_.nome} não venceu`, `${ref_.nome} did not win`))];
+  const faixas = FAIXAS.map((f) => novoGrupo(f.rotulo()));
   let totCand = 0, totVal = 0;
   const xs: number[] = [], ys: number[] = [];
   for (const l of locais) {
@@ -166,38 +170,50 @@ function Conteudo({ base, cand, ref_, municipio, analise, presCands, onMunicipio
   const r = correlacao(xs, ys);
   const [gv, gn] = grupos;
   const razao = gn.valCand && gv.valCand ? (gv.vCand / gv.valCand) / (gn.vCand / gn.valCand) : NaN;
+  const rTxt = Number.isFinite(r) ? dec(r, 2) : "–";
 
   return (
     <>
-      <section aria-label="Resumo" className="rounded-lg border border-line bg-panel p-5">
+      <section aria-label={L("Resumo", "Summary")} className="rounded-lg border border-line bg-panel p-5">
+        {getLang() === "en" ? (
+        <p className="text-lg">
+          Where {ref_.nome} won, {cand.nome} got <b className="num">{pct(gv.valCand ? gv.vCand / gv.valCand : 0)}</b> of
+          valid votes for {CARGOS[cand.cargo]}; elsewhere, <b className="num">{pct(gn.valCand ? gn.vCand / gn.valCand : 0)}</b>
+          {Number.isFinite(razao) && <> ({razao >= 1 ? `${dec(razao, 1)}× more` : `${dec(1 / razao, 1)}× less`})</>}.
+          {" "}{pct(totCand ? gv.vCand / totCand : 0, 0)} of {cand.nome}'s votes came from places won by {ref_.nome}, which account for{" "}
+          {pct(totVal ? gv.valCand / totVal : 0, 0)} of the valid votes for the office. Correlation between the two percentages by place:{" "}
+          <b className="num">{rTxt}</b> ({lerCorrelacao(r)}).
+        </p>
+        ) : (
         <p className="text-lg">
           Onde {ref_.nome} venceu, {cand.nome} teve <b className="num">{pct(gv.valCand ? gv.vCand / gv.valCand : 0)}</b> dos
           válidos para {CARGOS[cand.cargo]}; nos demais lugares, <b className="num">{pct(gn.valCand ? gn.vCand / gn.valCand : 0)}</b>
-          {Number.isFinite(razao) && <> ({razao >= 1 ? `${razao.toFixed(1).replace(".", ",")}× mais` : `${(1 / razao).toFixed(1).replace(".", ",")}× menos`})</>}.
+          {Number.isFinite(razao) && <> ({razao >= 1 ? `${dec(razao, 1)}× mais` : `${dec(1 / razao, 1)}× menos`})</>}.
           {" "}{pct(totCand ? gv.vCand / totCand : 0, 0)} dos votos de {cand.nome} vieram dos locais vencidos por {ref_.nome}, que reúnem{" "}
           {pct(totVal ? gv.valCand / totVal : 0, 0)} dos votos válidos do cargo. Correlação entre as duas porcentagens por local:{" "}
-          <b className="num">{Number.isFinite(r) ? r.toFixed(2).replace(".", ",") : "–"}</b> ({lerCorrelacao(r)}).
+          <b className="num">{rTxt}</b> ({lerCorrelacao(r)}).
         </p>
+        )}
         <p className="mt-2 text-xs text-muted">
-          Dados agregados por local de votação: mostram onde as votações coincidem, não que sejam os mesmos eleitores.
+          {L("Dados agregados por local de votação: mostram onde as votações coincidem, não que sejam os mesmos eleitores.", "Data aggregated by polling place: shows where the votes coincide, not that they are the same voters.")}
         </p>
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <TabelaGrupos titulo={`Onde ${ref_.nome} venceu`} grupos={grupos} cand={cand} ref_={ref_} totCand={totCand} totVal={totVal} />
-        <TabelaGrupos titulo={`Pela % de ${ref_.nome} no local de votação`} grupos={faixas} cand={cand} ref_={ref_} totCand={totCand} totVal={totVal} />
+        <TabelaGrupos titulo={L(`Onde ${ref_.nome} venceu`, `Where ${ref_.nome} won`)} grupos={grupos} cand={cand} ref_={ref_} totCand={totCand} totVal={totVal} />
+        <TabelaGrupos titulo={L(`Pela % de ${ref_.nome} no local de votação`, `By ${ref_.nome}'s % at the polling place`)} grupos={faixas} cand={cand} ref_={ref_} totCand={totCand} totVal={totVal} />
       </div>
 
-      <section aria-label="Mapa" className="flex flex-col gap-2">
+      <section aria-label={L("Mapa", "Map")} className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-4 text-sm">
-          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full" style={{ background: cssRgb(VENCEU) }} />{ref_.nome} venceu no local</span>
-          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full" style={{ background: cssRgb(NAO_VENCEU) }} />outro candidato venceu</span>
-          <span className="text-muted">tamanho do círculo = votos de {cand.nome}</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full" style={{ background: cssRgb(VENCEU) }} />{L(`${ref_.nome} venceu no local`, `${ref_.nome} won at the place`)}</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full" style={{ background: cssRgb(NAO_VENCEU) }} />{L("outro candidato venceu", "another candidate won")}</span>
+          <span className="text-muted">{L(`tamanho do círculo = votos de ${cand.nome}`, `circle size = votes for ${cand.nome}`)}</span>
           <Link className="ml-auto text-accent" to={`/dobrada?a=${ref_.id}&b=${cand.id}${municipio ? `&mun=${municipio}` : ""}`}>
-            Ver o cruzamento em 9 classes (dobrada) →
+            {L("Ver o cruzamento em 9 classes (dobrada) →", "See the 9-class crossing (joint ticket) →")}
           </Link>
         </div>
-        <LazyMap base={base} dados={pc} municipio={municipio} modo="escolas" metrica="votos" rotuloSerie={`votos de ${cand.nome}`}
+        <LazyMap base={base} dados={pc} municipio={municipio} modo="escolas" metrica="votos" rotuloSerie={L(`votos de ${cand.nome}`, `votes for ${cand.nome}`)}
           corPorLocal={(idx) => (vencedor[idx] < 0 ? null : vencedor[idx] === iRef ? VENCEU : NAO_VENCEU)} onMunicipio={onMunicipio} />
       </section>
 
@@ -217,11 +233,11 @@ function TabelaGrupos({ titulo: t, grupos, cand, ref_, totCand, totVal }: {
           <thead>
             <tr className="border-b border-line text-left">
               <th className="px-3 py-2"></th>
-              <th className="px-3 py-2 text-right">Locais</th>
+              <th className="px-3 py-2 text-right">{L("Locais", "Places")}</th>
               <th className="px-3 py-2 text-right">{ref_.nome}</th>
               <th className="px-3 py-2 text-right">{cand.nome}<SituacaoBadge c={cand} compacto /></th>
-              <th className="px-3 py-2 text-right" title={`Parte dos votos de ${cand.nome} que veio deste grupo`}>parte dos votos</th>
-              <th className="px-3 py-2 text-right" title="Parte dos votos válidos do cargo neste grupo">parte do eleitorado</th>
+              <th className="px-3 py-2 text-right" title={L(`Parte dos votos de ${cand.nome} que veio deste grupo`, `Share of ${cand.nome}'s votes that came from this group`)}>{L("parte dos votos", "share of votes")}</th>
+              <th className="px-3 py-2 text-right" title={L("Parte dos votos válidos do cargo neste grupo", "Share of the office's valid votes in this group")}>{L("parte do eleitorado", "share of electorate")}</th>
             </tr>
           </thead>
           <tbody>
@@ -238,7 +254,7 @@ function TabelaGrupos({ titulo: t, grupos, cand, ref_, totCand, totVal }: {
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-muted">% dos votos válidos de cada cargo. "{cand.nome}": {CARGOS[cand.cargo]}.</p>
+      <p className="text-xs text-muted">{L("% dos votos válidos de cada cargo.", "% of valid votes for each office.")} "{cand.nome}": {CARGOS[cand.cargo]}.</p>
     </section>
   );
 }
@@ -294,34 +310,34 @@ function TabelaArea({ base, cand, pl, ref_, municipio, analise, presCands }: {
   const totalCand = useMemo(() => linhas.reduce((t, l) => t + l.vCand, 0), [linhas]);
 
   const columns = useMemo<ColumnDef<LinhaArea, unknown>[]>(() => [
-    { id: "nome", accessorKey: "nome", header: nivel === "municipio" ? "Município" : "Bairro (do local de votação)",
+    { id: "nome", accessorKey: "nome", header: nivel === "municipio" ? L("Município", "City") : L("Bairro (do local de votação)", "Neighborhood (of the polling place)"),
       cell: (c) => <span className="font-semibold">{titulo(String(c.getValue()))}</span> },
-    { id: "vencedor", accessorKey: "vencedor", header: "Venceu p/ presidente",
+    { id: "vencedor", accessorKey: "vencedor", header: L("Venceu p/ presidente", "Won for president"),
       cell: (c) => <span className={c.row.original.refVenceu ? "font-semibold text-accent" : ""}>{String(c.getValue())}</span> },
-    { id: "vRef", accessorKey: "vRef", header: `Votos ${ref_.nome}`, cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
+    { id: "vRef", accessorKey: "vRef", header: L(`Votos ${ref_.nome}`, `${ref_.nome} votes`), cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     { id: "pRef", accessorKey: "pRef", header: `% ${ref_.nome}`, cell: (c) => pct(Number(c.getValue()), 1), meta: { numeric: true } },
-    { id: "vCand", accessorKey: "vCand", header: `Votos ${cand.nome}`, cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
+    { id: "vCand", accessorKey: "vCand", header: L(`Votos ${cand.nome}`, `${cand.nome} votes`), cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     { id: "pCand", accessorKey: "pCand", header: `% ${cand.nome}`, cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
     { id: "partTotal", accessorFn: (r) => (totalCand ? r.vCand / totalCand : 0),
-      header: municipio ? `% do total de ${cand.nome} na cidade` : `% do total de ${cand.nome}`,
+      header: municipio ? L(`% do total de ${cand.nome} na cidade`, `% of ${cand.nome}'s total in the city`) : L(`% do total de ${cand.nome}`, `% of ${cand.nome}'s total`),
       cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
-    { id: "locais", accessorKey: "locais", header: "Locais", meta: { numeric: true } },
+    { id: "locais", accessorKey: "locais", header: L("Locais", "Places"), meta: { numeric: true } },
   ], [nivel, ref_, cand, totalCand, municipio]);
   const exportCols: ExportCol<LinhaArea>[] = [
-    { header: nivel === "municipio" ? "Município" : "Bairro", value: (r) => r.nome },
-    { header: "Venceu para presidente (1º turno)", value: (r) => r.vencedor },
-    { header: `Votos ${ref_.numero} ${ref_.nome}`, value: (r) => r.vRef, type: "number" },
-    { header: `% ${ref_.nome} (válidos)`, value: (r) => r.pRef, type: "percent" },
-    { header: `Votos ${cand.numero} ${cand.nome}`, value: (r) => r.vCand, type: "number" },
-    { header: `% ${cand.nome} (válidos ${CARGOS[cand.cargo]})`, value: (r) => r.pCand, type: "percent" },
-    { header: municipio ? `% do total de ${cand.nome} na cidade` : `% do total de ${cand.nome}`,
+    { header: nivel === "municipio" ? L("Município", "City") : L("Bairro", "Neighborhood"), value: (r) => r.nome },
+    { header: L("Venceu para presidente (1º turno)", "Won for president (1st round)"), value: (r) => r.vencedor },
+    { header: L(`Votos ${ref_.numero} ${ref_.nome}`, `Votes ${ref_.numero} ${ref_.nome}`), value: (r) => r.vRef, type: "number" },
+    { header: L(`% ${ref_.nome} (válidos)`, `% ${ref_.nome} (valid votes)`), value: (r) => r.pRef, type: "percent" },
+    { header: L(`Votos ${cand.numero} ${cand.nome}`, `Votes ${cand.numero} ${cand.nome}`), value: (r) => r.vCand, type: "number" },
+    { header: L(`% ${cand.nome} (válidos ${CARGOS[cand.cargo]})`, `% ${cand.nome} (valid votes ${CARGOS[cand.cargo]})`), value: (r) => r.pCand, type: "percent" },
+    { header: municipio ? L(`% do total de ${cand.nome} na cidade`, `% of ${cand.nome}'s total in the city`) : L(`% do total de ${cand.nome}`, `% of ${cand.nome}'s total`),
       value: (r) => (totalCand ? r.vCand / totalCand : 0), type: "percent" },
-    { header: "Locais de votação", value: (r) => r.locais, type: "number" },
+    { header: L("Locais de votação", "Polling places"), value: (r) => r.locais, type: "number" },
   ];
   return (
     <section className="flex flex-col gap-2">
       <h2 className="display text-lg">
-        {cand.nome} <span className="text-muted">({CARGOS[cand.cargo]})</span> · por {nivel === "municipio" ? "município" : "bairro"}
+        {cand.nome} <span className="text-muted">({CARGOS[cand.cargo]})</span> · {nivel === "municipio" ? L("por município", "by city") : L("por bairro", "by neighborhood")}
       </h2>
       <DataTable data={linhas} columns={columns} exportCols={exportCols}
         nomeArquivo={`presidente_${ref_.numero}_x_${cand.numero}${municipio ? `_${municipio}` : ""}`}

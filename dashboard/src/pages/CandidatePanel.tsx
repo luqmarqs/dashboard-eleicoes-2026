@@ -6,16 +6,19 @@ import type { Metrica, Modo } from "../components/mapTypes";
 import { Rankings, TopLista } from "../components/Rankings";
 import { SenadoAnalise } from "../components/SenadoAnalise";
 import { AnunciosVotos } from "../components/AnunciosVotos";
+import { DobradasAlcance } from "../components/DobradasAlcance";
+import { TerritorioAnuncios } from "../components/TerritorioAnuncios";
 import { useMetaAnuncios, useMetaResumo } from "../lib/metaHooks";
 import { useQuery } from "@tanstack/react-query";
 import { source, type MetaAnuncio } from "../lib/source";
 import type { PorLocal } from "../lib/data";
 import type { Candidatura } from "../lib/types";
-import { CandidatePicker, ErrorBox, Loading, MapControls, MunicipioSelect, SituacaoBadge, Stat, nomeCand } from "../components/ui";
+import { CandidatePicker, ErrorBox, Loading, MapControls, MunicipioSelect, SituacaoBadge, Stat, nomeCand, situacaoTexto } from "../components/ui";
 import { agregar, porLocal, useBase, useTotais, useVotos } from "../lib/data";
 import { fmt, pct, titulo } from "../lib/format";
 import { CARGOS } from "../lib/types";
 import { useUf } from "../lib/uf";
+import { L } from "../lib/i18n";
 
 export function useMapParams(defaultModo: Modo = "escolas") {
   const [sp, setSp] = useSearchParams();
@@ -60,7 +63,7 @@ export function CandidatePanel() {
 
   if (base.error) return <ErrorBox error={base.error} />;
   if (!base.data) return <Loading />;
-  if (!cand) return <ErrorBox error={`Candidatura ${id} não encontrada.`} />;
+  if (!cand) return <ErrorBox error={L(`Candidatura ${id} não encontrada.`, `Candidacy ${id} not found.`)} />;
   const b = base.data;
   const escopo = municipio ? lista.reduce((a, l) => ({ v: a.v + l.votos, val: a.val + l.validos }), { v: 0, val: 0 }) : null;
   const total = escopo ? escopo.v : dados?.total ?? 0;
@@ -71,13 +74,13 @@ export function CandidatePanel() {
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="eyebrow">{CARGOS[cand.cargo]} · {cand.partido} · {info.nome} · 1º turno 2026</div>
+          <div className="eyebrow">{CARGOS[cand.cargo]} · {cand.partido} · {info.nome} · {L("1º turno 2026", "1st round 2026")}</div>
           <h1 className="display text-3xl md:text-4xl">{nomeCand(cand)}<SituacaoBadge c={cand} /></h1>
-          {cand.nomeCompleto && <p className="text-muted">{cand.nomeCompleto}{cand.situacao ? ` · ${cand.situacao}` : ""}</p>}
+          {cand.nomeCompleto && <p className="text-muted">{cand.nomeCompleto}{cand.situacao ? ` · ${situacaoTexto(cand.situacao)}` : ""}</p>}
         </div>
         <div className="w-full max-w-md">
           <CandidatePicker base={b} onPick={(c) => navigate(`/c/${c.id}${municipio ? `?mun=${municipio}` : ""}`)}
-            placeholder="Trocar de candidatura…" />
+            placeholder={L("Trocar de candidatura…", "Switch candidacy…")} />
         </div>
       </header>
 
@@ -86,13 +89,13 @@ export function CandidatePanel() {
         <SenadoAnalise base={b} cand={cand} municipio={municipio} setMunicipio={(cd) => set("mun", cd)} />
       ) : (<>
       <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-        <Stat valor={fmt(total)} rotulo={municipio ? `votos em ${titulo(b.munByCd.get(municipio)?.nome ?? "")}` : "votos no estado"} />
-        <Stat valor={validos ? pct(total / validos) : "–"} rotulo="dos votos válidos do cargo" />
-        <Stat valor={fmt(comVoto)} rotulo={municipio ? "bairros com voto" : "municípios com voto"} />
+        <Stat valor={fmt(total)} rotulo={municipio ? L(`votos em ${titulo(b.munByCd.get(municipio)?.nome ?? "")}`, `votes in ${titulo(b.munByCd.get(municipio)?.nome ?? "")}`) : L("votos no estado", "votes in the state")} />
+        <Stat valor={validos ? pct(total / validos) : "–"} rotulo={L("dos votos válidos do cargo", "of valid votes for the office")} />
+        <Stat valor={fmt(comVoto)} rotulo={municipio ? L("bairros com voto", "neighborhoods with votes") : L("municípios com voto", "cities with votes")} />
         <div className="ml-auto flex flex-wrap items-end gap-3">
           <MunicipioSelect base={b} value={municipio} onChange={(cd) => set("mun", cd)} />
           <Link className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-accent-soft"
-            to={`/dobrada?a=${cand.id}${municipio ? `&mun=${municipio}` : ""}`}>Comparar (dobrada)</Link>
+            to={`/dobrada?a=${cand.id}${municipio ? `&mun=${municipio}` : ""}`}>{L("Comparar (dobrada)", "Compare (joint ticket)")}</Link>
         </div>
       </div>
 
@@ -104,10 +107,10 @@ export function CandidatePanel() {
           <LazyMap base={b} dados={dados} municipio={municipio} modo={modo} metrica={metrica}
             destaques={lista.filter((l) => l.votos > 0).slice(0, 20).map((l, i) => ({ rank: i + 1, nome: titulo(l.nome), lat: l.lat, lon: l.lon }))}
             onMunicipio={(cd) => set("mun", cd)} />
-        ) : <Loading texto="Carregando votos…" />}
+        ) : <Loading texto={L("Carregando votos…", "Loading votes…")} />}
         <aside className="min-w-0 lg:max-h-[min(70vh,720px)] lg:overflow-y-auto">
           <h2 className="mb-1 text-sm font-bold uppercase tracking-wide">
-            20 {municipio ? "bairros" : "cidades"} com mais votos
+            {municipio ? L("20 bairros com mais votos", "Top 20 neighborhoods by votes") : L("20 cidades com mais votos", "Top 20 cities by votes")}
           </h2>
           <TopLista linhas={lista.filter((l) => l.votos > 0)} n={20}
             onClick={(l) => { if (!municipio) set("mun", l.key); }} />
@@ -136,7 +139,7 @@ function PublicidadeCandidatura({ cand, dados }: { cand: Candidatura; dados: Por
   const ads = useMetaAnuncios(cand.id, item?.ultima_coleta, proprios);
   const { uf } = useUf();
   const dob = useQuery({ queryKey: ["meta-dobradas", uf, cand.id], queryFn: () => source.metaDobradas(cand.id),
-    enabled: !!item && !proprios, staleTime: 5 * 60_000 });
+    enabled: !!item, staleTime: 5 * 60_000 });
   const deTerceiros = useMemo(() => {
     const m = new Map<string, MetaAnuncio>();
     for (const x of dob.data ?? []) if (x.papel === "recebe") m.set(x.ad.id, x.ad);
@@ -146,9 +149,13 @@ function PublicidadeCandidatura({ cand, dados }: { cand: Candidatura; dados: Por
   const lista = proprios ? ads.data ?? [] : deTerceiros;
   if (!base.data || !item || !lista.length) return null;
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-4">
+      <TerritorioAnuncios base={base.data} ads={lista} votosMun={votosMun} nome={cand.nome} deTerceiros={!proprios} />
       <AnunciosVotos base={base.data} ads={lista} votosMun={votosMun} nome={cand.nome} deTerceiros={!proprios} />
-      <Link to={`/publicidade?c=${cand.id}`} className="self-end text-sm text-accent">Ver os anúncios, mapa e temas na página Publicidade →</Link>
+      {(dob.data ?? []).some((m) => m.papel === "recebe") && (
+        <DobradasAlcance base={base.data} mencoes={dob.data!} votosMun={votosMun} nome={cand.nome} />
+      )}
+      <Link to={`/publicidade?c=${cand.id}`} className="self-end text-sm text-accent">{L("Ver os anúncios, mapa e temas na página Publicidade →", "See the ads, map and topics on the Paid ads page →")}</Link>
     </div>
   );
 }

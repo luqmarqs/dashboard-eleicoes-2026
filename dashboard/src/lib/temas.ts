@@ -12,46 +12,50 @@
  * - verba por tema: o gasto de cada anúncio (faixa) é DIVIDIDO entre seus temas de política pública, como pede a
  *   taxonomia original (marcar presença premia textos longos).
  */
+import { L } from "./i18n";
 import type { MetaAnuncio } from "./source";
 
-export interface Tema { id: string; rotulo: string; termos: string[] }
-export interface Eixo { id: string; rotulo: string; temas: Tema[] }
+export interface Tema { id: string; rotulo: string; rotuloEn: string; termos: string[] }
+export interface Eixo { id: string; rotulo: string; rotuloEn: string; temas: Tema[] }
+
+/** Rótulo no idioma atual. */
+export const rotuloDe = (x: { rotulo: string; rotuloEn: string }) => L(x.rotulo, x.rotuloEn);
 
 export const EIXOS: Eixo[] = [
-  { id: "politica_publica", rotulo: "Políticas públicas", temas: [
-    { id: "saude", rotulo: "Saúde / SUS", termos: ["saude", "sus ", "hospital", "medic", "upa ", "upas ", "enfermag", "hemodial", "vacina", "remedio", "samu ", "psiquiatr", "cirurgia", "posto de saude"] },
-    { id: "educacao", rotulo: "Educação", termos: ["educacao", "escola", "professor", "universidade", "estudante", "creche", "merenda", "alfabetiz", "ensino", "bolsa de estudo"] },
-    { id: "seguranca", rotulo: "Segurança", termos: ["seguranca publica", "policia", "policiais", "crime", "criminos", "armas", "violencia urbana", "penitenci", "bandido", "viatura", "guarda municipal"] },
-    { id: "trabalho", rotulo: "Trabalho / servidor", termos: ["servidor", "concurso", "trabalhador", "salario", "isonomia", "sindicat", "6x1", "guarda civil", "emprego", "aposentad", "piso ", "carreira", "terceiriza", "clt "] },
-    { id: "mobilidade", rotulo: "Mobilidade / transporte", termos: ["transporte", "onibus", "metro ", "tarifa", "mobilidade", "busao", "ar-condicionado", "ar condicionado", "transito", "catraca", "pedagio", "estrada", "rodovia", "pavimenta", "asfalto"] },
-    { id: "mulheres", rotulo: "Mulheres / feminicídio", termos: ["feminicid", "mulher", "materna", "maria da penha", "aborto", "violencia domestica", "violencia contra a mulher"] },
-    { id: "direitos_minorias", rotulo: "Direitos e minorias", termos: ["negra", "negro", "lgbt", "trans ", "travesti", "quilombo", "indigena", "racis", "deficien", "pcd ", "periferi", "favela", "autist", "tea ", "idoso"] },
-    { id: "meio_ambiente", rotulo: "Meio ambiente / clima", termos: ["meio ambiente", "clima", "climatic", "mineracao", "barragem", "rejeito", "arboriza", "ambiental", "agrotoxic", "desmatamento", "saneamento", "agroecolog"] },
-    { id: "enchentes", rotulo: "Enchentes / reconstrução", termos: ["enchente", "cheia ", "reconstrucao", "reconstruir", "atingidos", "desabrigad", "defesa civil", "diques"] },
-    { id: "fome_assistencia", rotulo: "Fome / assistência social", termos: ["fome", "bolsa familia", "cesta basica", "assistencia social", "cozinha solidaria", "restaurante popular", "seguranca alimentar", "pobreza", "cras "] },
-    { id: "habitacao", rotulo: "Habitação", termos: ["moradia", "habitacao", "aluguel", "despejo", "sem-teto", "sem teto", "regularizacao fundiaria", "minha casa"] },
-    { id: "campo", rotulo: "Campo / agricultura", termos: ["agricultura", "agricultor", "produtor rural", "produtores rurais", "reforma agraria", "assentamento", "pequeno produtor", "cooperativa", "agronegocio", "agro "] },
-    { id: "economia", rotulo: "Economia / pequeno negócio", termos: ["empreendedor", "pequeno negocio", "mei ", "imposto", "microempres", "feirante", "ambulante", "comercio", "industria"] },
-    { id: "cultura_esporte", rotulo: "Cultura e esporte", termos: ["cultura", "artista", "carnaval", "musica", "funk", "terreiro", "esporte", "teatro", "audiovisual", "biblioteca", "futebol"] },
-    { id: "juventude", rotulo: "Juventude", termos: ["juventude", "jovens", "primeiro emprego", "estagio", "passe livre"] },
-    { id: "animais", rotulo: "Animais", termos: ["protecao animal", "causa animal", "castrac", "maus-tratos", "maus tratos", "animais", "pets "] },
-    { id: "familia_valores", rotulo: "Família e valores", termos: ["defesa da familia", "familias brasileiras", "patria", "conservador", "valores cristaos", "ideologia de genero", "pro-vida", "defesa da vida", "liberdade de expressao"] },
-    { id: "governo_estado", rotulo: "Governo do estado", termos: ["zema", "tarcisio", "eduardo leite", "governo do estado", "privatiza", "copasa", "cemig", "sabesp", "corsan", "desmonte", "sucateamento", "governo estadual"] },
-    { id: "nacional", rotulo: "Lula / disputa nacional", termos: ["lula", "extrema-direita", "extrema direita", "bolsonaro", "tarifaco", "anistia"] },
+  { id: "politica_publica", rotulo: "Políticas públicas", rotuloEn: "Public policy", temas: [
+    { id: "saude", rotulo: "Saúde / SUS", rotuloEn: "Health / SUS", termos: ["saude", "sus ", "hospital", "medic", "upa ", "upas ", "enfermag", "hemodial", "vacina", "remedio", "samu ", "psiquiatr", "cirurgia", "posto de saude"] },
+    { id: "educacao", rotulo: "Educação", rotuloEn: "Education", termos: ["educacao", "escola", "professor", "universidade", "estudante", "creche", "merenda", "alfabetiz", "ensino", "bolsa de estudo"] },
+    { id: "seguranca", rotulo: "Segurança", rotuloEn: "Public safety", termos: ["seguranca publica", "policia", "policiais", "crime", "criminos", "armas", "violencia urbana", "penitenci", "bandido", "viatura", "guarda municipal"] },
+    { id: "trabalho", rotulo: "Trabalho / servidor", rotuloEn: "Labor / civil servants", termos: ["servidor", "concurso", "trabalhador", "salario", "isonomia", "sindicat", "6x1", "guarda civil", "emprego", "aposentad", "piso ", "carreira", "terceiriza", "clt "] },
+    { id: "mobilidade", rotulo: "Mobilidade / transporte", rotuloEn: "Mobility / transportation", termos: ["transporte", "onibus", "metro ", "tarifa", "mobilidade", "busao", "ar-condicionado", "ar condicionado", "transito", "catraca", "pedagio", "estrada", "rodovia", "pavimenta", "asfalto"] },
+    { id: "mulheres", rotulo: "Mulheres / feminicídio", rotuloEn: "Women / femicide", termos: ["feminicid", "mulher", "materna", "maria da penha", "aborto", "violencia domestica", "violencia contra a mulher"] },
+    { id: "direitos_minorias", rotulo: "Direitos e minorias", rotuloEn: "Rights and minorities", termos: ["negra", "negro", "lgbt", "trans ", "travesti", "quilombo", "indigena", "racis", "deficien", "pcd ", "periferi", "favela", "autist", "tea ", "idoso"] },
+    { id: "meio_ambiente", rotulo: "Meio ambiente / clima", rotuloEn: "Environment / climate", termos: ["meio ambiente", "clima", "climatic", "mineracao", "barragem", "rejeito", "arboriza", "ambiental", "agrotoxic", "desmatamento", "saneamento", "agroecolog"] },
+    { id: "enchentes", rotulo: "Enchentes / reconstrução", rotuloEn: "Floods / reconstruction", termos: ["enchente", "cheia ", "reconstrucao", "reconstruir", "atingidos", "desabrigad", "defesa civil", "diques"] },
+    { id: "fome_assistencia", rotulo: "Fome / assistência social", rotuloEn: "Hunger / social assistance", termos: ["fome", "bolsa familia", "cesta basica", "assistencia social", "cozinha solidaria", "restaurante popular", "seguranca alimentar", "pobreza", "cras "] },
+    { id: "habitacao", rotulo: "Habitação", rotuloEn: "Housing", termos: ["moradia", "habitacao", "aluguel", "despejo", "sem-teto", "sem teto", "regularizacao fundiaria", "minha casa"] },
+    { id: "campo", rotulo: "Campo / agricultura", rotuloEn: "Rural / agriculture", termos: ["agricultura", "agricultor", "produtor rural", "produtores rurais", "reforma agraria", "assentamento", "pequeno produtor", "cooperativa", "agronegocio", "agro "] },
+    { id: "economia", rotulo: "Economia / pequeno negócio", rotuloEn: "Economy / small business", termos: ["empreendedor", "pequeno negocio", "mei ", "imposto", "microempres", "feirante", "ambulante", "comercio", "industria"] },
+    { id: "cultura_esporte", rotulo: "Cultura e esporte", rotuloEn: "Culture and sports", termos: ["cultura", "artista", "carnaval", "musica", "funk", "terreiro", "esporte", "teatro", "audiovisual", "biblioteca", "futebol"] },
+    { id: "juventude", rotulo: "Juventude", rotuloEn: "Youth", termos: ["juventude", "jovens", "primeiro emprego", "estagio", "passe livre"] },
+    { id: "animais", rotulo: "Animais", rotuloEn: "Animals", termos: ["protecao animal", "causa animal", "castrac", "maus-tratos", "maus tratos", "animais", "pets "] },
+    { id: "familia_valores", rotulo: "Família e valores", rotuloEn: "Family and values", termos: ["defesa da familia", "familias brasileiras", "patria", "conservador", "valores cristaos", "ideologia de genero", "pro-vida", "defesa da vida", "liberdade de expressao"] },
+    { id: "governo_estado", rotulo: "Governo do estado", rotuloEn: "State government", termos: ["zema", "tarcisio", "eduardo leite", "governo do estado", "privatiza", "copasa", "cemig", "sabesp", "corsan", "desmonte", "sucateamento", "governo estadual"] },
+    { id: "nacional", rotulo: "Lula / disputa nacional", rotuloEn: "Lula / national race", termos: ["lula", "extrema-direita", "extrema direita", "bolsonaro", "tarifaco", "anistia"] },
   ] },
-  { id: "funcao_eleitoral", rotulo: "Função eleitoral", temas: [
-    { id: "pedido_de_voto", rotulo: "Pedido de voto / número", termos: ["meu numero e", "sou candidat", "candidata a deputada", "candidato a deputado", "vote ", "seu voto", "vote em", "urna", "e so digitar", "digite ", "4 de outubro", "04 de outubro", "conto com seu voto", "conto com voce"] },
-    { id: "endosso", rotulo: "Apoios / dobrada", termos: ["apoio de", "apoio do ", "apoio da ", "indicado por", "ao lado de", "dobrada", "dobradinha", "vote tambem", "receber o apoio", "recebo o apoio", "nosso apoio a"] },
-    { id: "evento", rotulo: "Evento / agenda", termos: ["lancamento", "comicio", "agenda", "panfletag", "encontro com", "carreata", "plenaria", "estarei em"] },
+  { id: "funcao_eleitoral", rotulo: "Função eleitoral", rotuloEn: "Electoral function", temas: [
+    { id: "pedido_de_voto", rotulo: "Pedido de voto / número", rotuloEn: "Vote request / ballot number", termos: ["meu numero e", "sou candidat", "candidata a deputada", "candidato a deputado", "vote ", "seu voto", "vote em", "urna", "e so digitar", "digite ", "4 de outubro", "04 de outubro", "conto com seu voto", "conto com voce"] },
+    { id: "endosso", rotulo: "Apoios / dobrada", rotuloEn: "Endorsements / joint ticket", termos: ["apoio de", "apoio do ", "apoio da ", "indicado por", "ao lado de", "dobrada", "dobradinha", "vote tambem", "receber o apoio", "recebo o apoio", "nosso apoio a"] },
+    { id: "evento", rotulo: "Evento / agenda", rotuloEn: "Event / schedule", termos: ["lancamento", "comicio", "agenda", "panfletag", "encontro com", "carreata", "plenaria", "estarei em"] },
   ] },
-  { id: "conteudo_relacional", rotulo: "Como fala", temas: [
-    { id: "base_regional", rotulo: "Base regional / recursos para cidades", termos: ["nossa regiao", "toda regiao", "toda a regiao", "para a regiao", "recursos para", "levar recursos", "trazer recursos", "prefeito", "prefeitura", "vereador", "municipio", "nossa cidade", "investimentos para"] },
-    { id: "balanco_mandato", rotulo: "Balanço de mandato", termos: ["ja entreguei", "meu mandato", "nosso mandato", "ja fiz", "minhas entregas", "emenda", "destinei", "destinamos", "conquistamos", "projeto de lei", "aprovamos", "lei de minha autoria"] },
-    { id: "biografia", rotulo: "Biografia / trajetória", termos: ["de onde vim", "minha historia", "minha trajetoria", "cresci ", "a vida me levou", "minha mae", "minha familia", "nasci "] },
-    { id: "fe", rotulo: "Fé / religião", termos: ["deus", "paz do senhor", "biblia", "oracao", "igreja", "evangel", "cristo", "com fe ", "a fe ", "de fe ", "fe em deus"] },
-    { id: "mobilizacao", rotulo: "Mobilização / militância", termos: ["material de campanha", "receba meu material", "receba o material", "adesivo", "bandeira", "faca parte", "fazer parte", "doacao", "voluntari", "mutirao", "panfleto", "militancia"] },
-    { id: "chamada_engajamento", rotulo: "Chamada de engajamento", termos: ["segue a gente", "me segue", "marque ", "comenta", "compartilha", "acompanhe", "curte ", "conta pra gente", "manda pra"] },
-    { id: "ataque_contraste", rotulo: "Ataque / contraste", termos: ["big tech", "querem nos silenciar", "censura", "mentira", "fake news", "golpista", "bolsonarista", "petista", "impedir a direita", "contra a direita", "comunis", "corrupt", "ladrao", "ladroes"] },
+  { id: "conteudo_relacional", rotulo: "Como fala", rotuloEn: "Tone/approach", temas: [
+    { id: "base_regional", rotulo: "Base regional / recursos para cidades", rotuloEn: "Regional base / funds for cities", termos: ["nossa regiao", "toda regiao", "toda a regiao", "para a regiao", "recursos para", "levar recursos", "trazer recursos", "prefeito", "prefeitura", "vereador", "municipio", "nossa cidade", "investimentos para"] },
+    { id: "balanco_mandato", rotulo: "Balanço de mandato", rotuloEn: "Term record", termos: ["ja entreguei", "meu mandato", "nosso mandato", "ja fiz", "minhas entregas", "emenda", "destinei", "destinamos", "conquistamos", "projeto de lei", "aprovamos", "lei de minha autoria"] },
+    { id: "biografia", rotulo: "Biografia / trajetória", rotuloEn: "Biography / career", termos: ["de onde vim", "minha historia", "minha trajetoria", "cresci ", "a vida me levou", "minha mae", "minha familia", "nasci "] },
+    { id: "fe", rotulo: "Fé / religião", rotuloEn: "Faith / religion", termos: ["deus", "paz do senhor", "biblia", "oracao", "igreja", "evangel", "cristo", "com fe ", "a fe ", "de fe ", "fe em deus"] },
+    { id: "mobilizacao", rotulo: "Mobilização / militância", rotuloEn: "Mobilization / activism", termos: ["material de campanha", "receba meu material", "receba o material", "adesivo", "bandeira", "faca parte", "fazer parte", "doacao", "voluntari", "mutirao", "panfleto", "militancia"] },
+    { id: "chamada_engajamento", rotulo: "Chamada de engajamento", rotuloEn: "Engagement call", termos: ["segue a gente", "me segue", "marque ", "comenta", "compartilha", "acompanhe", "curte ", "conta pra gente", "manda pra"] },
+    { id: "ataque_contraste", rotulo: "Ataque / contraste", rotuloEn: "Attack / contrast", termos: ["big tech", "querem nos silenciar", "censura", "mentira", "fake news", "golpista", "bolsonarista", "petista", "impedir a direita", "contra a direita", "comunis", "corrupt", "ladrao", "ladroes"] },
   ] },
 ];
 
