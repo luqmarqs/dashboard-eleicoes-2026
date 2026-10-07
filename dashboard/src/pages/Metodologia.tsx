@@ -41,7 +41,7 @@ export function Metodologia() {
         <li><b>Gasto e impressões</b> são faixas acumuladas por anúncio; somam-se os limites, sem ponto médio. Alcance não se soma.
           O gasto de um anúncio com várias cidades nunca é dividido entre elas.</li>
         <li><b>Dobradas pagas</b>: anúncio pago por uma campanha (financiador = CNPJ de campanha) que traz o nome e o número de urna de
-          outra candidatura. O gasto é de quem pagou.</li>
+          outra candidatura. O gasto é de quem pagou. Só contam anúncios segmentados para o estado da candidatura citada (evita homônimos de outros estados, como a Bancada Feminista do PSOL do Piauí); menções só pelo nome, sem número, ficam como não confirmadas.</li>
         <li><b>Temas dos criativos</b>: classificação por termos, sem IA, em três eixos (políticas públicas, função eleitoral, como fala),
           revisada sobre os 110 mil anúncios coletados. Unidade: criativo distinto (o mesmo texto chega a centenas de anúncios, um por
           cidade). Rodapés legais (CNPJ, federação) são removidos antes; termos casam no começo de palavra. A verba por tema é dividida
@@ -106,7 +106,7 @@ function MetodologiaEn() {
         <li><b>Spend and impressions</b> are cumulative ranges per ad; the range bounds are added up, with no midpoint. Reach is not
           added up. The spend of an ad targeting several cities is never split among them.</li>
         <li><b>Paid joint tickets</b>: an ad paid for by one campaign (funder = campaign CNPJ) that shows the name and ballot number of
-          another candidacy. The spend belongs to whoever paid.</li>
+          another candidacy. The spend belongs to whoever paid. Only ads targeting the mentioned candidacy's state count (this avoids namesakes from other states, such as the PSOL Feminist Caucus of Piauí); name-only mentions, without the ballot number, remain unconfirmed.</li>
         <li><b>Creative themes</b>: keyword-based classification, without AI, along three axes (public policy, electoral function,
           tone), reviewed over the 110 thousand ads collected. Unit: distinct creative (the same text can reach hundreds of ads, one per
           city). Legal footers (CNPJ, federation) are removed first; terms match at the start of words. Spend per theme is split among

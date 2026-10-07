@@ -11,6 +11,8 @@ Para cada (anúncio, candidatura citada) registra-se:
     cnpjs_texto    CNPJs escritos no texto; cnpj_financiador = CNPJ que aparece no próprio financiador declarado
 
 Uma dobrada CONFIRMADA exige nome e número da candidatura citada e pagador identificado, diferente dela.
+Toda menção exige coerência territorial: o anúncio segmenta a UF da candidatura (estado, cidade ou bairro) ou, sem
+segmentação subnacional, tem >= 50% da entrega nela (evita homônimos de outros estados, ex.: Bancada Feminista do PI).
 O gasto do anúncio é do pagador; não é somado ao da candidatura citada.
 """
 
@@ -161,8 +163,22 @@ def analisar(banco: Banco, cands: list[Cand], alvos_extra: dict[int, list[str]] 
         por_uf_num[(c.uf, str(c.numero))].append(c)
     indice = IndicePagador(cands)
     variantes = {c.id: [norm(c.nm_urna)] + [norm(v) for v in alvos_extra.get(c.id, [])] for c in cands}
+    uf_de = {c.id: c.uf for c in cands}
     re_num = re.compile(r"(?<![\d.,])(\d{2,5})(?![\d.,])")
     ufs = {c.uf for c in cands}
+    # coerência territorial: UFs que o anúncio inclui na segmentação; se só país, UFs com >= 50% da entrega
+    uf_seg: dict[str, set[str]] = defaultdict(set)
+    for ad_id, uf in banco.con.execute(
+            "SELECT ad_id, uf FROM localidades WHERE excluida = 0 AND uf IS NOT NULL AND nivel IN ('uf', 'municipio', 'bairro')"):
+        uf_seg[ad_id].add(uf)
+    uf_ent: dict[str, set[str]] = defaultdict(set)
+    for ad_id, uf in banco.con.execute("SELECT ad_id, uf FROM entrega_regional WHERE uf IS NOT NULL AND proporcao >= 0.5"):
+        uf_ent[ad_id].add(uf)
+
+    def no_estado(ad_id: str, uf: str) -> bool:
+        seg = uf_seg.get(ad_id)
+        return uf in seg if seg else uf in uf_ent.get(ad_id, set())
+
     linhas = []
     for r in banco.con.execute("SELECT ad_id, bylines, textos, titulos_link, descricoes_link, legendas_link FROM anuncios"):
         bruto = texto_anuncio(r)
@@ -178,7 +194,7 @@ def analisar(banco: Banco, cands: list[Cand], alvos_extra: dict[int, list[str]] 
                 for c in por_uf_num.get((uf, m[1]), []):
                     if c.id in vistos or not any(tem_nome(t, v) for v in variantes[c.id]):
                         continue
-                    if not cita_numero(t, c.numero):
+                    if not cita_numero(t, c.numero) or not no_estado(r["ad_id"], c.uf):
                         continue
                     vistos.add(c.id)
                     if pag and pag.id == c.id:  # a campanha citando a si mesma não é dobrada
@@ -187,7 +203,7 @@ def analisar(banco: Banco, cands: list[Cand], alvos_extra: dict[int, list[str]] 
                     linhas.append((r["ad_id"], c.id, pag.id if pag else None, 1, 1, cnpj_txt, cnpj_fin, confirmada))
         # menções só por nome (sem número), para as candidaturas com busca dedicada
         for cid in alvos_extra:
-            if cid in vistos or (pag and pag.id == cid):
+            if cid in vistos or (pag and pag.id == cid) or not no_estado(r["ad_id"], uf_de[cid]):
                 continue
             if any(tem_nome(t, v) for v in variantes.get(cid, [])):
                 linhas.append((r["ad_id"], cid, pag.id if pag else None, 1, 0, cnpj_txt, cnpj_fin, 0))

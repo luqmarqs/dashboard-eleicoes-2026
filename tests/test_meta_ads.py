@@ -228,3 +228,20 @@ def test_numero_e_nome_em_dobradas() -> None:
                          Cand(2, "RS", 5, 500, "MANUELA D'ÁVILA", "MANUELA PINTO VIEIRA D'ÁVILA")])
     assert idx.identificar("ELEICAO 2026 JOSE SIDNEY NUNES DE ALMEIDA DEPUTADO ESTADUAL").id == 1
     assert idx.identificar("Zé Nunes") is None
+
+
+def test_mencao_exige_coerencia_territorial(banco: Banco) -> None:
+    """Anúncio de outro estado com o mesmo nome (ex.: Bancada Feminista do PI) não conta como menção."""
+    from meta_ads.dobradas import Cand, analisar
+    sp = Cand(2230, "SP", 7, 50000, "PAULA DA BANCADA FEMINISTA", "PAULA NUNES DOS SANTOS")
+    pag = Cand(895, "SP", 6, 5005, "GUILHERME CORTEZ", "GUILHERME DA COSTA AGUIAR CORTEZ")
+    banco.gravar_anuncio(anuncio("pi", page_name="Bancada Feminista do PSOL - Piauí", bylines="Bancada Feminista do PSOL - Piauí",
+                                 ad_creative_bodies=["Vote na Bancada Feminista!"],
+                                 target_locations=[{"name": "Piauí, Brasil", "type": "regions", "excluded": False}]), "e", "v26.0")
+    banco.gravar_anuncio(anuncio("sp", bylines="ELEICAO 2026 GUILHERME DA COSTA AGUIAR CORTEZ DEPUTADO FEDERAL",
+                                 ad_creative_bodies=["Gui 5005 e Bancada Feminista 50000!"],
+                                 target_locations=[{"name": "Campinas, SP, Brasil", "type": "CITY", "excluded": False}]), "e", "v26.0")
+    analisar(banco, [sp, pag], {2230: ["BANCADA FEMINISTA"]})
+    rows = {r[0]: (r[1], r[2]) for r in banco.con.execute("SELECT ad_id, cita_numero, confirmada FROM mencoes WHERE candidatura_id = 2230")}
+    assert "pi" not in rows
+    assert rows["sp"] == (1, 1)
