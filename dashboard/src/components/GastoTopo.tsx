@@ -3,7 +3,8 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { fmt } from "../lib/format";
 import { L, getLang } from "../lib/i18n";
-import { custoPorMil, fmtCusto, fmtFaixa, somaFaixas } from "../lib/meta";
+import { custoPorMil, custoPorVoto, fmtCusto, fmtFaixa, somaFaixas } from "../lib/meta";
+import { useBase } from "../lib/data";
 import { useMetaAnuncios, useMetaResumo } from "../lib/metaHooks";
 import { source, type MetaAnuncio } from "../lib/source";
 import { useUf } from "../lib/uf";
@@ -13,10 +14,13 @@ import { useUf } from "../lib/uf";
  *   próprio  = anúncios das páginas da candidatura;
  *   dobradas = anúncios pagos por OUTRAS campanhas que citam a candidatura com nome e número de urna;
  *   total    = próprio + dobradas (faixas somadas; o gasto das dobradas é de quem pagou e o anúncio pode citar várias
- *              candidaturas). Menções só pelo nome ficam fora do total, numa nota.
+ *              candidaturas). Menções só pelo nome ficam fora do total, numa nota;
+ *   por voto = total ÷ votos nominais da candidatura (régua de comparação, não efeito).
  */
 export function GastoTopo({ candId }: { candId: number }) {
   const { uf } = useUf();
+  const base = useBase();
+  const votos = base.data?.candById.get(candId)?.votos ?? 0;
   const resumo = useMetaResumo();
   const item = resumo.data?.candidaturas.find((c) => c.candidatura_id === candId);
   const proprios = !!item && item.anuncios > 0;
@@ -48,10 +52,14 @@ export function GastoTopo({ candId }: { candId: number }) {
       <span className="self-center text-muted" aria-hidden>=</span>
       <Bloco destaque rotulo={proprios ? L("Total em anúncios", "Total in ads") : L("Total em anúncios que a citam", "Total in ads featuring it")} valor={r.total ? fmtFaixa(r.total.min, r.total.max, "R$ ") : "R$ 0"}
         sub={r.custo ? L(`${fmtCusto(r.custo)} por mil alcançados`, `${fmtCusto(r.custo)} per 1,000 reached`) : ""} />
+      <span className="self-center text-muted" aria-hidden>÷</span>
+      <Bloco rotulo={proprios ? L("Custo estimado por voto", "Estimated cost per vote") : L("Gasto de terceiros por voto", "Third-party spend per vote")}
+        valor={custoPorVoto(r.total, votos) ? fmtCusto(custoPorVoto(r.total, votos)) : L("sem gasto", "no spend")}
+        sub={L(`${fmt(votos)} votos no 1º turno`, `${fmt(votos)} votes in the 1st round`) + (proprios && r.gd && custoPorVoto(r.gp, votos) ? L(` · só gasto próprio: ${fmtCusto(custoPorVoto(r.gp, votos))}`, ` · own spend only: ${fmtCusto(custoPorVoto(r.gp, votos))}`) : "")} />
       <p className="w-full text-xs text-muted">
         {getLang() === "en"
-          ? <>{!proprios && <><b>The candidacy ran no paid ads of its own:</b> all of this was paid by other campaigns that chose to use its image. </>}Meta Ad Library, accumulated ranges since Aug 16. Joint-ticket spend belongs to the campaign that paid and the ad may promote several candidacies.{r.soNome.length ? <> Not in the total: {fmt(r.soNome.length)} ads that mention the name only ({faixa(r.gs)}).</> : null}{" "}</>
-          : <>{!proprios && <><b>A candidatura não fez tráfego pago próprio:</b> todo o valor é de outras campanhas que escolheram usar a sua imagem. </>}Biblioteca de Anúncios da Meta, faixas acumuladas desde 16/08. O gasto das dobradas é da campanha que pagou e o anúncio pode promover várias candidaturas.{r.soNome.length ? <> Fora do total: {fmt(r.soNome.length)} anúncios que só citam o nome ({faixa(r.gs)}).</> : null}{" "}</>}
+          ? <>{!proprios && <><b>The candidacy ran no paid ads of its own:</b> all of this was paid by other campaigns that chose to use its image. </>}Meta Ad Library, accumulated ranges since Aug 16. Joint-ticket spend belongs to the campaign that paid and the ad may promote several candidacies. Cost per vote = total ÷ the candidacy's votes: a yardstick for comparison, not the effect of the ads.{r.soNome.length ? <> Not in the total: {fmt(r.soNome.length)} ads that mention the name only ({faixa(r.gs)}).</> : null}{" "}</>
+          : <>{!proprios && <><b>A candidatura não fez tráfego pago próprio:</b> todo o valor é de outras campanhas que escolheram usar a sua imagem. </>}Biblioteca de Anúncios da Meta, faixas acumuladas desde 16/08. O gasto das dobradas é da campanha que pagou e o anúncio pode promover várias candidaturas. Custo por voto = total ÷ votos da candidatura: régua de comparação, não efeito dos anúncios.{r.soNome.length ? <> Fora do total: {fmt(r.soNome.length)} anúncios que só citam o nome ({faixa(r.gs)}).</> : null}{" "}</>}
         <Link to={`/publicidade?c=${candId}`} className="text-accent">{L("Ver anúncios →", "See ads →")}</Link>
       </p>
     </div>

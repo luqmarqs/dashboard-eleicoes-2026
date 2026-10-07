@@ -3,7 +3,7 @@ import { useMemo, type ReactNode } from "react";
 import { agregar, type Base, type PorLocal } from "../lib/data";
 import { dec, fmt, pct, titulo } from "../lib/format";
 import { L, getLang } from "../lib/i18n";
-import { fmtFaixa, porMunicipio, somaFaixas, custoPorMil, fmtCusto } from "../lib/meta";
+import { fmtFaixa, porMunicipio, somaFaixas, custoPorMil, custoPorVoto, fmtCusto } from "../lib/meta";
 import { useMetaAnuncios, useMetaResumo } from "../lib/metaHooks";
 import { source, type AggMeta, type MetaAnuncio } from "../lib/source";
 import { EIXOS, contarTemas, rotuloDe } from "../lib/temas";
@@ -85,8 +85,8 @@ export function AnaliseCandidatura({ base, cand, dados }: { base: Base; cand: Ca
       const votosNasSeg = [...mun.values()].filter((x) => x.inclui.size + x.bairro.size > 0).reduce((s, x) => s + (vm.get(x.cd)?.votos ?? 0), 0);
       const forca = !Number.isFinite(rho) ? null : Math.abs(rho) >= 0.5 ? L("forte", "strong") : Math.abs(rho) >= 0.3 ? L("moderada", "moderate") : L("fraca", "weak");
       out.push(en()
-        ? <><b>{proprios ? "Paid ads" : "Ads by other campaigns using its image (the candidacy ran no paid ads of its own)"}:</b> {fmt(lista.length)} ads ({fmt(t.criativos)} distinct creatives){g ? <>, declared spend {fmtFaixa(g.min, g.max, "R$ ")}</> : null}{custoPorMil(lista) ? <>, {fmtCusto(custoPorMil(lista))} per 1,000 reached</> : null}{temaTop?.n ? <>; top policy theme: {rotuloDe(temaTop.x)} ({pct(temaTop.n / t.criativos, 0)} of creatives)</> : null}. {fmt(cidades)} cities targeted by name, holding {pct(votosNasSeg / total, 0)} of the votes{forca ? <>; {forca} correlation between ads per city and vote share ({dec(rho, 2)})</> : null}.</>
-        : <><b>{proprios ? "Tráfego pago" : "Anúncios de outras campanhas com a sua imagem (a candidatura não fez tráfego pago próprio)"}:</b> {fmt(lista.length)} anúncios ({fmt(t.criativos)} criativos distintos){g ? <>, gasto declarado {fmtFaixa(g.min, g.max, "R$ ")}</> : null}{custoPorMil(lista) ? <>, {fmtCusto(custoPorMil(lista))} por mil alcançados</> : null}{temaTop?.n ? <>; tema de política principal: {rotuloDe(temaTop.x)} ({pct(temaTop.n / t.criativos, 0)} dos criativos)</> : null}. {fmt(cidades)} cidades segmentadas pelo nome, com {pct(votosNasSeg / total, 0)} dos votos{forca ? <>; correlação {forca} entre anúncios por cidade e % dos válidos ({dec(rho, 2)})</> : null}.</>);
+        ? <><b>{proprios ? "Paid ads" : "Ads by other campaigns using its image (the candidacy ran no paid ads of its own)"}:</b> {fmt(lista.length)} ads ({fmt(t.criativos)} distinct creatives){g ? <>, declared spend {fmtFaixa(g.min, g.max, "R$ ")}{custoPorVoto(g, cand.votos) ? <> ({fmtCusto(custoPorVoto(g, cand.votos))} per vote)</> : null}</> : null}{custoPorMil(lista) ? <>, {fmtCusto(custoPorMil(lista))} per 1,000 reached</> : null}{temaTop?.n ? <>; top policy theme: {rotuloDe(temaTop.x)} ({pct(temaTop.n / t.criativos, 0)} of creatives)</> : null}. {fmt(cidades)} cities targeted by name, holding {pct(votosNasSeg / total, 0)} of the votes{forca ? <>; {forca} correlation between ads per city and vote share ({dec(rho, 2)})</> : null}.</>
+        : <><b>{proprios ? "Tráfego pago" : "Anúncios de outras campanhas com a sua imagem (a candidatura não fez tráfego pago próprio)"}:</b> {fmt(lista.length)} anúncios ({fmt(t.criativos)} criativos distintos){g ? <>, gasto declarado {fmtFaixa(g.min, g.max, "R$ ")}{custoPorVoto(g, cand.votos) ? <> ({fmtCusto(custoPorVoto(g, cand.votos))} por voto)</> : null}</> : null}{custoPorMil(lista) ? <>, {fmtCusto(custoPorMil(lista))} por mil alcançados</> : null}{temaTop?.n ? <>; tema de política principal: {rotuloDe(temaTop.x)} ({pct(temaTop.n / t.criativos, 0)} dos criativos)</> : null}. {fmt(cidades)} cidades segmentadas pelo nome, com {pct(votosNasSeg / total, 0)} dos votos{forca ? <>; correlação {forca} entre anúncios por cidade e % dos válidos ({dec(rho, 2)})</> : null}.</>);
     }
 
     // 5. dobradas recebidas
@@ -121,6 +121,25 @@ export function AnaliseCandidatura({ base, cand, dados }: { base: Base; cand: Ca
       out.push(en()
         ? <><b>Cost per 1,000 reached among our priority candidacies</b> (own + joint tickets, lowest first{pos ? `; ${nome} is ${ord(pos)} of ${comp.length}` : ""}): {itens}.</>
         : <><b>Custo por mil alcançados entre as nossas prioritárias</b> (próprio + dobradas, do menor para o maior{pos ? `; ${nome} está em ${ord(pos)} lugar entre ${comp.length}` : ""}): {itens}.</>);
+    }
+    // 7. custo por voto entre as prioritárias (gasto próprio + de terceiros ÷ votos no 1º turno)
+    const gastoAgg = (aggs: (AggMeta | null)[]) => {
+      const xs = aggs.filter((x): x is AggMeta => !!x && x.n > 0);
+      if (!xs.length) return null;
+      return { min: xs.reduce((t, x) => t + (x.gmin ?? 0), 0), max: xs.some((x) => x.aberto) ? null : xs.reduce((t, x) => t + (x.gmax ?? 0), 0) };
+    };
+    const compVoto = (prio.data ?? []).map((p) => ({ p, voto: custoPorVoto(gastoAgg([p.prop, p.dob]), p.votos), prop: !!p.prop?.n }))
+      .filter((x) => x.voto).sort((a, b) => a.voto!.min - b.voto!.min);
+    if (compVoto.length > 1) {
+      const pos = compVoto.findIndex((x) => x.p.id === cand.id) + 1;
+      const itens = compVoto.map((x, i) => (
+        <span key={x.p.id} className={x.p.id === cand.id ? "font-bold text-accent" : ""}>
+          {i > 0 && " · "}{titulo(x.p.nome)} ({x.p.uf}) {fmtCusto(x.voto)}{x.prop ? null : <> {L("(só anúncios de terceiros)", "(third-party ads only)")}</>}
+        </span>
+      ));
+      out.push(en()
+        ? <><b>Estimated cost per vote among our priority candidacies</b> (own + third-party spend ÷ 1st-round votes, lowest first{pos ? `; ${nome} is ${ord(pos)} of ${compVoto.length}` : ""}): {itens}. A yardstick, not effect: those who advertise more are usually already stronger.</>
+        : <><b>Custo estimado por voto entre as nossas prioritárias</b> (gasto próprio + de terceiros ÷ votos no 1º turno, do menor para o maior{pos ? `; ${nome} está em ${ord(pos)} lugar entre ${compVoto.length}` : ""}): {itens}. Régua, não efeito: quem anuncia mais costuma já ser mais forte.</>);
     }
     return out;
   }, [base, cand, dados, hist.data, ads.data, dob.data, proprios, info, prio.data]);

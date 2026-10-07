@@ -158,6 +158,15 @@ export function custoPorMil(ads: MetaAnuncio[]): { min: number; max: number | nu
   return { min: (gmin / alc) * 1000, max: gmax == null ? null : (gmax / alc) * 1000, n };
 }
 
+/**
+ * Custo estimado por voto: faixa de gasto ÷ votos nominais da candidatura no 1º turno. É uma régua de comparação, não
+ * efeito dos anúncios (quem anuncia mais costuma já ser mais forte). Gasto aberto ("ou mais") mantém max = null.
+ */
+export function custoPorVoto(gasto: { min: number; max: number | null } | null | undefined, votos: number): { min: number; max: number | null } | null {
+  if (!gasto || !votos || gasto.min <= 0 && !gasto.max) return null;
+  return { min: gasto.min / votos, max: gasto.max == null ? null : gasto.max / votos };
+}
+
 /** "R$ 12,40 – R$ 15,10" (duas casas: valores pequenos). */
 export function fmtCusto(c: { min: number; max: number | null } | null): string {
   if (!c) return L("sem alcance", "no reach");

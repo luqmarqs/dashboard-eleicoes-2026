@@ -18,7 +18,7 @@ import type { ExportCol } from "../lib/export";
 import { fmt, normalizar, pct, titulo } from "../lib/format";
 import {
   LOC, abrangencia, circulou, fmtData, fmtDataHora, fmtFaixa, fmtNum, mediana, porMunicipio,
-  rotuloAbrangencia, simbolo, somaFaixas, type Abrangencia, type Faixa, type PorMunicipio, custoPorMil, fmtCusto } from "../lib/meta";
+  rotuloAbrangencia, simbolo, somaFaixas, type Abrangencia, type Faixa, type PorMunicipio, custoPorMil, fmtCusto, custoPorVoto } from "../lib/meta";
 import { source, type MetaAnuncio, type MetaMencao, type MetaResumo } from "../lib/source";
 import { CARGOS, type Candidatura } from "../lib/types";
 import { deUf, useUf } from "../lib/uf";
@@ -120,6 +120,8 @@ function Cobertura({ r }: { r: MetaResumo }) {
 interface LinhaCand {
   id: number; c: Candidatura; anuncios: number; gmin: number | null; gmax: number | null; aberto: boolean;
   paginas: number; naoConfirmada: boolean; cmin: number | null; cmax: number | null;
+  /** custo estimado por voto: faixa de gasto ÷ votos nominais no 1º turno */
+  vmin: number | null; vmax: number | null;
 }
 
 function TabelaCandidaturas({ base, r, selecionada, onEscolher }: {
@@ -129,7 +131,9 @@ function TabelaCandidaturas({ base, r, selecionada, onEscolher }: {
     const c = base.candById.get(x.candidatura_id);
     return c ? [{ id: c.id, c, anuncios: x.anuncios, gmin: x.gasto_min, gmax: x.gasto_max, aberto: !!x.gasto_aberto,
       paginas: x.paginas.length, naoConfirmada: x.paginas.some((p) => p.status_revisao !== "confirmado"),
-      cmin: x.custo_mil_min ?? null, cmax: x.custo_mil_max ?? null }] : [];
+      cmin: x.custo_mil_min ?? null, cmax: x.custo_mil_max ?? null,
+      vmin: custoPorVoto({ min: x.gasto_min ?? 0, max: x.gasto_aberto ? null : x.gasto_max }, c.votos)?.min ?? null,
+      vmax: custoPorVoto({ min: x.gasto_min ?? 0, max: x.gasto_aberto ? null : x.gasto_max }, c.votos)?.max ?? null }] : [];
   }), [r, base]);
   const eleitas = base.candidaturas.filter((c) => c.tipo === "nominal" && c.situacao?.startsWith("Eleito"));
   const semPagina = eleitas.filter((c) => !r.candidaturas.some((x) => x.candidatura_id === c.id));
@@ -148,6 +152,8 @@ function TabelaCandidaturas({ base, r, selecionada, onEscolher }: {
       cell: (x) => { const l = x.row.original; return fmtFaixa(l.gmin, l.aberto ? null : l.gmax, "R$ "); }, meta: { numeric: true } },
     { id: "custo", accessorFn: (l) => l.cmin ?? undefined, header: L("Custo por mil alcançados", "Cost per 1,000 reached"),
       cell: (x) => { const l = x.row.original; return l.cmin == null ? <span className="text-muted">{L("sem alcance", "no reach")}</span> : fmtCusto({ min: l.cmin, max: l.cmax }); }, sortUndefined: "last", meta: { numeric: true } },
+    { id: "voto", accessorFn: (l) => l.vmin ?? undefined, header: L("Custo estimado por voto", "Est. cost per vote"),
+      cell: (x) => { const l = x.row.original; return l.vmin == null ? <span className="text-muted">{L("sem gasto", "no spend")}</span> : fmtCusto({ min: l.vmin, max: l.vmax }); }, sortUndefined: "last", meta: { numeric: true } },
     { id: "paginas", accessorKey: "paginas", header: L("Páginas", "Pages"), meta: { numeric: true } },
   ], [onEscolher, selecionada]);
   const exportCols: ExportCol<LinhaCand>[] = [
@@ -156,21 +162,32 @@ function TabelaCandidaturas({ base, r, selecionada, onEscolher }: {
     { header: L("Anúncios", "Ads"), value: (l) => l.anuncios, type: "number" },
     { header: L("Gasto mínimo (soma das faixas, R$)", "Minimum spend (sum of ranges, R$)"), value: (l) => l.gmin, type: "number" },
     { header: L("Gasto máximo (soma das faixas, R$; vazio = sem teto)", "Maximum spend (sum of ranges, R$; empty = no upper bound)"), value: (l) => (l.aberto ? null : l.gmax), type: "number" },
+    { header: L("Votos (1º turno)", "Votes (1st round)"), value: (l) => l.c.votos, type: "number" },
+    { header: L("Custo por voto mínimo (R$)", "Minimum cost per vote (R$)"), value: (l) => l.vmin, type: "number" },
+    { header: L("Custo por voto máximo (R$; vazio = sem teto)", "Maximum cost per vote (R$; empty = no upper bound)"), value: (l) => l.vmax, type: "number" },
     { header: L("Vínculo a revisar", "Link pending review"), value: (l) => (l.naoConfirmada ? L("sim", "yes") : L("não", "no")) },
   ];
   return (
     <section aria-label={L("Candidaturas", "Candidates")} className="flex flex-col gap-2">
       <h2 className="display text-2xl">{L("Candidaturas", "Candidates")}</h2>
       <DataTable titulo={L("Anúncios pagos (Meta) e gasto declarado, por candidatura", "Paid ads (Meta) and declared spend, by candidacy")} data={linhas} columns={columns} exportCols={exportCols} nomeArquivo="trafego_pago_candidaturas"
-        busca={(l) => `${l.c.numero} ${l.c.nome} ${l.c.partido ?? ""}`} initialSort={[{ id: "gasto", desc: true }]} pageSize={10} />
+        busca={(l) => `${l.c.numero} ${l.c.nome} ${l.c.partido ?? ""}`} initialSort={[{ id: "gasto", desc: true }]} pageSize={10}
+        atalhos={[
+          { label: L("Maior gasto", "Largest spend"), sort: [{ id: "gasto", desc: true }] },
+          { label: L("Menor custo por voto", "Lowest cost per vote"), sort: [{ id: "voto", desc: false }] },
+          { label: L("Maior custo por voto", "Highest cost per vote"), sort: [{ id: "voto", desc: true }] },
+          { label: L("Menor custo por mil", "Lowest cost per 1,000"), sort: [{ id: "custo", desc: false }] },
+        ]} />
       <p className="text-xs text-muted">
         {getLang() === "en" ? <>
         A Page is linked to a candidate when the declared funder in the ads is that candidate's campaign CNPJ ("ELEIÇÃO 2026 + full
-        name at TSE"). {semPagina.length > 0 && <>{fmt(semPagina.length)} of {fmt(eleitas.length)} elected candidates with no
+        name at TSE"). Estimated cost per vote = declared spend (range) ÷ the candidacy's votes in the 1st round: a yardstick for
+        comparison, not the effect of the ads. {semPagina.length > 0 && <>{fmt(semPagina.length)} of {fmt(eleitas.length)} elected candidates with no
         identified Page (they may not have advertised, or may advertise under another funder).</>}
         </> : <>
         Página ligada à candidatura quando o financiador declarado nos anúncios é o CNPJ de campanha dela ("ELEIÇÃO 2026 + nome
-        completo no TSE"). {semPagina.length > 0 && <>{fmt(semPagina.length)} de {fmt(eleitas.length)} candidaturas eleitas sem
+        completo no TSE"). Custo estimado por voto = gasto declarado (faixa) ÷ votos da candidatura no 1º turno: régua de comparação,
+        não efeito dos anúncios. {semPagina.length > 0 && <>{fmt(semPagina.length)} de {fmt(eleitas.length)} candidaturas eleitas sem
         página identificada (podem não ter anunciado, ou anunciar com outro financiador).</>}
         </>}
       </p>

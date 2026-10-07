@@ -45,6 +45,9 @@ export function Metodologia() {
         <li><b>Candidaturas sem tráfego próprio</b> (caso da Manuela D'Ávila): nenhuma página delas anunciou. O que aparece são
           anúncios de outras campanhas que escolheram usar o nome e o número da candidatura; o painel os chama de "anúncios de
           terceiros", o gasto é de quem pagou e nada disso é gasto da candidatura.</li>
+        <li><b>Custo estimado por voto</b>: gasto declarado (faixa) ÷ votos nominais da candidatura no 1º turno. Régua para comparar
+          candidaturas, não efeito dos anúncios (quem anuncia mais costuma já ser mais forte). Nos painéis, o total inclui as
+          dobradas; para candidaturas sem anúncios próprios é o gasto de terceiros por voto.</li>
         <li><b>Temas dos criativos</b>: classificação por termos, sem IA, em três eixos (políticas públicas, função eleitoral, como fala),
           revisada sobre os 110 mil anúncios coletados. Unidade: criativo distinto (o mesmo texto chega a centenas de anúncios, um por
           cidade). Rodapés legais (CNPJ, federação) são removidos antes; termos casam no começo de palavra. A verba por tema é dividida
@@ -147,6 +150,9 @@ function MetodologiaEn() {
         <li><b>Candidacies with no paid ads of their own</b> (Manuela D'Ávila's case): none of their pages advertised. What shows up are
           ads by other campaigns that chose to use the candidacy's name and ballot number; the dashboard calls them "third-party ads",
           the spend belongs to whoever paid, and none of it is the candidacy's spend.</li>
+        <li><b>Estimated cost per vote</b>: declared spend (range) ÷ the candidacy's votes in the 1st round. A yardstick for
+          comparing candidacies, not the effect of the ads (those who advertise more are usually already stronger). In the panels the
+          total includes joint tickets; for candidacies with no ads of their own it is third-party spend per vote.</li>
         <li><b>Creative themes</b>: keyword-based classification, without AI, along three axes (public policy, electoral function,
           tone), reviewed over the 110 thousand ads collected. Unit: distinct creative (the same text can reach hundreds of ads, one per
           city). Legal footers (CNPJ, federation) are removed first; terms match at the start of words. Spend per theme is split among

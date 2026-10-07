@@ -11,7 +11,7 @@ import { useBase, type Base, type PorLocal } from "../lib/data";
 import type { ExportCol } from "../lib/export";
 import { dec, fmt, pct, titulo } from "../lib/format";
 import { L, getLang } from "../lib/i18n";
-import { fmtCusto, fmtFaixa } from "../lib/meta";
+import { custoPorVoto, fmtCusto, fmtFaixa } from "../lib/meta";
 import { useMetaResumo } from "../lib/metaHooks";
 import { source, type Apocalipse as DadosApoc, type ClassifCand, type MetaResumo, type MetaTemas } from "../lib/source";
 import { EIXOS, rotuloDe } from "../lib/temas";
@@ -521,7 +521,7 @@ function MaisVotados({ base, blocoC, resumo }: { base: Base; blocoC: (c: Candida
     return (
       <li key={c.id} className="flex items-baseline justify-between gap-2 border-b border-line py-1 last:border-0">
         <span>{nomeCand(c)} <span className="text-xs text-muted">{c.partido}</span><SituacaoBadge c={c} compacto /></span>
-        <span className="num whitespace-nowrap text-right text-xs">{fmt(c.votos)} {L("votos", "votes")}{r?.anuncios ? <> · {fmtFaixa(r.gasto_min, r.gasto_aberto ? null : r.gasto_max, "R$ ")}</> : <span className="text-muted"> · {c.situacao?.startsWith("Eleito") ? L("sem anúncios identificados", "no ads identified") : L("não coletado (não eleito)", "not collected (not elected)")}</span>}</span>
+        <span className="num whitespace-nowrap text-right text-xs">{fmt(c.votos)} {L("votos", "votes")}{r?.anuncios ? <> · {fmtFaixa(r.gasto_min, r.gasto_aberto ? null : r.gasto_max, "R$ ")}{custoPorVoto({ min: r.gasto_min ?? 0, max: r.gasto_aberto ? null : r.gasto_max }, c.votos) ? <span className="text-muted"> ({fmtCusto(custoPorVoto({ min: r.gasto_min ?? 0, max: r.gasto_aberto ? null : r.gasto_max }, c.votos))}/{L("voto", "vote")})</span> : null}</> : <span className="text-muted"> · {c.situacao?.startsWith("Eleito") ? L("sem anúncios identificados", "no ads identified") : L("não coletado (não eleito)", "not collected (not elected)")}</span>}</span>
       </li>
     );
   };
@@ -531,7 +531,7 @@ function MaisVotados({ base, blocoC, resumo }: { base: Base; blocoC: (c: Candida
       <div className="grid gap-4 lg:grid-cols-3">
         {[6, 7].map((cargo) => (["esquerda", "centrao", "extrema"] as Bloco[]).map((b) => (
           <div key={`${cargo}-${b}`} className="rounded-lg border border-line bg-panel p-3">
-            <TituloTabela>{L(`${CARGOS[cargo]}: 5 mais votados — ${NOME_BLOCO(b)} (votos e gasto em anúncios)`, `${CARGOS[cargo]}: top 5 — ${NOME_BLOCO(b)} (votes and ad spend)`)}</TituloTabela>
+            <TituloTabela>{L(`${CARGOS[cargo]}: 5 mais votados — ${NOME_BLOCO(b)} (votos, gasto em anúncios e custo por voto)`, `${CARGOS[cargo]}: top 5 — ${NOME_BLOCO(b)} (votes, ad spend and cost per vote)`)}</TituloTabela>
             <ul className="mt-1 text-sm">{lista(cargo, b).map(linha)}</ul>
           </div>
         )))}
