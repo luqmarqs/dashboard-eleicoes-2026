@@ -20,7 +20,7 @@ export function PaineisProntos() {
   const paineis = usePaineis();
   const base = useBase();
   const nomes = (base.data?.candidaturasDestaque ?? []).map((id) => base.data?.candById.get(id)?.nome).filter(Boolean);
-  const rotuloPres = nomes.length ? `${nomes.join(" e ")} onde o Lula venceu →` : "Candidaturas onde o Lula venceu →";
+  const rotuloPres = nomes.length ? `${nomes.join(" e ")} onde o Lula venceu` : "Candidaturas onde o Lula venceu";
   const prontos = (paineis.data ?? []).filter((p) => !p.autor);
   if (!prontos.length) return null;
   return (
@@ -28,11 +28,6 @@ export function PaineisProntos() {
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="display text-xl">Painéis prontos</h2>
         <Link to="/paineis" className="text-sm text-accent">Todos os painéis e criar novo →</Link>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Link to="/presidente" className="rounded-md border border-accent px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent-soft">
-          {rotuloPres}
-        </Link>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         {agruparPaineis(prontos).map(([grupo, ps]) => (
@@ -47,6 +42,14 @@ export function PaineisProntos() {
                   </Link>
                 </li>
               ))}
+              {grupo === "Candidaturas em destaque" && (
+                <li>
+                  <Link to="/presidente" className="flex items-baseline gap-2 border-b border-line py-1.5 hover:text-accent">
+                    <span className="font-semibold">{rotuloPres}</span>
+                    <span className="text-xs text-muted">Presidente × candidatura</span>
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
         ))}

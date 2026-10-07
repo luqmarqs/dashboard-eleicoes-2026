@@ -174,14 +174,18 @@ function AppComSessao() {
   useEffect(() => {
     if (isDev) return;
     void supabase().auth.getSession().then(({ data }) => setSession(data.session));
-    const { data } = supabase().auth.onAuthStateChange((_e, s) => setSession(s));
+    const { data } = supabase().auth.onAuthStateChange((_e, s) =>
+      // mantém o mesmo objeto se o usuário não mudou (evita re-renderizar tudo a cada revalidação)
+      setSession((prev) => (prev && s && prev.user.id === s.user.id ? prev : s)));
     return () => data.subscription.unsubscribe();
   }, []);
   useEffect(() => {
     if (isDev || !session) return;
-    setAutorizado(undefined);
+    // Só checa de novo quando o usuário muda. Ao voltar para a aba o Supabase revalida o token e emite
+    // uma sessão nova do mesmo usuário; resetar aqui fazia a tela inteira piscar e remontar.
     void supabase().rpc("autorizado").then(({ data, error }) => setAutorizado(!error && data === true));
-  }, [session]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user.id]);
   const sair = () => void supabase().auth.signOut();
 
   return (
