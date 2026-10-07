@@ -9,6 +9,7 @@ import { agregar, porLocal, useBase, useTotais, useVotos, type Base, type PorLoc
 import type { ExportCol } from "../lib/export";
 import { fmt, pct, titulo } from "../lib/format";
 import { CARGOS, type Candidatura } from "../lib/types";
+import { useUf } from "../lib/uf";
 
 const NIVEL_TXT = ["baixo", "médio", "alto"];
 
@@ -34,6 +35,9 @@ export function Dobrada() {
     if (v == null) n.delete(k); else n.set(k, v);
     setSp(n, { replace: true });
   };
+  const { info } = useUf();
+  // dobradas fixadas na visão geral ganham explicação do gráfico e análise
+  const destacada = (info.dobradas ?? []).some(([x, y]) => (x === aId && y === bId) || (x === bId && y === aId));
   const a = base.data?.candById.get(aId);
   const b = base.data?.candById.get(bId);
   const votos = useVotos([aId, bId].filter(Number.isFinite), municipio);
@@ -105,9 +109,11 @@ export function Dobrada() {
             <aside className="flex min-w-0 flex-col gap-4">
               <LegendaBivariada a={a} b={b} />
               <Dispersao analise={analise} a={a} b={b} />
+              {destacada && <ComoLer a={a} b={b} />}
               <Contagem analise={analise} />
             </aside>
           </div>
+          {destacada && <AnaliseDobrada base={B} analise={analise} pa={pa!} pb={pb!} a={a} b={b} municipio={municipio} />}
           <TabelaDobrada base={B} a={a} b={b} pa={pa!} pb={pb!} municipio={municipio} />
         </>
       )}
@@ -168,6 +174,12 @@ function Dispersao({ analise, a, b }: { analise: { xa: number[]; xb: number[]; t
     ctx.clearRect(0, 0, W, H);
     ctx.strokeStyle = dark ? "#342a3c" : "#e4dce8";
     ctx.beginPath(); ctx.moveTo(pad, 4); ctx.lineTo(pad, H - pad); ctx.lineTo(W - 4, H - pad); ctx.stroke();
+    // cortes dos tercis (as mesmas faixas de cor do mapa)
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = dark ? "#5c5463" : "#c9bfce";
+    for (const t of analise.tb) { const x = pad + (t / mx) * (W - pad - 6); ctx.beginPath(); ctx.moveTo(x, 4); ctx.lineTo(x, H - pad); ctx.stroke(); }
+    for (const t of analise.ta) { const y = H - pad - (t / my) * (H - pad - 6); ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - 4, y); ctx.stroke(); }
+    ctx.setLineDash([]);
     analise.xa.forEach((ya, i) => {
       const xb = analise.xb[i];
       const k = nivelDe(ya, analise.ta) * 3 + nivelDe(xb, analise.tb);
@@ -221,5 +233,94 @@ function TabelaDobrada({ base, a, b, pa, pb, municipio }: { base: Base; a: Candi
   return (
     <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`dobrada_${a.numero}_${b.numero}`}
       busca={(r) => `${r.nome} ${r.municipio} ${r.bairro ?? ""}`} initialSort={[{ id: "va", desc: true }]} />
+  );
+}
+
+function ComoLer({ a, b }: { a: Candidatura; b: Candidatura }) {
+  return (
+    <div className="flex flex-col gap-1.5 text-xs leading-relaxed text-muted">
+      <b className="text-ink">Como ler o gráfico</b>
+      <p>
+        Cada ponto é um local de votação. Na horizontal, a % dos válidos de {titulo(b.nome)} ({CARGOS[b.cargo]}) naquele local;
+        na vertical, a % de {titulo(a.nome)} ({CARGOS[a.cargo]}).
+      </p>
+      <p>
+        As linhas pontilhadas cortam cada eixo em três faixas com o mesmo número de locais (baixo, médio, alto) — são as cores do
+        mapa. Pontos no canto superior direito (azul-escuro) são locais em que as duas estão no terço mais forte.
+      </p>
+      <p>
+        Se a nuvem sobe da esquerda para a direita, as duas crescem nos mesmos lugares. "Braços" colados a um eixo mostram
+        redutos de uma só. O gráfico descreve onde os votos coincidem; não mostra que um voto puxou o outro.
+      </p>
+    </div>
+  );
+}
+
+/** Pearson entre as % dos válidos das duas candidaturas, local a local. */
+function correlacao(x: number[], y: number[]): number {
+  const n = x.length;
+  if (n < 3) return NaN;
+  const mx = x.reduce((s, v) => s + v, 0) / n, my = y.reduce((s, v) => s + v, 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { const dx = x[i] - mx, dy = y[i] - my; sxy += dx * dy; sxx += dx * dx; syy += dy * dy; }
+  return sxx && syy ? sxy / Math.sqrt(sxx * syy) : NaN;
+}
+
+function AnaliseDobrada({ base, analise, pa, pb, a, b, municipio }: {
+  base: Base; analise: { locais: Base["locais"]; xa: number[]; xb: number[]; classe: Int8Array };
+  pa: PorLocal; pb: PorLocal; a: Candidatura; b: Candidatura; municipio: string | null;
+}) {
+  const r = useMemo(() => {
+    const rho = correlacao(analise.xa, analise.xb);
+    let totA = 0, totB = 0, ambasA = 0, ambasB = 0;
+    const soA = new Map<string, number>(), soB = new Map<string, number>(); // unidade -> votos nos redutos exclusivos
+    const n = new Array(9).fill(0);
+    for (const l of analise.locais) {
+      const k = analise.classe[l.idx];
+      if (k < 0) continue;
+      n[k]++;
+      const va = pa.votos[l.idx], vb = pb.votos[l.idx];
+      totA += va; totB += vb;
+      if (k === 8) { ambasA += va; ambasB += vb; }
+      const u = municipio ? l.bairro : l.munNome;
+      if (k === 6) soA.set(u, (soA.get(u) ?? 0) + va);
+      if (k === 2) soB.set(u, (soB.get(u) ?? 0) + vb);
+    }
+    const top = (m: Map<string, number>) => [...m.entries()].sort((x, y) => y[1] - x[1]).slice(0, 3).map(([u]) => titulo(u));
+    const total = n.reduce((x, y) => x + y, 0) || 1;
+    return { rho, n, total, pAmbasA: totA ? ambasA / totA : 0, pAmbasB: totB ? ambasB / totB : 0, topA: top(soA), topB: top(soB) };
+  }, [analise, pa, pb, municipio]);
+
+  const forca = !Number.isFinite(r.rho) ? "indefinida" : r.rho >= 0.6 ? "forte" : r.rho >= 0.3 ? "moderada" : r.rho > 0 ? "fraca" : "nula ou negativa";
+  const A = titulo(a.nome), Bn = titulo(b.nome);
+  const onde = municipio ? `em ${titulo(base.munByCd.get(municipio)?.nome ?? "")}` : "no estado";
+  const unid = municipio ? "bairros" : "cidades";
+  return (
+    <section aria-label="Análise da dobrada" className="flex flex-col gap-2 rounded-lg border border-line bg-panel p-4">
+      <h2 className="display text-xl">Análise da dobrada {onde}</h2>
+      <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed">
+        <li>
+          <b>Coincidência territorial {forca}</b> (correlação de {Number.isFinite(r.rho) ? r.rho.toFixed(2).replace(".", ",") : "–"} entre
+          as % dos válidos, local a local; 1 seria coincidência perfeita e 0, nenhuma relação).
+        </li>
+        <li>
+          Em <b className="num">{fmt(r.n[8])}</b> locais ({pct(r.n[8] / r.total, 0)}) as duas estão no terço mais forte. Esses locais
+          concentram <b>{pct(r.pAmbasA, 0)}</b> dos votos de {A} e <b>{pct(r.pAmbasB, 0)}</b> dos votos de {Bn} {onde}.
+        </li>
+        <li>
+          Redutos só de {A}: <b className="num">{fmt(r.n[6])}</b> locais{r.topA.length ? <>, sobretudo em {r.topA.join(", ")}</> : null}.
+          {" "}Redutos só de {Bn}: <b className="num">{fmt(r.n[2])}</b> locais{r.topB.length ? <>, sobretudo em {r.topB.join(", ")}</> : null}.
+          {" "}São os {unid} onde uma candidatura tem base própria e a outra ainda não acompanha.
+        </li>
+        <li>
+          Em <b className="num">{fmt(r.n[0])}</b> locais ({pct(r.n[0] / r.total, 0)}) as duas estão no terço mais fraco.
+        </li>
+      </ul>
+      <p className="text-xs text-muted">
+        Leitura descritiva e agregada por local de votação: mostra onde os votos coincidem, não que eleitores votaram nas duas nem
+        que uma candidatura transferiu votos para a outra. Cargos diferentes têm votos válidos diferentes; por isso a comparação usa
+        a % dos válidos de cada cargo.
+      </p>
+    </section>
   );
 }
