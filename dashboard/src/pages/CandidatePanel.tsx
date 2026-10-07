@@ -7,6 +7,8 @@ import { Rankings, TopLista } from "../components/Rankings";
 import { SenadoAnalise } from "../components/SenadoAnalise";
 import { AnunciosVotos } from "../components/AnunciosVotos";
 import { useMetaAnuncios, useMetaResumo } from "../lib/metaHooks";
+import { useQuery } from "@tanstack/react-query";
+import { source, type MetaAnuncio } from "../lib/source";
 import type { PorLocal } from "../lib/data";
 import type { Candidatura } from "../lib/types";
 import { CandidatePicker, ErrorBox, Loading, MapControls, MunicipioSelect, SituacaoBadge, Stat, nomeCand } from "../components/ui";
@@ -112,14 +114,15 @@ export function CandidatePanel() {
         </aside>
       </div>
 
-      {dados && !municipio && <PublicidadeCandidatura cand={cand} dados={dados} />}
-
       {/* Com histórico, a tabela de comparação já traz 2026 completo (votos, % válidos, % do total). */}
       {dados && temHistorico && <Historico base={b} cand={cand} dados={dados} municipio={municipio} />}
 
       {dados && !hist.isLoading && !temHistorico && <Rankings base={b} dados={dados} municipio={municipio}
         nomeArquivo={`${cand.numero}_${(cand.nome ?? "").replace(/\W+/g, "_")}${municipio ? `_${municipio}` : ""}`} />}
       </>)}
+
+      {/* tráfego pago × votos (próprios; sem anúncios próprios, os de outras campanhas que citam a candidatura) */}
+      {dados && !municipio && <PublicidadeCandidatura cand={cand} dados={dados} />}
     </div>
   );
 }
@@ -129,12 +132,22 @@ function PublicidadeCandidatura({ cand, dados }: { cand: Candidatura; dados: Por
   const base = useBase();
   const resumo = useMetaResumo();
   const item = resumo.data?.candidaturas.find((c) => c.candidatura_id === cand.id);
-  const ads = useMetaAnuncios(cand.id, item?.ultima_coleta, !!item && item.anuncios > 0);
+  const proprios = !!item && item.anuncios > 0;
+  const ads = useMetaAnuncios(cand.id, item?.ultima_coleta, proprios);
+  const { uf } = useUf();
+  const dob = useQuery({ queryKey: ["meta-dobradas", uf, cand.id], queryFn: () => source.metaDobradas(cand.id),
+    enabled: !!item && !proprios, staleTime: 5 * 60_000 });
+  const deTerceiros = useMemo(() => {
+    const m = new Map<string, MetaAnuncio>();
+    for (const x of dob.data ?? []) if (x.papel === "recebe") m.set(x.ad.id, x.ad);
+    return [...m.values()];
+  }, [dob.data]);
   const votosMun = useMemo(() => new Map((base.data ? agregar(base.data, dados, "municipio") : []).map((l) => [l.key, l])), [base.data, dados]);
-  if (!base.data || !item || !item.anuncios || !ads.data?.length) return null;
+  const lista = proprios ? ads.data ?? [] : deTerceiros;
+  if (!base.data || !item || !lista.length) return null;
   return (
     <div className="flex flex-col gap-1">
-      <AnunciosVotos base={base.data} ads={ads.data} votosMun={votosMun} nome={cand.nome} />
+      <AnunciosVotos base={base.data} ads={lista} votosMun={votosMun} nome={cand.nome} deTerceiros={!proprios} />
       <Link to={`/publicidade?c=${cand.id}`} className="self-end text-sm text-accent">Ver os anúncios, mapa e temas na página Publicidade →</Link>
     </div>
   );

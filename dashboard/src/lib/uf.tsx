@@ -35,13 +35,13 @@ export function ufDaCandidatura(id: number): string | undefined {
   return Number.isFinite(id) && id > 0 ? UFS[Math.floor(id / 100_000)]?.sigla : undefined;
 }
 
-/** Links com candidatura (/c/123, ?a=123) abrem no estado certo mesmo sem ?uf=. */
+/** Links com candidatura (/c/123, ?a=123, /publicidade?c=123) abrem no estado certo mesmo sem ?uf=. */
 function ufDoEndereco(): string | undefined {
   const q = new URLSearchParams(window.location.search);
   const doParam = q.get("uf")?.toUpperCase();
   if (doParam) return doParam;
   const m = window.location.pathname.match(/^\/c\/(\d+)/);
-  const id = Number(m?.[1] ?? q.get("a") ?? q.get("b") ?? NaN);
+  const id = Number(m?.[1] ?? q.get("a") ?? q.get("b") ?? q.get("c") ?? NaN);
   return ufDaCandidatura(id);
 }
 

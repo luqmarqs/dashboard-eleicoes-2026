@@ -60,8 +60,10 @@ const fmtR = (r: number) => (Number.isFinite(r) ? r.toFixed(2).replace(".", ",")
 
 interface Ponto { cd: string; nome: string; n: number; votos: number; validos: number; pct: number }
 
-export function AnunciosVotos({ base, ads, votosMun, nome, onMunicipio }: {
+export function AnunciosVotos({ base, ads, votosMun, nome, onMunicipio, deTerceiros = false }: {
   base: Base; ads: MetaAnuncio[]; votosMun: Map<string, LinhaAgregada>; nome: string; onMunicipio?: (cd: string) => void;
+  /** anúncios pagos por outras campanhas que citam a candidatura (dobradas), em vez dos próprios */
+  deTerceiros?: boolean;
 }) {
   const r = useMemo(() => {
     const mun = porMunicipio(ads);
@@ -92,7 +94,9 @@ export function AnunciosVotos({ base, ads, votosMun, nome, onMunicipio }: {
     <section aria-label="Anúncios e votos por cidade" className="flex flex-col gap-3 rounded-lg border border-line bg-panel p-4">
       <h3 className="display text-xl">Anúncios × votos por cidade</h3>
       <p className="text-sm leading-relaxed">
-        Nas <b>{fmt(r.nAlvo)}</b> cidades que receberam anúncios segmentados de {titulo(nome)}, a votação
+        Nas <b>{fmt(r.nAlvo)}</b> cidades que receberam anúncios segmentados {deTerceiros
+          ? <>de <b>outras campanhas citando {titulo(nome)}</b> (dobradas; {titulo(nome)} não tem anúncios próprios na campanha)</>
+          : <>de {titulo(nome)}</>}, a votação
         {topo && sem && topo.pctVal != null && sem.pctVal != null ? <> foi de <b>{pct(topo.pctVal)}</b> dos válidos na faixa com mais
           anúncios ({topo.rotulo.toLowerCase()}), contra <b>{pct(sem.pctVal)}</b> nas cidades sem nenhum anúncio.</> : " está detalhada abaixo."}
         {" "}Correlação de postos entre número de anúncios e % dos válidos: <b>{fmtR(r.rho)}</b> ({forca(r.rho)}) em todas as cidades;
