@@ -72,6 +72,8 @@ export interface MetaResumo {
   candidaturas: {
     candidatura_id: number; paginas: MetaPagina[]; anuncios: number; gasto_min: number | null; gasto_max: number | null;
     gasto_aberto: boolean | null; moedas: number; ultima_coleta: string | null;
+    /** somas dos anúncios em BRL com alcance > 0 (para custo por mil alcançados agregado) */
+    c_gmin?: number | null; c_gmax?: number | null; c_aberto?: boolean | null; c_alc?: number | null;
     /** custo por mil alcançados (R$; gasto somado ÷ alcance somado dos anúncios × 1000) */
     custo_mil_min?: number | null; custo_mil_max?: number | null;
   }[];
@@ -147,7 +149,17 @@ export interface AggMeta { n: number; gmin: number | null; gmax: number | null; 
 export interface MetaPrioritaria { id: number; uf: string; nome: string; cargo: number; partido: string | null; votos: number;
   situacao: string | null; prop: AggMeta | null; dob: AggMeta | null }
 
+/** Aba Apocalipse: votos por (cargo, cidade, partido) e válidos por (cargo, cidade). */
+export interface Apocalipse {
+  votos: { cargo: number[]; mun: string[]; partido: string[]; votos: number[] };
+  validos: { cargo: number[]; mun: string[]; validos: number[] };
+}
+/** Temas dos criativos por candidatura (criativos distintos com o tema; total de criativos da candidatura). */
+export interface MetaTemas { cand: number[]; tema: string[]; criativos: number[]; anuncios: number[]; total: number[] }
+
 export interface DataSource {
+  apocalipse(): Promise<Apocalipse | null>;
+  metaTemas(): Promise<MetaTemas>;
   metaPrioritarias(): Promise<MetaPrioritaria[]>;
   digital(): Promise<Digital>;
   metaDobradas(candidaturaId: number): Promise<MetaMencao[]>;
@@ -243,6 +255,20 @@ const dev: DataSource = {
       return await getJson<MetaResumo>(`${devBase()}/meta/resumo.json`);
     } catch {
       return META_VAZIO;
+    }
+  },
+  async apocalipse() {
+    try {
+      return await getJson<Apocalipse>(`${devBase()}/apocalipse.json`);
+    } catch {
+      return null;
+    }
+  },
+  async metaTemas() {
+    try {
+      return await getJson<MetaTemas>(`${devBase()}/meta/temas.json`);
+    } catch {
+      return { cand: [], tema: [], criativos: [], anuncios: [], total: [] };
     }
   },
   async metaPrioritarias() {
@@ -380,6 +406,12 @@ const remote: DataSource = {
   metaDobradas: (id) => rpc("meta_dobradas_cache", { p_candidatura_id: id }),
   digital: () => rpc("digital_json", { p_uf: getUf() }),
   metaPrioritarias: () => rpc("meta_prioritarias_cache"),
+  apocalipse: async () => {
+    const { data, error } = await supabase().rpc("apocalipse_json", { p_uf: getUf() });
+    if (error) rpcError("apocalipse_json", error);
+    return (data as Apocalipse | null) ?? null;
+  },
+  metaTemas: () => rpc("meta_temas_json", { p_uf: getUf() }),
   async versao() {
     const { data, error } = await supabase().from("meta").select("valor").eq("chave", "versao_dados").maybeSingle();
     if (error) rpcError(L("versão dos dados", "data version"), error);

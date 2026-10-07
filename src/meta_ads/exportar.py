@@ -103,7 +103,8 @@ def resumo_de(b: Banco, uf: str) -> dict[str, Any]:
         cmax = round(cu[1] / cu[3] * 1000, 2) if cu[3] and not cu[2] else None
         cands.append(dict(candidatura_id=cid, paginas=pags, anuncios=a["n"], gasto_min=a["gmin"], gasto_max=a["gmax"],
                           gasto_aberto=bool(a["aberto"]) if a["n"] else None, moedas=a["moedas"], ultima_coleta=a["uc"],
-                          custo_mil_min=cmin, custo_mil_max=cmax))
+                          custo_mil_min=cmin, custo_mil_max=cmax, c_gmin=cu[0], c_gmax=cu[1], c_aberto=bool(cu[2]) if cu[3] else None,
+                          c_alc=cu[3]))
     cands.sort(key=lambda c: -(c["gasto_max"] or 0))
     return {"execucao": dict(ex) if ex else None, "ultima_completa": ult, "candidaturas": cands}
 
@@ -188,6 +189,24 @@ def _inserir(root: Path, tabela: str, cols: list[str], linhas: list[list[Any]], 
     print(f"  {tabela}: {len(linhas):,} linhas ({len(lotes)} lotes)", flush=True)
 
 
+def carregar_temas(b: Banco, root: Path) -> None:
+    """Temas dos criativos por candidatura (mesma taxonomia do painel) -> meta_temas_cand + dev-data."""
+    from collections import defaultdict
+    from .temas import temas_por_candidatura
+    linhas = temas_por_candidatura(b, root)
+    _rodar_sql(root, "DELETE FROM public.meta_temas_cand;", "limpeza de temas")
+    _inserir(root, "meta_temas_cand", ["candidatura_id", "tema", "criativos", "anuncios", "total_criativos"],
+             [list(l) for l in linhas], "candidatura_id, tema")
+    uf_de = {cid: uf for cid, uf in b.con.execute("SELECT candidatura_id, uf FROM vinculos")}
+    por = defaultdict(list)
+    for l in sorted(linhas):
+        por[uf_de[l[0]]].append(l)
+    for uf, ls in por.items():
+        d = {"cand": [l[0] for l in ls], "tema": [l[1] for l in ls], "criativos": [l[2] for l in ls],
+             "anuncios": [l[3] for l in ls], "total": [l[4] for l in ls]}
+        (root / "dashboard" / "dev-data" / uf.lower() / "meta" / "temas.json").write_text(json.dumps(d), encoding="utf-8")
+
+
 def carregar_supabase(b: Banco, root: Path, retomar: bool = False) -> None:
     """Carga completa (substitui vínculos, segmentação, entrega e menções) ou retomada (retomar=True: não apaga nada,
     pula vínculos e anúncios e só acrescenta o que falta, com ON CONFLICT DO NOTHING)."""
@@ -246,6 +265,7 @@ def carregar_supabase(b: Banco, root: Path, retomar: bool = False) -> None:
              [r[:14] + [_jl(r[14])] for r in q("""SELECT id, modo, iniciada_em, terminada_em, status, versao_api, periodo_min,
                 periodo_max, paginas_alvo, paginas_concluidas, paginas_com_falha, anuncios_vistos, anuncios_novos,
                 observacoes_novas, erros FROM execucoes""")], "id")
+    carregar_temas(b, root)
     atualizar_cache(root, [r[0] for r in b.con.execute("SELECT DISTINCT uf FROM vinculos")])
 
 
@@ -255,4 +275,6 @@ def atualizar_cache(root: Path, ufs: list[str]) -> None:
     with ThreadPoolExecutor(max_workers=3) as ex:
         list(ex.map(lambda uf: _rodar_sql(root, f"select public.meta_atualizar_cache('{uf}');", f"cache {uf}"), ufs))
     _rodar_sql(root, "select public.meta_atualizar_prioritarias();", "cache das prioritárias")
+    for uf in ufs:  # aba Apocalipse (votos por cidade e partido; ~10 s por UF)
+        _rodar_sql(root, f"select public.apocalipse_atualizar('{uf}');", f"apocalipse {uf}")
     print(f"  cache do painel atualizado: {', '.join(ufs)} + prioritárias", flush=True)
