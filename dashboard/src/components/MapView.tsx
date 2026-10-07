@@ -23,6 +23,10 @@ interface Props {
   metrica: Metrica;
   destaques?: Destaque[];
   corPorLocal?: CorPorLocal;
+  /** cor fixa por município (modo municípios); null = sem cor */
+  corPorMunicipio?: (cd: string) => [number, number, number] | null;
+  /** linha extra no tooltip (município ou local de votação) */
+  infoExtra?: (alvo: { municipio?: string; idx?: number }) => string | null;
   rotuloSerie?: string;
   onMunicipio?: (cd: string) => void;
   altura?: string;
@@ -41,7 +45,7 @@ const SP_BOUNDS: [[number, number], [number, number]] = [[-53.2, -25.4], [-44.1,
 type Geo = FeatureCollection<Geometry, Record<string, unknown>>;
 
 export function MapView({
-  base, dados, municipio, modo, metrica, destaques = [], corPorLocal, rotuloSerie = "votos", onMunicipio,
+  base, dados, municipio, modo, metrica, destaques = [], corPorLocal, corPorMunicipio, infoExtra, rotuloSerie = "votos", onMunicipio,
   altura = "min(70vh, 720px)",
 }: Props) {
   const mapRef = useRef<MapRef>(null);
@@ -137,13 +141,15 @@ export function MapView({
       layers.push(new GeoJsonLayer({
         id: "municipios", data: municipiosGeo.data, pickable: true, stroked: true, filled: true,
         getFillColor: (f) => {
-          const a = agg.get(String(f.properties?.cd_municipio));
+          const cd = String(f.properties?.cd_municipio);
+          if (corPorMunicipio) { const c = corPorMunicipio(cd); return c ? [...c, 220] : [0, 0, 0, 0]; }
+          const a = agg.get(cd);
           return a ? corSequencial(metricaDe(a.v, a.val), breaks, 215) : [0, 0, 0, 0];
         },
         getLineColor: dark ? [21, 17, 26, 180] : [255, 255, 255, 220],
         lineWidthUnits: "pixels", getLineWidth: 0.5,
         onClick: (info) => { const cd = info.object?.properties?.cd_municipio; if (cd && onMunicipio) onMunicipio(cd); },
-        updateTriggers: { getFillColor: [metrica, breaks, dados] },
+        updateTriggers: { getFillColor: [metrica, breaks, dados, corPorMunicipio] },
       }));
     }
 
@@ -186,24 +192,26 @@ export function MapView({
     }
     return { layers, breaks };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dados, modo, metrica, municipio, noEscopo, territoriosGeo.data, municipiosGeo.data, corPorLocal, dark]);
+  }, [dados, modo, metrica, municipio, noEscopo, territoriosGeo.data, municipiosGeo.data, corPorLocal, corPorMunicipio, dark]);
 
   const getTooltip = ({ object, layer }: PickingInfo) => {
     if (!object || !dados || !layer) return null;
-    let titulo_ = "", sub = "", v = 0, val = 0;
+    let titulo_ = "", sub = "", v = 0, val = 0, extra: string | null = null;
     if (layer.id === "escolas") {
       const l = object as Base["locais"][number];
       titulo_ = l.nome; sub = `${titulo(l.bairro)} · ${titulo(l.munNome)} · zona ${l.zona}`;
-      v = dados.votos[l.idx]; val = dados.validos[l.idx];
+      v = dados.votos[l.idx]; val = dados.validos[l.idx]; extra = infoExtra?.({ idx: l.idx }) ?? null;
     } else if (layer.id === "territorios") {
       const ids = (object as Feature).properties?.locais as number[];
       const ls = ids.map((id) => base.localById.get(id)!).filter(Boolean);
       titulo_ = ls.map((l) => l.nome).join(" / "); sub = ls[0] ? titulo(ls[0].bairro) : "";
       for (const l of ls) { v += dados.votos[l.idx]; val += dados.validos[l.idx]; }
+      if (ls[0]) extra = infoExtra?.({ idx: ls[0].idx }) ?? null;
     } else if (layer.id === "municipios") {
       const cd = (object as Feature).properties?.cd_municipio as string;
       titulo_ = titulo(base.munByCd.get(cd)?.nome ?? ""); sub = "clique para ver o município";
       for (const l of base.locais) if (l.mun === cd) { v += dados.votos[l.idx]; val += dados.validos[l.idx]; }
+      extra = infoExtra?.({ municipio: cd }) ?? null;
     } else if (layer.id === "hex") {
       const d = object as { v: number; val: number };
       titulo_ = "Hexágono"; v = d.v; val = d.val;
@@ -211,7 +219,8 @@ export function MapView({
     return {
       html: `<div style="font-weight:700;margin-bottom:2px">${titulo_}</div>` +
         (sub ? `<div style="opacity:.75;font-size:12px">${sub}</div>` : "") +
-        `<div style="margin-top:4px">${fmt(v)} ${rotuloSerie} · ${val ? pct(v / val) : "–"} dos válidos</div>`,
+        `<div style="margin-top:4px">${fmt(v)} ${rotuloSerie} · ${val ? pct(v / val) : "–"} dos válidos</div>` +
+        (extra ? `<div style="margin-top:4px;opacity:.85;font-size:12px">${extra}</div>` : ""),
       style: {
         background: dark ? "#1f1826" : "#ffffff", color: dark ? "#f1eaf4" : "#241a2b", fontSize: "13px",
         border: `1px solid ${dark ? "#342a3c" : "#e4dce8"}`, borderRadius: "6px", padding: "8px 10px", maxWidth: "320px",
@@ -250,7 +259,7 @@ export function MapView({
           ))}
         </MapGL>
       </div>
-      {!corPorLocal && modo !== "calor" && breaks.length > 0 && (
+      {!corPorLocal && !corPorMunicipio && modo !== "calor" && breaks.length > 0 && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-label="Legenda">
           <span>{metrica === "pct" ? "% dos válidos" : "votos"}:</span>
           <div className="flex items-center">

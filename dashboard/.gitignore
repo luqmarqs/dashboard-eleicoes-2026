@@ -5,3 +5,6 @@ dev-data/
 .env.*.local
 .vercel
 *.tsbuildinfo
+
+.vercel
+.env*

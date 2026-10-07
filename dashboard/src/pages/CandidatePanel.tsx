@@ -4,6 +4,7 @@ import { Historico, useHistorico } from "../components/Historico";
 import { LazyMap } from "../components/LazyMap";
 import type { Metrica, Modo } from "../components/mapTypes";
 import { Rankings, TopLista } from "../components/Rankings";
+import { SenadoAnalise } from "../components/SenadoAnalise";
 import { CandidatePicker, ErrorBox, Loading, MapControls, MunicipioSelect, SituacaoBadge, Stat, nomeCand } from "../components/ui";
 import { agregar, porLocal, useBase, useTotais, useVotos } from "../lib/data";
 import { fmt, pct, titulo } from "../lib/format";
@@ -74,6 +75,10 @@ export function CandidatePanel() {
         </div>
       </header>
 
+      {/* Senado: análise própria (todas as candidaturas ao cargo, posição, vagas, adversário) */}
+      {cand.cargo === 5 && cand.tipo === "nominal" ? (
+        <SenadoAnalise base={b} cand={cand} municipio={municipio} setMunicipio={(cd) => set("mun", cd)} />
+      ) : (<>
       <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
         <Stat valor={fmt(total)} rotulo={municipio ? `votos em ${titulo(b.munByCd.get(municipio)?.nome ?? "")}` : "votos no estado"} />
         <Stat valor={validos ? pct(total / validos) : "–"} rotulo="dos votos válidos do cargo" />
@@ -108,6 +113,7 @@ export function CandidatePanel() {
 
       {dados && !hist.isLoading && !temHistorico && <Rankings base={b} dados={dados} municipio={municipio}
         nomeArquivo={`${cand.numero}_${(cand.nome ?? "").replace(/\W+/g, "_")}${municipio ? `_${municipio}` : ""}`} />}
+      </>)}
     </div>
   );
 }

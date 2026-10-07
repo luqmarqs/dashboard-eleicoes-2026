@@ -9,6 +9,7 @@ import { useBase, useDadosRegra, type Base } from "../lib/data";
 import { titulo } from "../lib/format";
 import { source } from "../lib/source";
 import { useUf } from "../lib/uf";
+import { SenadoAnalise } from "../components/SenadoAnalise";
 import { CARGOS, type Candidatura, type Painel, type RegraPainel } from "../lib/types";
 
 export const usePaineis = () => {
@@ -151,6 +152,9 @@ export function PainelView() {
     n.set("mun", cd ?? "");
     setSp(n, { replace: true });
   }
+  // painel de uma candidatura ao Senado: análise própria do Senado
+  const senado = p.candidatura_ids.length === 1 && !p.regra ? base.data.candById.get(p.candidatura_ids[0]) : undefined;
+  const ehSenado = senado?.cargo === 5 && senado.tipo === "nominal";
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -159,9 +163,11 @@ export function PainelView() {
           <h1 className="display text-3xl">{p.titulo}</h1>
           <p className="text-muted">{descreverPainel(p, base.data)}</p>
         </div>
-        <MunicipioSelect base={base.data} value={municipio} id="mun-pv" onChange={setMun} />
+        {!ehSenado && <MunicipioSelect base={base.data} value={municipio} id="mun-pv" onChange={setMun} />}
       </header>
-      {p.regra ? (
+      {ehSenado ? (
+        <SenadoAnalise base={base.data} cand={senado} municipio={municipio} setMunicipio={setMun} />
+      ) : p.regra ? (
         <RegraView regra={p.regra} municipio={municipio} nomeArquivo={p.titulo.replace(/\W+/g, "_")}
           onMunicipio={setMun} />
       ) : (

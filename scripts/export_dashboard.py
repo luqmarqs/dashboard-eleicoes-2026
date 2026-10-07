@@ -35,11 +35,15 @@ from tse2026.official import load_unificado
 
 ROOT = Path(__file__).resolve().parents[1]
 GEO_OUT = ROOT / "dashboard" / "public" / "geo"
-IBGE_UF = {"SP": 35, "MG": 31}
+IBGE_UF = {"SP": 35, "MG": 31, "RS": 43}
 # Cada UF ocupa uma faixa própria de ids no banco (SP mantém os ids originais).
-UF_ORDEM = ["SP", "MG"]
+UF_ORDEM = ["SP", "MG", "RS"]
 # Candidaturas em destaque por UF: (cargo, número)
-DESTAQUES = {"SP": [(7, 50000), (6, 5005)], "MG": [(7, 50099), (6, 5050)]}  # MG: Iza Lourença, Duda Salabert
+DESTAQUES = {
+    "SP": [(7, 50000), (6, 5005)],   # Bancada Feminista, Guilherme Cortez
+    "MG": [(7, 50099), (6, 5050)],   # Iza Lourença, Duda Salabert
+    "RS": [(7, 50123), (5, 500)],    # Matheus Gomes, Manuela (Senado)
+}
 
 
 def offsets(uf: str) -> tuple[int, int]:
@@ -61,6 +65,23 @@ def ibge_malha(uf: str) -> dict:
             raw = gzip.decompress(raw)
         cache.write_bytes(raw)
     return json.loads(cache.read_text(encoding="utf-8"))
+
+
+def ibge_regioes(uf: str) -> dict[int, tuple[str, str]]:
+    """Código IBGE do município -> (região geográfica imediata, região intermediária)."""
+    cache = get_settings().raw_dir / "externo" / f"ibge_uf_{uf}_regioes.json"
+    if not cache.exists():
+        url = f"https://servicodados.ibge.gov.br/api/v1/localidades/estados/{IBGE_UF[uf]}/municipios"
+        with urllib.request.urlopen(url, timeout=120) as resp:
+            raw = resp.read()
+        if raw[:2] == bytes([0x1F, 0x8B]):
+            raw = gzip.decompress(raw)
+        cache.write_bytes(raw)
+    out = {}
+    for m in json.loads(cache.read_text(encoding="utf-8")):
+        ri = m.get("regiao-imediata") or {}
+        out[int(m["id"])] = (ri.get("nome"), (ri.get("regiao-intermediaria") or {}).get("nome"))
+    return out
 
 
 def round_geom(geom: dict, nd: int = 5) -> dict:
@@ -235,11 +256,14 @@ def main(argv: list[str] | None = None) -> int:
     # --- geo: contornos e territórios eleitorais ------------------------------------------------
     feats = []
     tse_by_ibge = {ibge: (cd, nome) for cd, ibge, nome in munis}
+    regioes = ibge_regioes(uf)
     for f in malha["features"]:
         ibge = int(f["properties"]["codarea"])
         simp = shape(f["geometry"]).simplify(0.002, preserve_topology=True)
         cd, nome = tse_by_ibge.get(ibge, (None, None))
-        feats.append({"type": "Feature", "properties": {"cd_ibge": ibge, "cd_municipio": cd, "nome": nome},
+        feats.append({"type": "Feature", "properties": {"cd_ibge": ibge, "cd_municipio": cd, "nome": nome,
+                                                      "regiao_imediata": regioes.get(ibge, (None, None))[0],
+                                                      "regiao_intermediaria": regioes.get(ibge, (None, None))[1]},
                       "geometry": round_geom(mapping(simp), 4)})
     (geo_out / "municipios.json").write_text(json.dumps({"type": "FeatureCollection", "features": feats},
                                                         separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
