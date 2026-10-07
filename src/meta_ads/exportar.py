@@ -95,8 +95,15 @@ def resumo_de(b: Banco, uf: str) -> dict[str, Any]:
                       MAX(gasto_max IS NULL) aberto, COUNT(DISTINCT moeda) moedas, MAX(ultima_coleta) uc
                FROM anuncios WHERE page_id IN (SELECT page_id FROM vinculos WHERE candidatura_id = ? AND status_revisao <> 'rejeitado')""",
             (cid,)).fetchone()
+        cu = b.con.execute(
+            """SELECT SUM(gasto_min), SUM(gasto_max), MAX(gasto_max IS NULL), SUM(alcance_br) FROM anuncios
+               WHERE moeda = 'BRL' AND alcance_br > 0 AND page_id IN
+               (SELECT page_id FROM vinculos WHERE candidatura_id = ? AND status_revisao <> 'rejeitado')""", (cid,)).fetchone()
+        cmin = round(cu[0] / cu[3] * 1000, 2) if cu[3] else None
+        cmax = round(cu[1] / cu[3] * 1000, 2) if cu[3] and not cu[2] else None
         cands.append(dict(candidatura_id=cid, paginas=pags, anuncios=a["n"], gasto_min=a["gmin"], gasto_max=a["gmax"],
-                          gasto_aberto=bool(a["aberto"]) if a["n"] else None, moedas=a["moedas"], ultima_coleta=a["uc"]))
+                          gasto_aberto=bool(a["aberto"]) if a["n"] else None, moedas=a["moedas"], ultima_coleta=a["uc"],
+                          custo_mil_min=cmin, custo_mil_max=cmax))
     cands.sort(key=lambda c: -(c["gasto_max"] or 0))
     return {"execucao": dict(ex) if ex else None, "ultima_completa": ult, "candidaturas": cands}
 

@@ -138,3 +138,29 @@ export function rotuloAbrangencia(a: Abrangencia): string {
     case "sem_segmentacao": return L("Sem localidade informada", "No location reported");
   }
 }
+
+/**
+ * Custo por mil pessoas alcançadas (R$, faixa): gasto ÷ alcance × 1.000.
+ * Num conjunto de anúncios: soma dos gastos ÷ soma dos alcances de cada anúncio (a mesma pessoa pode contar em vários
+ * anúncios — é custo por "alcance de anúncio", não por pessoa única). Só entram anúncios em BRL com alcance > 0 e gasto
+ * informado; se algum não tem teto de gasto, o custo máximo fica sem teto. Sem anúncio válido: null.
+ */
+export function custoPorMil(ads: MetaAnuncio[]): { min: number; max: number | null; n: number } | null {
+  let gmin = 0, gmax: number | null = 0, alc = 0, n = 0;
+  for (const a of ads) {
+    if (a.moeda !== "BRL" || !a.alcance || a.alcance <= 0 || (a.gasto[0] == null && a.gasto[1] == null)) continue;
+    gmin += a.gasto[0] ?? 0;
+    gmax = gmax == null || a.gasto[1] == null ? null : gmax + a.gasto[1];
+    alc += a.alcance;
+    n++;
+  }
+  if (!n || !alc) return null;
+  return { min: (gmin / alc) * 1000, max: gmax == null ? null : (gmax / alc) * 1000, n };
+}
+
+/** "R$ 12,40 – R$ 15,10" (duas casas: valores pequenos). */
+export function fmtCusto(c: { min: number; max: number | null } | null): string {
+  if (!c) return "–";
+  const f = (x: number) => `R$ ${new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(x)}`;
+  return c.max == null ? `${f(c.min)} ${L("ou mais", "or more")}` : c.min === c.max ? f(c.min) : `${f(c.min)} – ${f(c.max)}`;
+}

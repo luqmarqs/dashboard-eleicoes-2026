@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { Base, LinhaAgregada } from "../lib/data";
 import { dec, fmt, pct, titulo } from "../lib/format";
 import { L, getLang } from "../lib/i18n";
-import { LOC, fmtFaixa, fmtNum, mediana, somaFaixas } from "../lib/meta";
+import { LOC, fmtFaixa, fmtNum, mediana, somaFaixas, custoPorMil, fmtCusto } from "../lib/meta";
 import type { MetaMencao } from "../lib/source";
 import { CARGOS } from "../lib/types";
 import { spearman } from "./AnunciosVotos";
@@ -20,6 +20,7 @@ interface Linha {
   chave: string; nome: string; sub: string; cand?: ReturnType<Base["candById"]["get"]>;
   anuncios: number; impMin: number; impMax: number | null; alcMed: number | null; gasto: { min: number; max: number | null } | undefined;
   cidades: number; pctDentro: number | null; pctFora: number | null; dif: number | null; votosDentro: number;
+  custo: { min: number; max: number | null } | null;
 }
 
 export function DobradasAlcance({ base, mencoes, votosMun, nome }: {
@@ -53,7 +54,7 @@ export function DobradasAlcance({ base, mencoes, votosMun, nome }: {
         anuncios: ads.length, impMin: imp?.min ?? 0, impMax: imp ? imp.max : 0,
         alcMed: mediana(ads.map((a) => a.alcance).filter((x): x is number => x != null)),
         gasto: somaFaixas(ads, "gasto").get("BRL"), cidades: cds.size, pctDentro, pctFora,
-        dif: pctDentro != null && pctFora != null && cds.size ? pctDentro - pctFora : null, votosDentro: vD,
+        dif: pctDentro != null && pctFora != null && cds.size ? pctDentro - pctFora : null, votosDentro: vD, custo: custoPorMil(ads),
       };
     }).sort((a, b) => b.impMin - a.impMin);
     const comCidade = linhas.filter((l) => l.dif != null);
@@ -87,7 +88,7 @@ export function DobradasAlcance({ base, mencoes, votosMun, nome }: {
         <table className="w-full text-sm">
           <thead><tr className="text-left text-xs text-muted">
             <th className="py-1 pr-3">{L("Campanha que pagou", "Paying campaign")}</th><th className="pr-3 text-right">{L("Anúncios", "Ads")}</th><th className="pr-3 text-right">{L("Impressões", "Impressions")}</th>
-            <th className="pr-3 text-right">{L("Alcance por anúncio (mediana)", "Reach per ad (median)")}</th><th className="pr-3 text-right">{L("Gasto (do pagador)", "Spend (by payer)")}</th>
+            <th className="pr-3 text-right">{L("Alcance por anúncio (mediana)", "Reach per ad (median)")}</th><th className="pr-3 text-right">{L("Gasto (do pagador)", "Spend (by payer)")}</th><th className="pr-3 text-right">{L("Custo por mil alcançados", "Cost per 1,000 reached")}</th>
             <th className="pr-3 text-right">{L("Cidades segmentadas", "Targeted cities")}</th><th className="pr-3 text-right">{L(`% válidos de ${titulo(nome).split(" ")[0]} nessas cidades`, `${titulo(nome).split(" ")[0]}'s % of valid votes in these cities`)}</th>
             <th className="pr-3 text-right">{L("no resto do estado", "in the rest of the state")}</th><th className="text-right">{L("Diferença", "Difference")}</th>
           </tr></thead>
@@ -98,6 +99,7 @@ export function DobradasAlcance({ base, mencoes, votosMun, nome }: {
               <td className="num whitespace-nowrap pr-3 text-right">{fmtFaixa(l.impMin, l.impMax)}</td>
               <td className="num whitespace-nowrap pr-3 text-right">{l.alcMed != null ? fmtNum(l.alcMed) : "–"}</td>
               <td className="num whitespace-nowrap pr-3 text-right">{l.gasto ? fmtFaixa(l.gasto.min, l.gasto.max, "R$ ") : "–"}</td>
+              <td className="num whitespace-nowrap pr-3 text-right">{fmtCusto(l.custo)}</td>
               <td className="num whitespace-nowrap pr-3 text-right">{l.cidades ? fmt(l.cidades) : <span className="text-xs text-muted">{L("nenhuma (estado inteiro)", "none (whole state)")}</span>}</td>
               {l.cidades && l.dif != null ? <>
                 <td className="num whitespace-nowrap pr-3 text-right">{pct(l.pctDentro!)}</td>

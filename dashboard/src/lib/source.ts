@@ -72,6 +72,8 @@ export interface MetaResumo {
   candidaturas: {
     candidatura_id: number; paginas: MetaPagina[]; anuncios: number; gasto_min: number | null; gasto_max: number | null;
     gasto_aberto: boolean | null; moedas: number; ultima_coleta: string | null;
+    /** custo por mil alcançados (R$; gasto somado ÷ alcance somado dos anúncios × 1000) */
+    custo_mil_min?: number | null; custo_mil_max?: number | null;
   }[];
 }
 

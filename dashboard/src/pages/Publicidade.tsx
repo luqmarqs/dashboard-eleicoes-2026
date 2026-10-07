@@ -17,8 +17,7 @@ import type { ExportCol } from "../lib/export";
 import { fmt, normalizar, pct, titulo } from "../lib/format";
 import {
   LOC, abrangencia, circulou, fmtData, fmtDataHora, fmtFaixa, fmtNum, mediana, porMunicipio,
-  rotuloAbrangencia, simbolo, somaFaixas, type Abrangencia, type Faixa, type PorMunicipio,
-} from "../lib/meta";
+  rotuloAbrangencia, simbolo, somaFaixas, type Abrangencia, type Faixa, type PorMunicipio, custoPorMil, fmtCusto } from "../lib/meta";
 import { source, type MetaAnuncio, type MetaMencao, type MetaResumo } from "../lib/source";
 import { CARGOS, type Candidatura } from "../lib/types";
 import { deUf, useUf } from "../lib/uf";
@@ -119,7 +118,7 @@ function Cobertura({ r }: { r: MetaResumo }) {
 
 interface LinhaCand {
   id: number; c: Candidatura; anuncios: number; gmin: number | null; gmax: number | null; aberto: boolean;
-  paginas: number; naoConfirmada: boolean;
+  paginas: number; naoConfirmada: boolean; cmin: number | null; cmax: number | null;
 }
 
 function TabelaCandidaturas({ base, r, selecionada, onEscolher }: {
@@ -128,7 +127,8 @@ function TabelaCandidaturas({ base, r, selecionada, onEscolher }: {
   const linhas = useMemo<LinhaCand[]>(() => r.candidaturas.flatMap((x) => {
     const c = base.candById.get(x.candidatura_id);
     return c ? [{ id: c.id, c, anuncios: x.anuncios, gmin: x.gasto_min, gmax: x.gasto_max, aberto: !!x.gasto_aberto,
-      paginas: x.paginas.length, naoConfirmada: x.paginas.some((p) => p.status_revisao !== "confirmado") }] : [];
+      paginas: x.paginas.length, naoConfirmada: x.paginas.some((p) => p.status_revisao !== "confirmado"),
+      cmin: x.custo_mil_min ?? null, cmax: x.custo_mil_max ?? null }] : [];
   }), [r, base]);
   const eleitas = base.candidaturas.filter((c) => c.tipo === "nominal" && c.situacao?.startsWith("Eleito"));
   const semPagina = eleitas.filter((c) => !r.candidaturas.some((x) => x.candidatura_id === c.id));
@@ -145,6 +145,8 @@ function TabelaCandidaturas({ base, r, selecionada, onEscolher }: {
     { id: "anuncios", accessorKey: "anuncios", header: L("Anúncios", "Ads"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
     { id: "gasto", accessorFn: (l) => l.gmax ?? l.gmin ?? 0, header: L("Gasto declarado (faixa)", "Declared spend (range)"),
       cell: (x) => { const l = x.row.original; return fmtFaixa(l.gmin, l.aberto ? null : l.gmax, "R$ "); }, meta: { numeric: true } },
+    { id: "custo", accessorFn: (l) => l.cmin ?? undefined, header: L("Custo por mil alcançados", "Cost per 1,000 reached"),
+      cell: (x) => { const l = x.row.original; return l.cmin == null ? "–" : fmtCusto({ min: l.cmin, max: l.cmax }); }, sortUndefined: "last", meta: { numeric: true } },
     { id: "paginas", accessorKey: "paginas", header: L("Páginas", "Pages"), meta: { numeric: true } },
   ], [onEscolher, selecionada]);
   const exportCols: ExportCol<LinhaCand>[] = [
@@ -353,6 +355,7 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
         <Stat valor={fmt(lista.length)} rotulo={getLang() === "en" ? <>ads{municipio ? <> that include {munNome}</> : null}{lista.length !== todas.length ? ` (of ${fmt(todas.length)})` : ""}</> : <>anúncios{municipio ? <> que incluem {munNome}</> : null}{lista.length !== todas.length ? ` (de ${fmt(todas.length)})` : ""}</>} />
         <Stat valor={<FaixaTxt f={gasto} />} rotulo={rotuloGasto} />
         <Stat valor={<FaixaTxt f={impr} prefixo=" " />} rotulo={L("impressões (soma das faixas)", "impressions (sum of ranges)")} />
+        <Stat valor={fmtCusto(custoPorMil(lista))} rotulo={L("custo por mil alcançados (gasto ÷ alcance somado dos anúncios)", "cost per 1,000 reached (spend ÷ summed ad reach)")} />
         <Stat valor={alcanceMed != null ? fmtNum(alcanceMed) : "–"} rotulo={L("alcance estimado por anúncio (mediana; não se soma)", "estimated reach per ad (median; not summed)")} />
         <Stat valor={`${fmtData(inicio)} – ${fmtData(fim)}`} rotulo={L("veiculação", "run dates")} />
       </div>
@@ -475,7 +478,7 @@ function Entrega({ ads }: { ads: MetaAnuncio[] }) {
 }
 
 interface LinhaEf { cd: string; nome: string; inclui: number; bairro: number; exclui: number; inicio: string | null; fim: string | null;
-  gmin: number; gmax: number | null; votos: number; validos: number; pct: number }
+  gmin: number; gmax: number | null; votos: number; validos: number; pct: number; custo: { min: number; max: number | null } | null }
 
 function Efetividade({ base, mun, votosMun, ads, cand, onMunicipio }: {
   base: Base; mun: Map<string, PorMunicipio>; votosMun: Map<string, LinhaAgregada>; ads: MetaAnuncio[]; cand: Candidatura;
@@ -486,11 +489,13 @@ function Efetividade({ base, mun, votosMun, ads, cand, onMunicipio }: {
   const linhas = useMemo<LinhaEf[]>(() => base.municipios.map((m) => {
     const x = mun.get(m.cd);
     const ids = new Set([...(x?.inclui ?? []), ...(x?.bairro ?? [])]);
-    const g = somaFaixas([...ids].map((i) => porId.get(i)!).filter(Boolean), "gasto").get("BRL");
+    const adsCidade = [...ids].map((i) => porId.get(i)!).filter(Boolean);
+    const g = somaFaixas(adsCidade, "gasto").get("BRL");
+    const custo = custoPorMil(adsCidade);
     const v = votosMun.get(m.cd);
     return { cd: m.cd, nome: m.nome, inclui: x?.inclui.size ?? 0, bairro: x?.bairro.size ?? 0, exclui: x?.exclui.size ?? 0,
       inicio: x?.inicio ?? null, fim: x?.fim ?? null, gmin: g?.min ?? 0, gmax: g ? g.max : 0,
-      votos: v?.votos ?? 0, validos: v?.validos ?? 0, pct: v?.pct ?? 0 };
+      votos: v?.votos ?? 0, validos: v?.validos ?? 0, pct: v?.pct ?? 0, custo };
   }), [base, mun, porId, votosMun]);
 
 
@@ -501,6 +506,7 @@ function Efetividade({ base, mun, votosMun, ads, cand, onMunicipio }: {
     { id: "inclui", accessorKey: "inclui", header: L("Anúncios que incluem", "Ads that include"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
     { id: "bairro", accessorKey: "bairro", header: L("…via bairro", "…via neighborhood"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
     { id: "exclui", accessorKey: "exclui", header: L("Que excluem", "That exclude"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
+    { id: "custo", accessorFn: (l) => l.custo?.min ?? undefined, header: L("Custo por mil alcançados", "Cost per 1,000 reached"), cell: (x) => fmtCusto(x.row.original.custo), sortUndefined: "last", meta: { numeric: true } },
     { id: "gasto", accessorFn: (l) => l.gmax ?? l.gmin, header: L("Gasto total desses anúncios*", "Total spend of these ads*"),
       cell: (x) => { const l = x.row.original; return l.inclui + l.bairro ? fmtFaixa(l.gmin, l.gmax, "R$ ") : "–"; }, meta: { numeric: true } },
     { id: "periodo", accessorFn: (l) => l.inicio ?? "", header: L("Veiculação", "Run dates"), cell: (x) => { const l = x.row.original; return l.inicio ? `${fmtData(l.inicio)} – ${fmtData(l.fim)}` : "–"; } },
@@ -592,6 +598,7 @@ function CardAnuncio({ a, mencoes, base }: { a: MetaAnuncio; mencoes?: MetaMenca
       <div className="flex flex-wrap gap-x-6 gap-y-1">
         <span>{L("Gasto", "Spend")}: <b>{fmtFaixa(a.gasto[0], a.gasto[1], simbolo(a.moeda ?? ""))}</b></span>
         <span>{L("Impressões", "Impressions")}: <b>{fmtFaixa(a.impressoes[0], a.impressoes[1])}</b></span>
+        <span>{L("Custo por mil alcançados", "Cost per 1,000 reached")}: <b>{fmtCusto(custoPorMil([a]))}</b></span>
         <span>{L("Alcance estimado", "Estimated reach")}: <b>{a.alcance != null ? fmtNum(a.alcance, false) : L("não informado", "not reported")}</b></span>
         <span>{L("Público potencial", "Potential audience")}: <b>{fmtFaixa(a.publico[0], a.publico[1])}</b></span>
       </div>
@@ -618,6 +625,7 @@ const fmtCnpj = (c: string) => (c.length === 14 ? `${c.slice(0, 2)}.${c.slice(2,
 interface LinhaParceira {
   chave: string; outra?: Candidatura; paginas: string; paginasLista: string[]; anuncios: number; confirmadas: number; soNome: number;
   gasto: Map<string, Faixa>; cidades: number; inicio: string | null; fim: string | null; cnpjTexto: number;
+  custo: { min: number; max: number | null } | null;
 }
 
 /** Quem faz dobrada com a candidatura: agrupa as menções por candidatura pagadora (recebe) ou citada (faz). */
@@ -636,7 +644,7 @@ function Parceiras({ base, cand, mencoes, fonte, parceira, onParceira }: {
         paginasLista: [...new Set(ads.map((a) => a.page_name ?? a.page_id))].slice(0, 3),
         anuncios: ads.length, confirmadas: new Set(ms.filter((m) => m.confirmada).map((m) => m.ad.id)).size,
         soNome: new Set(ms.filter((m) => !m.cita_numero).map((m) => m.ad.id)).size,
-        gasto: somaFaixas(ads, "gasto"), cidades: cds.size,
+        gasto: somaFaixas(ads, "gasto"), cidades: cds.size, custo: custoPorMil(ads),
         inicio: ads.reduce<string | null>((x, a) => (a.inicio && (!x || a.inicio < x) ? a.inicio : x), null),
         fim: ads.reduce<string | null>((x, a) => { const f = a.fim ?? a.ultima_coleta.slice(0, 10); return !x || f > x ? f : x; }, null),
         cnpjTexto: new Set(ms.filter((m) => m.cnpjs_texto).map((m) => m.ad.id)).size,
@@ -652,7 +660,7 @@ function Parceiras({ base, cand, mencoes, fonte, parceira, onParceira }: {
           <thead><tr className="text-left text-xs text-muted">
             <th className="px-3 py-2">{fonte === "recebe" ? L("Pagou", "Paid") : L("Citada", "Mentioned")}</th><th className="px-3 py-2 text-right">{L("Anúncios", "Ads")}</th>
             <th className="px-3 py-2 text-right">{L("Nome + número", "Name + number")}</th><th className="px-3 py-2 text-right">{L("Só nome", "Name only")}</th>
-            <th className="px-3 py-2 text-right">{L("Com CNPJ no texto", "With CNPJ in text")}</th><th className="px-3 py-2 text-right">{L("Gasto (do pagador)", "Spend (by payer)")}</th>
+            <th className="px-3 py-2 text-right">{L("Com CNPJ no texto", "With CNPJ in text")}</th><th className="px-3 py-2 text-right">{L("Gasto (do pagador)", "Spend (by payer)")}</th><th className="px-3 py-2 text-right">{L("Custo por mil alcançados", "Cost per 1,000 reached")}</th>
             <th className="px-3 py-2 text-right">{L("Cidades segmentadas", "Targeted cities")}</th><th className="px-3 py-2">{L("Veiculação", "Run dates")}</th>
           </tr></thead>
           <tbody>{linhas.map((l) => (
@@ -664,7 +672,7 @@ function Parceiras({ base, cand, mencoes, fonte, parceira, onParceira }: {
               </td>
               <td className="num px-3 text-right">{fmt(l.anuncios)}</td><td className="num px-3 text-right">{fmt(l.confirmadas)}</td>
               <td className="num px-3 text-right">{fmt(l.soNome)}</td><td className="num px-3 text-right">{fmt(l.cnpjTexto)}</td>
-              <td className="num px-3 text-right"><FaixaTxt f={l.gasto} /></td><td className="num px-3 text-right">{fmt(l.cidades)}</td>
+              <td className="num px-3 text-right"><FaixaTxt f={l.gasto} /></td><td className="num whitespace-nowrap px-3 text-right">{fmtCusto(l.custo)}</td><td className="num px-3 text-right">{fmt(l.cidades)}</td>
               <td className="px-3 text-xs">{fmtData(l.inicio)} – {fmtData(l.fim)}</td>
             </tr>
           ))}</tbody>

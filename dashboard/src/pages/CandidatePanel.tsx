@@ -6,6 +6,7 @@ import type { Metrica, Modo } from "../components/mapTypes";
 import { Rankings, TopLista } from "../components/Rankings";
 import { SenadoAnalise } from "../components/SenadoAnalise";
 import { AnunciosVotos } from "../components/AnunciosVotos";
+import { AnaliseCandidatura } from "../components/AnaliseCandidatura";
 import { DobradasAlcance } from "../components/DobradasAlcance";
 import { TerritorioAnuncios } from "../components/TerritorioAnuncios";
 import { TemasCriativos } from "../components/TemasCriativos";
@@ -85,6 +86,9 @@ export function CandidatePanel() {
             placeholder={L("Trocar de candidatura…", "Switch candidacy…")} />
         </div>
       </header>
+
+      {/* candidaturas prioritárias (destaques da UF): análise breve no topo */}
+      {dados && !municipio && b.candidaturasDestaque.includes(cand.id) && <AnaliseCandidatura base={b} cand={cand} dados={dados} />}
 
       {/* Senado: análise própria (todas as candidaturas ao cargo, posição, vagas, adversário) */}
       {cand.cargo === 5 && cand.tipo === "nominal" ? (

@@ -5,7 +5,7 @@ import type { Base, LinhaAgregada } from "../lib/data";
 import type { ExportCol } from "../lib/export";
 import { fmt, pct, titulo } from "../lib/format";
 import { L, getLang } from "../lib/i18n";
-import { abrangencia, fmtData, fmtFaixa, mediana, porMunicipio, somaFaixas } from "../lib/meta";
+import { abrangencia, fmtData, fmtFaixa, mediana, porMunicipio, somaFaixas, custoPorMil, fmtCusto } from "../lib/meta";
 import { geoUrl, type MetaAnuncio } from "../lib/source";
 import { EIXOS, normalizarTexto, rotuloDe, temasDoTexto } from "../lib/temas";
 import { useUf } from "../lib/uf";
@@ -22,6 +22,7 @@ import { Segmented } from "./ui";
 interface Linha {
   cd: string; nome: string; regiao: string | null; rank: number; votos: number; validos: number; pct: number; share: number;
   n: number; bairro: number; exclui: number; inicio: string | null; fim: string | null; gmin: number | null; gmax: number | null;
+  custo: { min: number; max: number | null } | null;
 }
 
 type Escopo = "10" | "25" | "50" | "todas";
@@ -81,10 +82,11 @@ export function TerritorioAnuncios({ base, ads: todosAds, votosMun, nome, deTerc
     const linhas: Linha[] = [...votos].sort((a, b) => b.votos - a.votos).map((l, i) => {
       const x = mun.get(l.key);
       const ids = new Set([...(x?.inclui ?? []), ...(x?.bairro ?? [])]);
-      const g = somaFaixas([...ids].map((id) => porId.get(id)!).filter(Boolean), "gasto").get("BRL");
+      const adsCidade = [...ids].map((id) => porId.get(id)!).filter(Boolean);
+      const g = somaFaixas(adsCidade, "gasto").get("BRL");
       return { cd: l.key, nome: l.nome, regiao: regiaoDe.get(l.key) ?? null, rank: i + 1, votos: l.votos, validos: l.validos, pct: l.pct,
         share: total ? l.votos / total : 0, n: ids.size, bairro: x?.bairro.size ?? 0, exclui: x?.exclui.size ?? 0,
-        inicio: x?.inicio ?? null, fim: x?.fim ?? null, gmin: g ? g.min : null, gmax: g ? g.max : null };
+        inicio: x?.inicio ?? null, fim: x?.fim ?? null, gmin: g ? g.min : null, gmax: g ? g.max : null, custo: custoPorMil(adsCidade) };
     });
     const soEstado = ads.filter((a) => abrangencia(a) === "uf").length;
     const comCidade = ads.filter((a) => ["municipio", "bairro"].includes(abrangencia(a))).length;
@@ -131,6 +133,7 @@ export function TerritorioAnuncios({ base, ads: todosAds, votosMun, nome, deTerc
     }, meta: { numeric: true } },
     { id: "exclui", accessorKey: "exclui", header: L("Que excluem", "That exclude it"), cell: (x) => (Number(x.getValue()) ? fmt(Number(x.getValue())) : "–"), meta: { numeric: true } },
     { id: "periodo", accessorFn: (l) => l.inicio ?? "", header: L("Veiculação", "Run dates"), cell: (x) => { const l = x.row.original; return l.inicio ? `${fmtData(l.inicio)} – ${fmtData(l.fim)}` : "–"; } },
+    { id: "custo", accessorFn: (l) => l.custo?.min ?? undefined, header: L("Custo por mil alcançados", "Cost per 1,000 reached"), cell: (x) => fmtCusto(x.row.original.custo), sortUndefined: "last", meta: { numeric: true } },
     { id: "gasto", accessorFn: (l) => l.gmax ?? l.gmin ?? undefined, header: L("Gasto total desses anúncios*", "Total spend of these ads*"),
       cell: (x) => { const l = x.row.original; return l.n ? fmtFaixa(l.gmin, l.gmax, "R$ ") : "–"; }, sortUndefined: "last", meta: { numeric: true } },
   ], []);
@@ -145,6 +148,8 @@ export function TerritorioAnuncios({ base, ads: todosAds, votosMun, nome, deTerc
     { header: L("… por bairro", "… by neighborhood"), value: (l) => l.bairro, type: "number" },
     { header: L("Anúncios que excluem a cidade", "Ads that exclude the city"), value: (l) => l.exclui, type: "number" },
     { header: L("Primeira veiculação", "First run date"), value: (l) => l.inicio ?? "" }, { header: L("Última veiculação", "Last run date"), value: (l) => l.fim ?? "" },
+    { header: L("Custo por mil alcançados - mínimo (R$)", "Cost per 1,000 reached - min (R$)"), value: (l) => l.custo?.min ?? null, type: "number" },
+    { header: L("Custo por mil alcançados - máximo (R$; vazio = sem teto)", "Cost per 1,000 reached - max (R$; empty = no upper bound)"), value: (l) => l.custo?.max ?? null, type: "number" },
     { header: L("Gasto total dos anúncios - mínimo (não é gasto na cidade)", "Total ad spend - min (not spend in the city)"), value: (l) => (l.n ? l.gmin : null), type: "number" },
     { header: L("Gasto total dos anúncios - máximo (vazio = sem teto)", "Total ad spend - max (empty = no upper bound)"), value: (l) => (l.n ? l.gmax : null), type: "number" },
   ];
@@ -168,6 +173,7 @@ export function TerritorioAnuncios({ base, ads: todosAds, votosMun, nome, deTerc
           : <>{fmt(ads.length)} anúncios{deTerceiros ? " de outras campanhas" : ""}{rotuloTema ? ` sobre "${rotuloTema}"` : ""}: {fmt(r.soEstado)} para o estado inteiro, {fmt(r.comCidade)} com cidades ou bairros ({fmt(r.cidades)} cidades)</>}
         {r.entregaMed != null && <> · {L("mediana de", "median of")} {pct(r.entregaMed, 0)} {L("do alcance entregue em", "of reach delivered in")} {info.sigla}</>}
         {r.gasto && <> · {L("gasto declarado", "declared spend")} {fmtFaixa(r.gasto.min, r.gasto.max, "R$ ")}</>}
+        {custoPorMil(ads) && <> · {L("custo por mil alcançados", "cost per 1,000 reached")} {fmtCusto(custoPorMil(ads))}</>}
       </p>
 
       <div className="flex flex-wrap items-end gap-3 text-sm">

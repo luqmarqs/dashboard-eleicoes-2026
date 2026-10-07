@@ -1,6 +1,7 @@
+import type React from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { DataTable, TituloTabela } from "../components/DataTable";
 import { ErrorBox, Loading, Segmented, SituacaoBadge, Stat, nomeCand, situacaoTexto } from "../components/ui";
@@ -275,7 +276,7 @@ function Painel({ base, d, plataforma, setPlataforma, partido, setPartido, de, s
 
       {plataforma === "instagram" && <Organico d={d} base={base} perfis={perfis} onSel={setSel} />}
 
-      {linhaSel && <Detalhe l={linhaSel} d={d} dias={dias} onFechar={() => setSel(null)} />}
+      {linhaSel && <PainelLateral onFechar={() => setSel(null)}><Detalhe l={linhaSel} d={d} dias={dias} onFechar={() => setSel(null)} /></PainelLateral>}
 
       <Cobertura d={d} custo={custo} />
     </div>
@@ -496,5 +497,24 @@ function Cobertura({ d, custo }: { d: Digital; custo: number }) {
         ))}
       </ul>
     </details>
+  );
+}
+
+/** Painel lateral sobre a página (abre onde a pessoa está; fecha no X, com Esc ou clicando fora). */
+function PainelLateral({ children, onFechar }: { children: React.ReactNode; onFechar: () => void }) {
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => { if (e.key === "Escape") onFechar(); };
+    window.addEventListener("keydown", k);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", k); document.body.style.overflow = overflow; };
+  }, [onFechar]);
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onFechar}>
+      <div role="dialog" aria-modal="true" aria-label={L("Detalhe da candidatura", "Candidacy details")}
+        className="h-full w-full max-w-3xl overflow-y-auto bg-bg p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        {children}
+      </div>
+    </div>
   );
 }
