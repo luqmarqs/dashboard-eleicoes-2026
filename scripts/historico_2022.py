@@ -4,7 +4,8 @@ Fontes (TSE, Portal de Dados Abertos), em data/raw/externo/2022/:
     votacao_secao_2022_<UF>.zip         votos por seção (1º turno)
     eleitorado_local_votacao_2022.zip   seção -> local de votação (escola, bairro, coordenadas)
 
-Saída: data/dashboard/<uf>/historico.csv e historico_comparativo.csv, carregados no Supabase.
+Saída: data/dashboard/<uf>/historico.csv e historico_comparativo.csv, carregados no Supabase
+    (python scripts/load_supabase.py --uf <UF> --historico), e dashboard/dev-data/<uf>/historico/<id>.json (modo dev).
     historico.csv                ano, cargo, número, votos totais e situação em 2022 de cada candidatura 2026
     historico_comparativo.csv    candidatura_id (2026) × nível (municipio | bairro | local) × chave:
                                  votos e votos válidos do cargo em 2022
@@ -33,7 +34,7 @@ from tse2026.config import get_settings
 
 # candidatura 2026 (cargo, número) -> candidatura 2022 (cargo, número)
 HISTORICO = {
-    "SP": {(7, 50000): (7, 50000), (6, 5005): (7, 50005)},  # Bancada Feminista; Guilherme Cortez (estadual em 2022)
+    "SP": {(7, 50000): (7, 50000), (6, 5005): (7, 50005), (6, 6565): (6, 6565)},  # Bancada Feminista; Guilherme Cortez (estadual em 2022); Orlando Silva (PCdoB, federal nos dois anos)
     "MG": {(7, 50099): (6, 5000), (6, 5050): (6, 1212)},     # Iza Lourença (federal em 2022); Duda Salabert (PDT em 2022)
     "RS": {(7, 50123): (7, 50123)},                          # Matheus Gomes (Manuela não concorreu em 2022)
 }
@@ -165,7 +166,22 @@ def main(argv: list[str] | None = None) -> int:
             k = '"' + str(k).replace('"', '""') + '"'
             fh.write(f"{cid},2022,{nivel},{mun},{k},{v},{val}\n")
     print(f"historico_comparativo.csv: {len(linhas):,} linhas")
+    escrever_dev(uf, hist, linhas)
     return 0
+
+
+def escrever_dev(uf: str, hist: list[tuple], linhas: list[tuple]) -> None:
+    """dashboard/dev-data/<uf>/historico/<id>.json, no formato da RPC historico_json (modo dev do painel)."""
+    import json
+    pasta = Path(__file__).resolve().parents[1] / "dashboard" / "dev-data" / uf.lower() / "historico"
+    pasta.mkdir(parents=True, exist_ok=True)
+    for cid, ano, c22, n22, tot in hist:
+        ls = sorted((l for l in linhas if l[0] == cid), key=lambda l: (l[1], str(l[3])))
+        d = {"resumo": [{"candidatura_id": cid, "ano": ano, "cd_cargo": c22, "numero": n22, "votos_total": tot}],
+             "nivel": [l[1] for l in ls], "mun": [str(l[2]) for l in ls], "chave": [str(l[3]) for l in ls],
+             "votos": [l[4] for l in ls], "validos": [l[5] for l in ls], "ano": [2022] * len(ls)}
+        (pasta / f"{cid}.json").write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    print(f"dev-data: {len(hist)} arquivos em {pasta}")
 
 
 if __name__ == "__main__":
