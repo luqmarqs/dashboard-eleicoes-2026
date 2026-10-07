@@ -43,15 +43,6 @@ export function Overview() {
         <h1 className="display text-4xl">{partido} em {info.nome}</h1>
       </header>
 
-      <PaineisProntos />
-
-      <section aria-label="Buscar candidatura" className="flex flex-col gap-2">
-        <h2 className="display text-xl">Qualquer candidatura</h2>
-        <div className="max-w-xl">
-          <CandidatePicker base={b} onPick={(c) => navigate(`/c/${c.id}`)} placeholder="Abrir o painel de qualquer candidatura (todos os partidos)…" />
-        </div>
-      </section>
-
       <section aria-label="Candidaturas em destaque" className="grid gap-4 md:grid-cols-2">
         {destaques.map((c) => (
           <Link key={c.id} to={`/c/${c.id}`} className="rounded-lg border border-line bg-panel p-5 hover:border-accent">
@@ -65,6 +56,16 @@ export function Overview() {
           </Link>
         ))}
       </section>
+
+      <PaineisProntos />
+
+      <section aria-label="Buscar candidatura" className="flex flex-col gap-2">
+        <h2 className="display text-xl">Qualquer candidatura</h2>
+        <div className="max-w-xl">
+          <CandidatePicker base={b} onPick={(c) => navigate(`/c/${c.id}`)} placeholder="Abrir o painel de qualquer candidatura (todos os partidos)…" />
+        </div>
+      </section>
+
 
       <section aria-label={`Resumo do ${partido}`} className="grid gap-6 lg:grid-cols-2">
         {resumo.map((r) => (
