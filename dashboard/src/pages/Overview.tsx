@@ -1,8 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PaineisProntos } from "../components/PaineisProntos";
 import { CandidatePicker, ErrorBox, Loading, SituacaoBadge, nomeCand } from "../components/ui";
 import { useBase, type Base } from "../lib/data";
+import { source } from "../lib/source";
 import { deUf, emUf, useUf } from "../lib/uf";
 import { fmt, titulo } from "../lib/format";
 import { CARGOS, type Candidatura } from "../lib/types";
@@ -58,6 +60,8 @@ export function Overview() {
       </section>
 
       <Dobradas base={b} pares={info.dobradas ?? []} />
+
+      {info.sigla === "MG" && <CardDigital />}
 
       <Senado base={b} destaques={destaques} />
 
@@ -168,5 +172,24 @@ function Dobradas({ base, pares }: { base: Base; pares: [number, number][] }) {
         </Link>
       ))}
     </section>
+  );
+}
+
+/** Card do painel "Evolução digital e votação" (só MG). */
+function CardDigital() {
+  const d = useQuery({ queryKey: ["digital", "MG"], queryFn: () => source.digital(), staleTime: 5 * 60_000 });
+  const n = d.data ? new Set(d.data.perfis.map((p) => p.candidatura_id).filter(Boolean)).size : null;
+  if (d.data && !n) return null;
+  return (
+    <Link to="/digital-mg" className="block rounded-lg border border-line bg-panel p-5 hover:border-accent"
+      aria-label="Abrir o painel Evolução digital e votação">
+      <div className="eyebrow">Redes sociais × urnas · Deputado Estadual</div>
+      <div className="display mt-1 text-2xl">Evolução digital e votação</div>
+      <p className="mt-2 max-w-3xl text-sm text-muted">
+        {n != null ? `${n} candidaturas acompanhadas desde setembro` : "Candidaturas acompanhadas desde setembro"}: seguidores no Instagram e
+        no X ao longo da campanha e no snapshot atual, postagens no Instagram e a votação de cada uma no 1º turno.
+      </p>
+      <div className="mt-3 text-sm text-accent">Abrir painel →</div>
+    </Link>
   );
 }

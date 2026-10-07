@@ -74,7 +74,44 @@ export interface MetaResumo {
   }[];
 }
 
+/** Menção de dobrada: 'recebe' = outra campanha (outra) cita esta; 'faz' = esta cita outra (outra). */
+export interface MetaMencao {
+  papel: "recebe" | "faz";
+  outra: number | null;
+  cita_nome: boolean;
+  cita_numero: boolean;
+  confirmada: boolean;
+  cnpjs_texto: string | null;
+  cnpj_financiador: string | null;
+  ad: MetaAnuncio;
+}
+
+/** Painel "Evolução digital e votação" (MG). Ausência = null, nunca zero. */
+export interface DigitalPerfil {
+  perfil_key: string; plataforma: string; perfil_id: string | null; username: string; url: string; nome_publico: string | null;
+  candidatura_id: number | null; uf: string; status_vinculo: "confirmado" | "pendente" | "rejeitado"; evidencia: string | null;
+}
+export interface DigitalObs {
+  perfil_key: string; observado_em: string | null; data: string | null; origem_data: string; seguidores: number | null;
+  seguindo: number | null; posts: number | null; precisao: string; fonte: string; fonte_arquivo: string | null; status: string;
+}
+export interface DigitalExecucao {
+  id: string; iniciada_em: string; terminada_em: string | null; tipo: string; perfis_solicitados: number | null;
+  perfis_obtidos: number | null; falhas: Record<string, string> | null; custo_usd: number | null; custo_confirmado: boolean | null;
+  teto_usd: number | null; proveniencia: string | null;
+}
+export interface Digital {
+  perfis: DigitalPerfil[];
+  observacoes: DigitalObs[];
+  posts: { perfil_key: string[]; publicado: (string | null)[]; tipo: (string | null)[]; curtidas: (number | null)[];
+    comentarios: (number | null)[]; views: (number | null)[]; url: (string | null)[]; fixado: boolean[]; coletado: string[];
+    coautoria: boolean[] };
+  execucoes: DigitalExecucao[];
+}
+
 export interface DataSource {
+  digital(): Promise<Digital>;
+  metaDobradas(candidaturaId: number): Promise<MetaMencao[]>;
   metaResumo(): Promise<MetaResumo>;
   metaAnuncios(candidaturaId: number): Promise<MetaAnuncio[]>;
   historico(id: number): Promise<Historico>;
@@ -169,6 +206,20 @@ const dev: DataSource = {
       return META_VAZIO;
     }
   },
+  async digital() {
+    try {
+      return await getJson<Digital>(`${devBase()}/digital.json`);
+    } catch {
+      return { perfis: [], observacoes: [], posts: { perfil_key: [], publicado: [], tipo: [], curtidas: [], comentarios: [], views: [], url: [], fixado: [], coletado: [], coautoria: [] }, execucoes: [] };
+    }
+  },
+  async metaDobradas(id) {
+    try {
+      return await getJson<MetaMencao[]>(`${devBase()}/meta/dobradas/${id}.json`);
+    } catch {
+      return [];
+    }
+  },
   async metaAnuncios(id) {
     try {
       return await getJson<MetaAnuncio[]>(`${devBase()}/meta/${id}.json`);
@@ -260,6 +311,8 @@ const remote: DataSource = {
   historico: (id) => rpc("historico_json", { p_candidatura_id: id }),
   metaResumo: () => rpc("meta_resumo_json", { p_uf: getUf() }),
   metaAnuncios: (id) => rpc("meta_anuncios_json", { p_candidatura_id: id }),
+  metaDobradas: (id) => rpc("meta_dobradas_json", { p_candidatura_id: id }),
+  digital: () => rpc("digital_json", { p_uf: getUf() }),
   async versao() {
     const { data, error } = await supabase().from("meta").select("valor").eq("chave", "versao_dados").maybeSingle();
     if (error) rpcError("versão dos dados", error);

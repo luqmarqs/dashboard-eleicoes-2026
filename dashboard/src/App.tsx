@@ -11,6 +11,7 @@ import { PainelView, Paineis } from "./pages/Paineis";
 import { Acessos } from "./pages/Acessos";
 import { Presidente } from "./pages/Presidente";
 import { Publicidade } from "./pages/Publicidade";
+import { DigitalMG } from "./pages/DigitalMG";
 import { useSouAdmin } from "./lib/acessos";
 import { isDev } from "./lib/source";
 import { supabase } from "./lib/supabase";
@@ -146,6 +147,7 @@ function Rotas() {
       <Route path="/dobrada" element={<Dobrada />} />
       <Route path="/presidente" element={<Presidente />} />
       <Route path="/publicidade" element={<Publicidade />} />
+      <Route path="/digital-mg" element={<DigitalMG />} />
       <Route path="/paineis" element={<Paineis />} />
       <Route path="/paineis/:id" element={<PainelView />} />
       <Route path="/metodologia" element={<Metodologia />} />

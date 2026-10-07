@@ -123,6 +123,67 @@ def cmd_status(a: argparse.Namespace) -> int:
     return 0
 
 
+# Busca de menções (anúncios de qualquer página) e variantes de nome aceitas na análise das dobradas
+MENCOES = {
+    ("RS", 5, 500): (["Manuela D'Ávila", "Manuela D'Avila", "Manuela 500", "Manuela Senadora", "Manu Senadora", "Manu 500"],
+                     ["MANUELA", "MANU"]),
+    ("RS", 7, 50123): (["Matheus Gomes"], []),
+    ("SP", 7, 50000): (["Bancada Feminista"], ["BANCADA FEMINISTA"]),
+    ("SP", 6, 5005): (["Guilherme Cortez", "Gui Cortez"], ["GUILHERME CORTEZ", "GUI CORTEZ"]),
+    ("SP", 6, 5070): (["Erika Hilton"], []),
+    ("MG", 6, 5050): (["Duda Salabert"], []),
+    ("MG", 7, 50099): (["Iza Lourença", "Iza Lourenca"], ["IZA LOURENCA"]),
+}
+
+
+def _cands_mencoes(cands):
+    por_chave = {(c.uf, c.cargo, c.numero): c for c in cands}
+    return {por_chave[k]: v for k, v in MENCOES.items() if k in por_chave}
+
+
+def cmd_mencoes(a: argparse.Namespace) -> int:
+    from .dobradas import carregar_candidaturas, coletar_mencoes
+    cands = carregar_candidaturas(ROOT / "data" / "dashboard", UFS)
+    b = banco()
+    cli = Cliente(carregar_token())
+    eid = novo_id_execucao("mencoes")
+    b.abrir_execucao(eid, "mencoes", cli.versao, INICIO_CAMPANHA, None, 0)
+    for c, (termos, _) in _cands_mencoes(cands).items():
+        print(f"{c.nm_urna} ({c.uf} {c.numero}):")
+        try:
+            coletar_mencoes(cli, b, c, termos, eid)
+        except TokenInvalido as e:
+            print(f"token inválido: {sanear(e)}")
+            b.fechar_execucao(eid, [sanear(e)])
+            return 2
+    b.fechar_execucao(eid, [])
+    return 0
+
+
+def cmd_dobradas(a: argparse.Namespace) -> int:
+    from .dobradas import analisar, carregar_candidaturas
+    cands = carregar_candidaturas(ROOT / "data" / "dashboard", UFS)
+    extra = {c.id: v for c, (_, v) in _cands_mencoes(cands).items()}
+    n = analisar(banco(), cands, extra)
+    print(f"menções: {n:,}")
+    return 0
+
+
+def cmd_verificar(a: argparse.Namespace) -> int:
+    """Confere os vínculos pelos criativos: % de anúncios que citam número e nome de urna, financiadores."""
+    from .dobradas import carregar_candidaturas
+    from .verificar import verificar
+    nomes = {c.id: c.nm_candidato for c in carregar_candidaturas(ROOT / "data" / "dashboard", UFS)}
+    linhas = verificar(banco(), DATA / "verificacao_criativos.csv", nomes)
+    com = [l for l in linhas if l["anuncios"]]
+    fracos = [l for l in com if (l["pct_cita_numero"] or 0) < 0.1 and (l["pct_cita_nome"] or 0) < 0.1]
+    print(f"vínculos com anúncios: {len(com)} de {len(linhas)}; com menos de 10% citando número e nome: {len(fracos)}")
+    for l in fracos:
+        print(f"  {l['uf']} {l['numero']} {l['nm_urna']} · página {l['page_name']} · {l['anuncios']} anúncios · {l['financiadores'][:90]}")
+    print(f"detalhes em {DATA / 'verificacao_criativos.csv'}")
+    return 0
+
+
 def cmd_exportar(a: argparse.Namespace) -> int:
     from .exportar import exportar_dev, carregar_supabase
     b = banco()
@@ -143,11 +204,15 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--completa", action="store_true")
     c.add_argument("--retomar")
     sub.add_parser("status")
+    sub.add_parser("mencoes")
+    sub.add_parser("dobradas")
+    sub.add_parser("verificar")
     e = sub.add_parser("exportar")
     e.add_argument("--supabase", action="store_true")
     a = p.parse_args(argv)
     return {"descobrir": cmd_descobrir, "vincular": cmd_vincular, "coletar": cmd_coletar, "status": cmd_status,
-            "exportar": cmd_exportar}[a.cmd](a)
+            "exportar": cmd_exportar, "mencoes": cmd_mencoes, "dobradas": cmd_dobradas,
+            "verificar": cmd_verificar}[a.cmd](a)
 
 
 if __name__ == "__main__":

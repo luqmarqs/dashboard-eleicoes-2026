@@ -29,27 +29,55 @@ def _jl(s: str | None) -> Any:
     return json.loads(s) if s else None
 
 
+def _obj(b: Banco, an: Any, ibge_tse: dict[int, str]) -> dict[str, Any]:
+    loc = [[l["nivel"], l["tipo"], bool(l["excluida"]), l["uf"], l["municipio_nome"], l["cd_ibge"],
+            ibge_tse.get(l["cd_ibge"]) if l["cd_ibge"] else None, l["bairro_nome"], l["cep_prefixo"], l["status"],
+            l["nome_original"]]
+           for l in b.con.execute("SELECT * FROM localidades WHERE ad_id = ? ORDER BY ordem", (an["ad_id"],))]
+    ent = [[e["uf"] or e["regiao"], e["proporcao"]]
+           for e in b.con.execute("SELECT * FROM entrega_regional WHERE ad_id = ? ORDER BY proporcao DESC", (an["ad_id"],))]
+    return {
+        "id": an["ad_id"], "page_id": an["page_id"], "page_name": an["page_name"], "bylines": an["bylines"],
+        "criado": an["criado_em"], "inicio": an["inicio_veiculacao"], "fim": an["fim_veiculacao"],
+        "textos": _jl(an["textos"]), "titulos": _jl(an["titulos_link"]), "plataformas": _jl(an["plataformas"]),
+        "moeda": an["moeda"], "gasto": [an["gasto_min"], an["gasto_max"]],
+        "impressoes": [an["impressoes_min"], an["impressoes_max"]], "alcance": an["alcance_br"],
+        "publico": [an["publico_estimado_min"], an["publico_estimado_max"]], "idades": _jl(an["idades_alvo"]),
+        "genero": an["genero_alvo"], "link": an["link_biblioteca"], "primeira_coleta": an["primeira_coleta"],
+        "ultima_coleta": an["ultima_coleta"], "loc": loc, "entrega": ent,
+    }
+
+
+def dobradas_de(b: Banco, candidatura_id: int, ibge_tse: dict[int, str]) -> list[dict[str, Any]]:
+    """Mesmo formato da RPC meta_dobradas_json."""
+    if not b.con.execute("SELECT name FROM sqlite_master WHERE name='mencoes'").fetchone():
+        return []
+    proprias = [r[0] for r in b.con.execute(
+        "SELECT page_id FROM vinculos WHERE candidatura_id = ? AND status_revisao <> 'rejeitado'", (candidatura_id,))]
+    ph = ",".join("?" * len(proprias)) or "''"
+    linhas = [("recebe", r) for r in b.con.execute(
+        f"""SELECT m.*, m.pagador_candidatura_id AS outra FROM mencoes m JOIN anuncios a USING (ad_id)
+            WHERE m.candidatura_id = ? AND m.pagador_candidatura_id IS NOT ? AND a.page_id NOT IN ({ph})""",
+        (candidatura_id, candidatura_id, *proprias))]
+    linhas += [("faz", r) for r in b.con.execute(
+        f"""SELECT m.*, m.candidatura_id AS outra FROM mencoes m JOIN anuncios a USING (ad_id)
+            WHERE a.page_id IN ({ph}) AND m.candidatura_id <> ? AND m.cita_numero = 1""", (*proprias, candidatura_id))]
+    out = []
+    for papel, m in linhas:
+        an = b.con.execute("SELECT * FROM anuncios WHERE ad_id = ?", (m["ad_id"],)).fetchone()
+        out.append({"papel": papel, "outra": m["outra"], "cita_nome": bool(m["cita_nome"]), "cita_numero": bool(m["cita_numero"]),
+                    "confirmada": bool(m["confirmada"]), "cnpjs_texto": m["cnpjs_texto"], "cnpj_financiador": m["cnpj_financiador"],
+                    "ad": _obj(b, an, ibge_tse)})
+    out.sort(key=lambda x: x["ad"]["inicio"] or "", reverse=True)
+    return out
+
+
 def anuncios_de(b: Banco, candidatura_id: int, ibge_tse: dict[int, str]) -> list[dict[str, Any]]:
     out = []
     for an in b.con.execute(
             """SELECT * FROM anuncios WHERE page_id IN (SELECT page_id FROM vinculos WHERE candidatura_id = ?
                AND status_revisao <> 'rejeitado') ORDER BY inicio_veiculacao DESC, ad_id""", (candidatura_id,)):
-        loc = [[l["nivel"], l["tipo"], bool(l["excluida"]), l["uf"], l["municipio_nome"], l["cd_ibge"],
-                ibge_tse.get(l["cd_ibge"]) if l["cd_ibge"] else None, l["bairro_nome"], l["cep_prefixo"], l["status"],
-                l["nome_original"]]
-               for l in b.con.execute("SELECT * FROM localidades WHERE ad_id = ? ORDER BY ordem", (an["ad_id"],))]
-        ent = [[e["uf"] or e["regiao"], e["proporcao"]]
-               for e in b.con.execute("SELECT * FROM entrega_regional WHERE ad_id = ? ORDER BY proporcao DESC", (an["ad_id"],))]
-        out.append({
-            "id": an["ad_id"], "page_id": an["page_id"], "page_name": an["page_name"], "bylines": an["bylines"],
-            "criado": an["criado_em"], "inicio": an["inicio_veiculacao"], "fim": an["fim_veiculacao"],
-            "textos": _jl(an["textos"]), "titulos": _jl(an["titulos_link"]), "plataformas": _jl(an["plataformas"]),
-            "moeda": an["moeda"], "gasto": [an["gasto_min"], an["gasto_max"]],
-            "impressoes": [an["impressoes_min"], an["impressoes_max"]], "alcance": an["alcance_br"],
-            "publico": [an["publico_estimado_min"], an["publico_estimado_max"]], "idades": _jl(an["idades_alvo"]),
-            "genero": an["genero_alvo"], "link": an["link_biblioteca"], "primeira_coleta": an["primeira_coleta"],
-            "ultima_coleta": an["ultima_coleta"], "loc": loc, "entrega": ent,
-        })
+        out.append(_obj(b, an, ibge_tse))
     return out
 
 
@@ -82,6 +110,9 @@ def exportar_dev(b: Banco, root: Path) -> None:
         for c in res["candidaturas"]:
             (out / f"{c['candidatura_id']}.json").write_text(
                 json.dumps(anuncios_de(b, c["candidatura_id"], ibge_tse), ensure_ascii=False), encoding="utf-8")
+            (out / "dobradas").mkdir(exist_ok=True)
+            (out / "dobradas" / f"{c['candidatura_id']}.json").write_text(
+                json.dumps(dobradas_de(b, c["candidatura_id"], ibge_tse), ensure_ascii=False), encoding="utf-8")
         print(f"dev-data {uf}: {len(res['candidaturas'])} candidaturas")
 
 
@@ -112,7 +143,8 @@ def _rodar_sql(root: Path, sql: str, rotulo: str) -> None:
                                cwd=root, capture_output=True, text=True, encoding="utf-8", stdin=subprocess.DEVNULL)
             if r.returncode == 0:
                 return
-            print(f"  {rotulo}: falha (tentativa {t + 1}): {(r.stderr or r.stdout).strip()[-300:]}")
+            msg = " ".join(x.strip() for x in (r.stdout, r.stderr) if x and x.strip())
+            print(f"  {rotulo}: falha (tentativa {t + 1}): {msg[-400:]}")
             time.sleep(5 * (t + 1))
         raise SystemExit(f"falha ao carregar {rotulo}")
     finally:
@@ -184,6 +216,11 @@ def carregar_supabase(b: Banco, root: Path) -> None:
               q("""SELECT ad_id, coletado_em, execucao_id, versao_api, hash, gasto_min, gasto_max, impressoes_min,
                           impressoes_max, alcance_br, bruto_gz FROM observacoes""")],
              "ad_id, execucao_id", atualizar=False)
+    if b.con.execute("SELECT name FROM sqlite_master WHERE name='mencoes'").fetchone():
+        _rodar_sql(root, "DELETE FROM public.meta_mencoes;", "limpeza de menções")
+        _inserir(root, "meta_mencoes", ["ad_id", "candidatura_id", "pagador_candidatura_id", "cita_nome", "cita_numero",
+                                        "cnpjs_texto", "cnpj_financiador", "confirmada"],
+                 [[r[0], r[1], r[2], bool(r[3]), bool(r[4]), r[5], r[6], bool(r[7])] for r in q("SELECT * FROM mencoes")], None)
     _inserir(root, "meta_execucoes", ["id", "modo", "iniciada_em", "terminada_em", "status", "versao_api", "periodo_min",
                                       "periodo_max", "paginas_alvo", "paginas_concluidas", "paginas_com_falha",
                                       "anuncios_vistos", "anuncios_novos", "observacoes_novas", "erros"],

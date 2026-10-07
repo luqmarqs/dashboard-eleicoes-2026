@@ -13,7 +13,7 @@ import {
   LOC, ROTULO_ABRANGENCIA, abrangencia, circulou, fmtData, fmtDataHora, fmtFaixa, fmtNum, mediana, porMunicipio,
   simbolo, somaFaixas, type Abrangencia, type Faixa, type PorMunicipio,
 } from "../lib/meta";
-import { source, type MetaAnuncio, type MetaResumo } from "../lib/source";
+import { source, type MetaAnuncio, type MetaMencao, type MetaResumo } from "../lib/source";
 import { CARGOS, type Candidatura } from "../lib/types";
 import { deUf, useUf } from "../lib/uf";
 
@@ -161,10 +161,15 @@ function TabelaCandidaturas({ base, r, selecionada, onEscolher }: {
 }
 
 type ModoMapa = "segmentacao" | "votacao" | "cruzamento";
+type Fonte = "proprios" | "recebe" | "faz";
 
 function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatura; item: MetaResumo["candidaturas"][number] }) {
   const { info } = useUf();
   const ads = useMetaAnuncios(cand.id);
+  const { uf } = useUf();
+  const dob = useQuery({ queryKey: ["meta-dobradas", uf, cand.id], queryFn: () => source.metaDobradas(cand.id), staleTime: 5 * 60_000 });
+  const [fonteSel, setFonte] = useState<Fonte | null>(null);
+  const [parceira, setParceira] = useState<string>("todas"); // id da outra candidatura, "sem" (pagador não identificado) ou "todas"
   const votos = useVotos([cand.id], null);
   const totais = useTotais(cand.cargo, null);
   const [sp, setSp] = useSearchParams();
@@ -181,7 +186,26 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
   };
   const dark = prefersDark();
 
-  const todas = ads.data ?? [];
+  const proprios = ads.data ?? [];
+  const mencoes = dob.data ?? [];
+  // sem anúncios próprios (ex.: Manuela), abre direto nas dobradas recebidas
+  const fonte: Fonte = fonteSel ?? (proprios.length || !mencoes.some((m) => m.papel === "recebe") ? "proprios" : "recebe");
+  const mencoesFonte = useMemo(() => mencoes.filter((m) => m.papel === fonte), [mencoes, fonte]);
+  const mencaoPorAd = useMemo(() => {
+    const m = new Map<string, MetaMencao[]>();
+    for (const x of mencoesFonte) m.set(x.ad.id, [...(m.get(x.ad.id) ?? []), x]);
+    return m;
+  }, [mencoesFonte]);
+  const todas = useMemo(() => {
+    if (fonte === "proprios") return proprios;
+    const vistos = new Set<string>();
+    const out: MetaAnuncio[] = [];
+    for (const m of mencoesFonte) {
+      const k = m.outra == null ? "sem" : String(m.outra);
+      if ((parceira === "todas" || parceira === k) && !vistos.has(m.ad.id)) { vistos.add(m.ad.id); out.push(m.ad); }
+    }
+    return out;
+  }, [fonte, proprios, mencoesFonte, parceira]);
   const plataformas = useMemo(() => [...new Set(todas.flatMap((a) => a.plataformas ?? []))].sort(), [todas]);
   const filtrados = useMemo(() => todas.filter((a) => circulou(a, de || null, ate || null)
     && (plataforma === "todas" || (a.plataformas ?? []).includes(plataforma))), [todas, de, ate, plataforma]);
@@ -227,7 +251,13 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
   }, [mun]);
 
   if (ads.error) return <ErrorBox error={ads.error} />;
-  if (!ads.data) return <Loading texto="Carregando anúncios…" />;
+  if (dob.error) return <ErrorBox error={dob.error} />;
+  if (!ads.data || !dob.data) return <Loading texto="Carregando anúncios…" />;
+  const nRecebe = new Set(mencoes.filter((m) => m.papel === "recebe").map((m) => m.ad.id)).size;
+  const nFaz = new Set(mencoes.filter((m) => m.papel === "faz").map((m) => m.ad.id)).size;
+  const rotuloGasto = fonte === "proprios" ? "gasto declarado desses anúncios (soma das faixas, acumulado)"
+    : fonte === "recebe" ? "gasto das campanhas que pagaram esses anúncios (não é gasto desta candidatura)"
+    : "gasto desta candidatura nos anúncios que citam outras";
 
   const gasto = somaFaixas(lista, "gasto");
   const impr = somaFaixas(lista, "impressoes");
@@ -254,6 +284,15 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
           ))}
         </ul>
       </header>
+
+      <Segmented label="Fonte dos anúncios" value={fonte} onChange={(f) => { setFonte(f); setParceira("todas"); setMunicipio(null); }} options={[
+        { id: "proprios", label: `Anúncios próprios (${fmt(proprios.length)})` },
+        { id: "recebe", label: `Dobradas: outras campanhas citam (${fmt(nRecebe)})` },
+        { id: "faz", label: `Dobradas: cita outras (${fmt(nFaz)})` },
+      ]} />
+      {fonte !== "proprios" && (
+        <Parceiras base={base} cand={cand} mencoes={mencoesFonte} fonte={fonte} parceira={parceira} onParceira={setParceira} />
+      )}
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-panel p-3 text-sm">
         <label className="flex flex-col gap-1 text-muted">Circulou a partir de
@@ -283,7 +322,7 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
 
       <div className="flex flex-wrap gap-x-8 gap-y-3">
         <Stat valor={fmt(lista.length)} rotulo={<>anúncios{municipio ? <> que incluem {munNome}</> : null}{lista.length !== todas.length ? ` (de ${fmt(todas.length)})` : ""}</>} />
-        <Stat valor={<FaixaTxt f={gasto} />} rotulo="gasto declarado desses anúncios (soma das faixas, acumulado)" />
+        <Stat valor={<FaixaTxt f={gasto} />} rotulo={rotuloGasto} />
         <Stat valor={<FaixaTxt f={impr} prefixo=" " />} rotulo="impressões (soma das faixas)" />
         <Stat valor={alcanceMed != null ? fmtNum(alcanceMed) : "–"} rotulo="alcance estimado por anúncio (mediana; não se soma)" />
         <Stat valor={`${fmtData(inicio)} – ${fmtData(fim)}`} rotulo="veiculação" />
@@ -331,7 +370,7 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
 
       <section aria-label="Lista de anúncios" className="flex flex-col gap-3">
         <h3 className="display text-xl">Anúncios{municipio ? ` que incluem ${munNome}` : ""}</h3>
-        {lista.slice(0, mostrar).map((a) => <CardAnuncio key={a.id} a={a} />)}
+        {lista.slice(0, mostrar).map((a) => <CardAnuncio key={a.id} a={a} mencoes={mencaoPorAd.get(a.id)} base={base} />)}
         {lista.length > mostrar && (
           <button type="button" onClick={() => setMostrar((m) => m + 20)}
             className="self-start rounded-md border border-line px-3 py-1.5 text-sm hover:bg-accent-soft">
@@ -488,7 +527,7 @@ function Efetividade({ base, mun, votosMun, ads, cand, onMunicipio }: {
   );
 }
 
-function CardAnuncio({ a }: { a: MetaAnuncio }) {
+function CardAnuncio({ a, mencoes, base }: { a: MetaAnuncio; mencoes?: MetaMencao[]; base: Base }) {
   const [aberto, setAberto] = useState(false);
   const texto = (a.textos ?? []).join("\n\n");
   const curto = texto.length > 320 && !aberto ? `${texto.slice(0, 320)}…` : texto;
@@ -517,6 +556,19 @@ function CardAnuncio({ a }: { a: MetaAnuncio }) {
         {" · "}{(a.plataformas ?? []).map((p) => titulo(p)).join(", ") || "plataforma não informada"}
         {" · "}coletado em {fmtDataHora(a.ultima_coleta)}
       </div>
+      {mencoes?.map((m, i) => {
+        const outra = m.outra != null ? base.candById.get(m.outra) : undefined;
+        return (
+          <div key={i} className={`rounded-md px-2 py-1 text-xs ${m.confirmada ? "bg-accent-soft" : "border border-dashed border-line"}`}>
+            {m.papel === "recebe" ? <>Pago por {outra ? <b>{nomeCand(outra)} ({CARGOS[outra.cargo]}, {outra.partido})</b> : <b>financiador não identificado no TSE</b>}</>
+              : <>Cita {outra ? <b>{nomeCand(outra)} ({CARGOS[outra.cargo]}, {outra.partido})</b> : "outra candidatura"}</>}
+            {" · "}{m.cita_nome ? "nome ✓" : "sem nome"} · {m.cita_numero ? "número ✓" : "sem número"}
+            {" · "}{m.confirmada ? "dobrada confirmada" : "não confirmada"}
+            {m.cnpjs_texto && <> · CNPJ no texto: {m.cnpjs_texto.split(",").map(fmtCnpj).join(", ")}</>}
+            {m.cnpj_financiador && <> · CNPJ do financiador: {m.cnpj_financiador.split(",").map(fmtCnpj).join(", ")}</>}
+          </div>
+        );
+      })}
       {texto ? (
         <p className="whitespace-pre-line">{curto}{texto.length > 320 && (
           <button type="button" className="ml-1 text-accent" onClick={() => setAberto(!aberto)}>{aberto ? "menos" : "mais"}</button>
@@ -543,5 +595,71 @@ function CardAnuncio({ a }: { a: MetaAnuncio }) {
         {!a.loc.length && <span className="text-muted">sem localidade informada</span>}
       </div>
     </article>
+  );
+}
+
+const fmtCnpj = (c: string) => (c.length === 14 ? `${c.slice(0, 2)}.${c.slice(2, 5)}.${c.slice(5, 8)}/${c.slice(8, 12)}-${c.slice(12)}` : c);
+
+interface LinhaParceira {
+  chave: string; outra?: Candidatura; paginas: string; anuncios: number; confirmadas: number; soNome: number;
+  gasto: Map<string, Faixa>; cidades: number; inicio: string | null; fim: string | null; cnpjTexto: number;
+}
+
+/** Quem faz dobrada com a candidatura: agrupa as menções por candidatura pagadora (recebe) ou citada (faz). */
+function Parceiras({ base, cand, mencoes, fonte, parceira, onParceira }: {
+  base: Base; cand: Candidatura; mencoes: MetaMencao[]; fonte: Fonte; parceira: string; onParceira: (p: string) => void;
+}) {
+  const linhas = useMemo<LinhaParceira[]>(() => {
+    const g = new Map<string, MetaMencao[]>();
+    for (const m of mencoes) { const k = m.outra == null ? "sem" : String(m.outra); g.set(k, [...(g.get(k) ?? []), m]); }
+    return [...g.entries()].map(([chave, ms]) => {
+      const ads = [...new Map(ms.map((m) => [m.ad.id, m.ad])).values()];
+      const cds = new Set(ads.flatMap((a) => a.loc.filter((l) => !l[LOC.excluida] && l[LOC.cd] && l[LOC.status] === "validada").map((l) => l[LOC.cd])));
+      return {
+        chave, outra: chave === "sem" ? undefined : base.candById.get(Number(chave)),
+        paginas: [...new Set(ads.map((a) => a.page_name ?? a.page_id))].slice(0, 3).join(", "),
+        anuncios: ads.length, confirmadas: new Set(ms.filter((m) => m.confirmada).map((m) => m.ad.id)).size,
+        soNome: new Set(ms.filter((m) => !m.cita_numero).map((m) => m.ad.id)).size,
+        gasto: somaFaixas(ads, "gasto"), cidades: cds.size,
+        inicio: ads.reduce<string | null>((x, a) => (a.inicio && (!x || a.inicio < x) ? a.inicio : x), null),
+        fim: ads.reduce<string | null>((x, a) => { const f = a.fim ?? a.ultima_coleta.slice(0, 10); return !x || f > x ? f : x; }, null),
+        cnpjTexto: new Set(ms.filter((m) => m.cnpjs_texto).map((m) => m.ad.id)).size,
+      };
+    }).sort((a, b) => b.anuncios - a.anuncios);
+  }, [mencoes, base]);
+  if (!linhas.length) return <p className="text-sm text-muted">Nenhuma dobrada encontrada nos anúncios coletados.</p>;
+  return (
+    <section aria-label="Dobradas pagas" className="flex flex-col gap-2">
+      <h3 className="display text-xl">{fonte === "recebe" ? `Campanhas que pagaram anúncios citando ${titulo(cand.nome)}` : `Candidaturas citadas nos anúncios de ${titulo(cand.nome)}`}</h3>
+      <div className="overflow-x-auto rounded-lg border border-line bg-panel">
+        <table className="w-full text-sm">
+          <thead><tr className="text-left text-xs text-muted">
+            <th className="px-3 py-2">{fonte === "recebe" ? "Pagou" : "Citada"}</th><th className="px-3 py-2 text-right">Anúncios</th>
+            <th className="px-3 py-2 text-right">Nome + número</th><th className="px-3 py-2 text-right">Só nome</th>
+            <th className="px-3 py-2 text-right">Com CNPJ no texto</th><th className="px-3 py-2 text-right">Gasto (do pagador)</th>
+            <th className="px-3 py-2 text-right">Cidades segmentadas</th><th className="px-3 py-2">Veiculação</th>
+          </tr></thead>
+          <tbody>{linhas.map((l) => (
+            <tr key={l.chave} className={`cursor-pointer border-t border-line hover:bg-accent-soft ${parceira === l.chave ? "bg-accent-soft font-semibold" : ""}`}
+              onClick={() => onParceira(parceira === l.chave ? "todas" : l.chave)}>
+              <td className="px-3 py-1.5">
+                {l.outra ? <>{nomeCand(l.outra)}<SituacaoBadge c={l.outra} compacto /><div className="text-xs font-normal text-muted">{CARGOS[l.outra.cargo]} · {l.outra.partido} · página {l.paginas}</div></>
+                  : <>Financiador não identificado no TSE<div className="text-xs font-normal text-muted">páginas: {l.paginas}</div></>}
+              </td>
+              <td className="num px-3 text-right">{fmt(l.anuncios)}</td><td className="num px-3 text-right">{fmt(l.confirmadas)}</td>
+              <td className="num px-3 text-right">{fmt(l.soNome)}</td><td className="num px-3 text-right">{fmt(l.cnpjTexto)}</td>
+              <td className="num px-3 text-right"><FaixaTxt f={l.gasto} /></td><td className="num px-3 text-right">{fmt(l.cidades)}</td>
+              <td className="px-3 text-xs">{fmtData(l.inicio)} – {fmtData(l.fim)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      <p className="text-xs text-muted">
+        Clique numa linha para filtrar mapa, cidades e anúncios por essa dobrada. "Nome + número": o texto traz o nome de urna e o
+        número de urna da candidatura citada; a dobrada é confirmada quando, além disso, o financiador declarado é o CNPJ de
+        campanha de outra candidatura. O gasto é de quem pagou (faixas acumuladas desses anúncios) e não entra no gasto da
+        candidatura citada.
+      </p>
+    </section>
   );
 }

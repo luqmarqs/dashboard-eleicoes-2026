@@ -211,3 +211,20 @@ def test_financiador_nao_confere_com_nome_mais_longo() -> None:
     assert not financiador_confere("ANA PAULA SILVA", "ELEICAO 2026 ANA PAULA SILVA SOUZA DEPUTADO ESTADUAL")
     assert not financiador_confere("ANA PAULA SILVA", "Ana Paula Silva")  # sem 2026: não é o CNPJ de campanha
     assert not financiador_confere("ANA PAULA SILVA", "ELEICAO 2026 MARIA ANA PAULA SILVA DEPUTADO ESTADUAL")
+
+
+# ---- dobradas ----
+
+def test_numero_e_nome_em_dobradas() -> None:
+    from meta_ads.dobradas import cita_numero, tem_nome, cnpjs, IndicePagador, Cand
+    from meta_ads.geo import norm
+    t = norm("Vote Zé Nunes 13123 e Manuela 5️⃣0️⃣0️⃣ para o Senado! CNPJ 68.470.009/0001-08")
+    assert cita_numero(t, 500) and tem_nome(t, "MANUELA")
+    assert not cita_numero(norm("Ganhe R$ 500 hoje"), 500)
+    assert not cita_numero(norm("são 500 mil famílias"), 500)
+    assert not tem_nome(norm("manutenção da escola"), "MANU")
+    assert cnpjs("CNPJ 68.470.009/0001-08 e 68470009000108") == ["68470009000108"]
+    idx = IndicePagador([Cand(1, "RS", 7, 13123, "ZÉ NUNES", "JOSE SIDNEY NUNES DE ALMEIDA"),
+                         Cand(2, "RS", 5, 500, "MANUELA D'ÁVILA", "MANUELA PINTO VIEIRA D'ÁVILA")])
+    assert idx.identificar("ELEICAO 2026 JOSE SIDNEY NUNES DE ALMEIDA DEPUTADO ESTADUAL").id == 1
+    assert idx.identificar("Zé Nunes") is None
