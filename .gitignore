@@ -16,3 +16,6 @@ scratch_probe/
 # Segredos locais (connection string do banco etc.)
 .env
 .env.*
+
+# Relatórios baixados da Biblioteca de Anúncios (usados só para descobrir páginas)
+FacebookAdLibraryReport_*

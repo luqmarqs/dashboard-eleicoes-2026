@@ -25,7 +25,58 @@ export interface Historico {
   ano: number[];
 }
 
+/** Anúncio da Biblioteca de Anúncios da Meta (faixas: [min, max]; max nulo = faixa aberta). */
+export interface MetaAnuncio {
+  id: string;
+  page_id: string;
+  page_name: string | null;
+  bylines: string | null;
+  criado: string | null;
+  inicio: string | null;
+  fim: string | null;
+  textos: string[] | null;
+  titulos: string[] | null;
+  plataformas: string[] | null;
+  moeda: string | null;
+  gasto: [number | null, number | null];
+  impressoes: [number | null, number | null];
+  alcance: number | null;
+  publico: [number | null, number | null];
+  idades: string[] | null;
+  genero: string | null;
+  link: string;
+  primeira_coleta: string;
+  ultima_coleta: string;
+  /** [nivel, tipo, excluida, uf, municipio_nome, cd_ibge, cd_municipio (TSE), bairro, cep, status, nome_original] */
+  loc: [string, string | null, boolean, string | null, string | null, number | null, string | null, string | null, string | null, string, string][];
+  /** [UF ou região, proporção do alcance] */
+  entrega: [string, number | null][];
+}
+
+export interface MetaPagina {
+  page_id: string;
+  page_name: string | null;
+  natureza: "oficial" | "partido" | "apoiador" | "nao_confirmado";
+  status_revisao: "confirmado" | "a_revisar" | "rejeitado";
+  evidencia: string | null;
+  coletar: boolean;
+}
+
+export interface MetaResumo {
+  execucao: {
+    id: string; status: string; versao_api: string; iniciada_em: string; terminada_em: string | null;
+    periodo_min: string | null; paginas_alvo: number; paginas_concluidas: number | null; paginas_com_falha: number | null;
+  } | null;
+  ultima_completa: string | null;
+  candidaturas: {
+    candidatura_id: number; paginas: MetaPagina[]; anuncios: number; gasto_min: number | null; gasto_max: number | null;
+    gasto_aberto: boolean | null; moedas: number; ultima_coleta: string | null;
+  }[];
+}
+
 export interface DataSource {
+  metaResumo(): Promise<MetaResumo>;
+  metaAnuncios(candidaturaId: number): Promise<MetaAnuncio[]>;
   historico(id: number): Promise<Historico>;
   versao(): Promise<string>;
   dadosRegra(partido: string, cargo: number, cdMunicipio: string | null, limite: number): Promise<DadosRegra>;
@@ -108,7 +159,23 @@ function devPaineis(): Painel[] {
 
 const HIST_VAZIO: Historico = { resumo: [], nivel: [], mun: [], chave: [], votos: [], validos: [], ano: [] };
 
+const META_VAZIO: MetaResumo = { execucao: null, ultima_completa: null, candidaturas: [] };
+
 const dev: DataSource = {
+  async metaResumo() {
+    try {
+      return await getJson<MetaResumo>(`${devBase()}/meta/resumo.json`);
+    } catch {
+      return META_VAZIO;
+    }
+  },
+  async metaAnuncios(id) {
+    try {
+      return await getJson<MetaAnuncio[]>(`${devBase()}/meta/${id}.json`);
+    } catch {
+      return [];
+    }
+  },
   async historico(id) {
     try {
       return await getJson<Historico>(`${devBase()}/historico/${id}.json`);
@@ -191,6 +258,8 @@ const dev: DataSource = {
 
 const remote: DataSource = {
   historico: (id) => rpc("historico_json", { p_candidatura_id: id }),
+  metaResumo: () => rpc("meta_resumo_json", { p_uf: getUf() }),
+  metaAnuncios: (id) => rpc("meta_anuncios_json", { p_candidatura_id: id }),
   async versao() {
     const { data, error } = await supabase().from("meta").select("valor").eq("chave", "versao_dados").maybeSingle();
     if (error) rpcError("versão dos dados", error);
