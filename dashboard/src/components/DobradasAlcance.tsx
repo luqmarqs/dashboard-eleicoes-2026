@@ -97,8 +97,8 @@ export function DobradasAlcance({ base, mencoes, votosMun, nome }: {
               <td className="py-1.5 pr-3">{l.nome}{l.cand && <SituacaoBadge c={l.cand} compacto />}<div className="text-xs text-muted">{l.sub}</div></td>
               <td className="num whitespace-nowrap pr-3 text-right">{fmt(l.anuncios)}</td>
               <td className="num whitespace-nowrap pr-3 text-right">{fmtFaixa(l.impMin, l.impMax)}</td>
-              <td className="num whitespace-nowrap pr-3 text-right">{l.alcMed != null ? fmtNum(l.alcMed) : "–"}</td>
-              <td className="num whitespace-nowrap pr-3 text-right">{l.gasto ? fmtFaixa(l.gasto.min, l.gasto.max, "R$ ") : "–"}</td>
+              <td className="num whitespace-nowrap pr-3 text-right">{l.alcMed != null ? fmtNum(l.alcMed) : <span className="text-xs text-muted">{L("sem alcance", "no reach")}</span>}</td>
+              <td className="num whitespace-nowrap pr-3 text-right">{l.gasto ? fmtFaixa(l.gasto.min, l.gasto.max, "R$ ") : <span className="text-xs text-muted">{L("sem gasto declarado", "no declared spend")}</span>}</td>
               <td className="num whitespace-nowrap pr-3 text-right">{fmtCusto(l.custo)}</td>
               <td className="num whitespace-nowrap pr-3 text-right">{l.cidades ? fmt(l.cidades) : <span className="text-xs text-muted">{L("nenhuma (estado inteiro)", "none (whole state)")}</span>}</td>
               {l.cidades && l.dif != null ? <>

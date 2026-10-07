@@ -147,7 +147,7 @@ function TabelaCandidaturas({ base, r, selecionada, onEscolher }: {
     { id: "gasto", accessorFn: (l) => l.gmax ?? l.gmin ?? 0, header: L("Gasto declarado (faixa)", "Declared spend (range)"),
       cell: (x) => { const l = x.row.original; return fmtFaixa(l.gmin, l.aberto ? null : l.gmax, "R$ "); }, meta: { numeric: true } },
     { id: "custo", accessorFn: (l) => l.cmin ?? undefined, header: L("Custo por mil alcançados", "Cost per 1,000 reached"),
-      cell: (x) => { const l = x.row.original; return l.cmin == null ? "–" : fmtCusto({ min: l.cmin, max: l.cmax }); }, sortUndefined: "last", meta: { numeric: true } },
+      cell: (x) => { const l = x.row.original; return l.cmin == null ? <span className="text-muted">{L("sem alcance", "no reach")}</span> : fmtCusto({ min: l.cmin, max: l.cmax }); }, sortUndefined: "last", meta: { numeric: true } },
     { id: "paginas", accessorKey: "paginas", header: L("Páginas", "Pages"), meta: { numeric: true } },
   ], [onEscolher, selecionada]);
   const exportCols: ExportCol<LinhaCand>[] = [
@@ -510,8 +510,8 @@ function Efetividade({ base, mun, votosMun, ads, cand, onMunicipio }: {
     { id: "exclui", accessorKey: "exclui", header: L("Que excluem", "That exclude"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
     { id: "custo", accessorFn: (l) => l.custo?.min ?? undefined, header: L("Custo por mil alcançados", "Cost per 1,000 reached"), cell: (x) => fmtCusto(x.row.original.custo), sortUndefined: "last", meta: { numeric: true } },
     { id: "gasto", accessorFn: (l) => l.gmax ?? l.gmin, header: L("Gasto total desses anúncios*", "Total spend of these ads*"),
-      cell: (x) => { const l = x.row.original; return l.inclui + l.bairro ? fmtFaixa(l.gmin, l.gmax, "R$ ") : "–"; }, meta: { numeric: true } },
-    { id: "periodo", accessorFn: (l) => l.inicio ?? "", header: L("Veiculação", "Run dates"), cell: (x) => { const l = x.row.original; return l.inicio ? `${fmtData(l.inicio)} – ${fmtData(l.fim)}` : "–"; } },
+      cell: (x) => { const l = x.row.original; return l.inclui + l.bairro ? fmtFaixa(l.gmin, l.gmax, "R$ ") : <span className="text-muted">{L("sem anúncios", "no ads")}</span>; }, meta: { numeric: true } },
+    { id: "periodo", accessorFn: (l) => l.inicio ?? "", header: L("Veiculação", "Run dates"), cell: (x) => { const l = x.row.original; return l.inicio ? `${fmtData(l.inicio)} – ${fmtData(l.fim)}` : <span className="text-muted">{L("sem anúncios", "no ads")}</span>; } },
     { id: "votos", accessorKey: "votos", header: L("Votos", "Votes"), cell: (x) => fmt(Number(x.getValue())), meta: { numeric: true } },
     { id: "pct", accessorKey: "pct", header: L("% válidos", "% valid"), cell: (x) => pct(Number(x.getValue())), meta: { numeric: true } },
     { id: "share", accessorFn: (l) => (total ? l.votos / total : 0), header: L("% do total", "% of total"), cell: (x) => pct(Number(x.getValue())), meta: { numeric: true } },

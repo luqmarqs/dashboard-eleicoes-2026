@@ -126,7 +126,7 @@ export function AnunciosVotos({ base, ads, votosMun, nome, onMunicipio, deTercei
               <tr key={f.id} className="border-t border-line">
                 <td className="py-1 pr-2">{f.rotulo}</td><td className="num pr-2 text-right">{fmt(f.cidades)}</td>
                 <td className="num pr-2 text-right">{fmt(f.votos)}</td><td className="num pr-2 text-right">{pct(f.share, 1)}</td>
-                <td className="num text-right">{f.pctVal != null ? pct(f.pctVal) : "–"}</td>
+                <td className="num text-right">{f.pctVal != null ? pct(f.pctVal) : <span className="text-muted">{L("sem válidos", "no valid votes")}</span>}</td>
               </tr>
             ))}</tbody>
           </table>

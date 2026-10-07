@@ -4,6 +4,10 @@ Coleta, pela API oficial `ads_archive` (Graph API **v26.0**, a mais recente na d
 políticos das candidaturas **eleitas** em SP, MG e RS, mais a Manuela (Senado/RS). Os dados vão para o Supabase e aparecem
 na página **Publicidade** do dashboard.
 
+> A Manuela **não fez tráfego pago próprio**: nenhuma página dela anunciou. O que existe são anúncios de outras campanhas que
+> usaram por conta própria o nome e o número dela ("anúncios de terceiros" no painel; o gasto é de quem pagou). A análise desses
+> anúncios é mantida, mas nunca como gasto da candidatura.
+
 ## O que a API devolve para anúncios políticos no Brasil (verificado em respostas reais)
 
 | Campo | Situação | Observação |

@@ -160,7 +160,7 @@ export function custoPorMil(ads: MetaAnuncio[]): { min: number; max: number | nu
 
 /** "R$ 12,40 – R$ 15,10" (duas casas: valores pequenos). */
 export function fmtCusto(c: { min: number; max: number | null } | null): string {
-  if (!c) return "–";
+  if (!c) return L("sem alcance", "no reach");
   const f = (x: number) => `R$ ${new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(x)}`;
   return c.max == null ? `${f(c.min)} ${L("ou mais", "or more")}` : c.min === c.max ? f(c.min) : `${f(c.min)} – ${f(c.max)}`;
 }

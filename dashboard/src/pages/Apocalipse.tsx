@@ -171,7 +171,7 @@ function Painel({ base, apoc, resumo, temas, blocos, setBlocos, porCand, setPorC
 
   const custo = (t: { cgmin: number; cgmax: number | null; alc: number }) => (t.alc ? { min: t.cgmin / t.alc * 1000, max: t.cgmax == null ? null : t.cgmax / t.alc * 1000 } : null);
   const porVoto = (t: { gmin: number; gmax: number | null; votosComAnuncio: number }) => (t.votosComAnuncio ? { min: t.gmin / t.votosComAnuncio, max: t.gmax == null ? null : t.gmax / t.votosComAnuncio } : null);
-  const fmtRS = (x: { min: number; max: number | null } | null) => (x ? fmtCusto(x) : "–");
+  const fmtRS = (x: { min: number; max: number | null } | null) => (x ? fmtCusto(x) : L("sem alcance informado", "no reach reported"));
 
   // ---- leitura apocalíptica ----
   const leitura: ReactNode[] = [];
@@ -323,17 +323,17 @@ function Painel({ base, apoc, resumo, temas, blocos, setBlocos, porCand, setPorC
                   <td className="px-3 py-2 font-semibold"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm align-middle" style={{ background: cssRgb(cor[b]) }} />{NOME_BLOCO(b)}</td>
                   <td className="num px-3 text-right">{t.eleitos}</td><td className="num px-3 text-right">{t.comAnuncio}</td>
                   <td className="num px-3 text-right">{fmt(t.anuncios)}</td>
-                  <td className="num whitespace-nowrap px-3 text-right">{t.comAnuncio ? fmtFaixa(t.gmin, t.gmax, "R$ ") : "–"}</td>
-                  <td className="num whitespace-nowrap px-3 text-right">{fmtRS(custo(t))}</td>
-                  <td className="num whitespace-nowrap px-3 text-right">{fmtRS(porVoto(t))}</td>
+                  <td className="num whitespace-nowrap px-3 text-right">{t.comAnuncio ? fmtFaixa(t.gmin, t.gmax, "R$ ") : <span className="text-muted">{t.eleitos ? L("sem anúncios", "no ads") : L("sem eleitos", "no one elected")}</span>}</td>
+                  <td className="num whitespace-nowrap px-3 text-right">{t.comAnuncio ? fmtRS(custo(t)) : <span className="text-muted">–</span>}</td>
+                  <td className="num whitespace-nowrap px-3 text-right">{t.comAnuncio ? fmtRS(porVoto(t)) : <span className="text-muted">–</span>}</td>
                 </tr>
               );
             })}</tbody>
           </table>
         </div>
         <p className="text-xs text-muted">
-          {L("* Gasto declarado das candidaturas eleitas que anunciaram ÷ votos dessas candidaturas (faixa). Não mede efeito: quem anuncia mais costuma já ser mais forte. Só candidaturas eleitas foram coletadas na Biblioteca de Anúncios.",
-            "* Declared spend of elected candidacies that advertised ÷ those candidacies' votes (range). It does not measure effect: those who advertise more are usually already stronger. Only elected candidacies were collected from the Ad Library.")}
+          {L("* Gasto declarado das candidaturas eleitas que anunciaram ÷ votos dessas candidaturas (faixa). Traço: bloco sem anúncios. Não mede efeito: quem anuncia mais costuma já ser mais forte. Só candidaturas eleitas foram coletadas na Biblioteca de Anúncios.",
+            "* Declared spend of elected candidacies that advertised ÷ those candidacies' votes (range). Dash: bloc with no ads. It does not measure effect: those who advertise more are usually already stronger. Only elected candidacies were collected from the Ad Library.")}
         </p>
         <TemasBlocos temasBloco={temasBloco} cor={cor} />
       </section>

@@ -131,11 +131,11 @@ export function TerritorioAnuncios({ base, ads: todosAds, votosMun, nome, deTerc
       const l = x.row.original;
       return l.n ? <>{fmt(l.n)}{l.bairro ? <span className="text-xs text-muted"> ({fmt(l.bairro)} {L("por bairro", "by neighborhood")})</span> : null}</> : <span className="text-muted">{L("nenhum", "none")}</span>;
     }, meta: { numeric: true } },
-    { id: "exclui", accessorKey: "exclui", header: L("Que excluem", "That exclude it"), cell: (x) => (Number(x.getValue()) ? fmt(Number(x.getValue())) : "–"), meta: { numeric: true } },
-    { id: "periodo", accessorFn: (l) => l.inicio ?? "", header: L("Veiculação", "Run dates"), cell: (x) => { const l = x.row.original; return l.inicio ? `${fmtData(l.inicio)} – ${fmtData(l.fim)}` : "–"; } },
+    { id: "exclui", accessorKey: "exclui", header: L("Que excluem", "That exclude it"), cell: (x) => (Number(x.getValue()) ? fmt(Number(x.getValue())) : <span className="text-muted">0</span>), meta: { numeric: true } },
+    { id: "periodo", accessorFn: (l) => l.inicio ?? "", header: L("Veiculação", "Run dates"), cell: (x) => { const l = x.row.original; return l.inicio ? `${fmtData(l.inicio)} – ${fmtData(l.fim)}` : <span className="text-muted">{L("sem anúncios", "no ads")}</span>; } },
     { id: "custo", accessorFn: (l) => l.custo?.min ?? undefined, header: L("Custo por mil alcançados", "Cost per 1,000 reached"), cell: (x) => fmtCusto(x.row.original.custo), sortUndefined: "last", meta: { numeric: true } },
     { id: "gasto", accessorFn: (l) => l.gmax ?? l.gmin ?? undefined, header: L("Gasto total desses anúncios*", "Total spend of these ads*"),
-      cell: (x) => { const l = x.row.original; return l.n ? fmtFaixa(l.gmin, l.gmax, "R$ ") : "–"; }, sortUndefined: "last", meta: { numeric: true } },
+      cell: (x) => { const l = x.row.original; return l.n ? fmtFaixa(l.gmin, l.gmax, "R$ ") : <span className="text-muted">{L("sem anúncios", "no ads")}</span>; }, sortUndefined: "last", meta: { numeric: true } },
   ], []);
   const exportCols: ExportCol<Linha>[] = [
     { header: L("Posição por votos", "Rank by votes"), value: (l) => l.rank, type: "number" },
