@@ -268,6 +268,13 @@ export function MapView({
           key={`${base.municipios[0]?.cd}-${municipio ?? "estado"}`}
           initialViewState={{ bounds, fitBoundsOptions: { padding: municipio ? 40 : 20, maxZoom: 14 } }}
           onLoad={travarNoEstado}
+          // rolar a página passa por cima do mapa; zoom com Ctrl/⌘ + rolagem, botões ou duplo clique; dois dedos no celular
+          cooperativeGestures
+          locale={{
+            "CooperativeGesturesHandler.WindowsHelpText": L("Use Ctrl + rolagem para dar zoom no mapa", "Use Ctrl + scroll to zoom the map"),
+            "CooperativeGesturesHandler.MacHelpText": L("Use ⌘ + rolagem para dar zoom no mapa", "Use ⌘ + scroll to zoom the map"),
+            "CooperativeGesturesHandler.MobileHelpText": L("Use dois dedos para mover o mapa", "Use two fingers to move the map"),
+          }}
           dragRotate={false}
           pitchWithRotate={false}
           maxPitch={0}
