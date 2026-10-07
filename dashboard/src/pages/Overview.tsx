@@ -4,7 +4,7 @@ import { PaineisProntos } from "../components/PaineisProntos";
 import { CandidatePicker, ErrorBox, Loading, SituacaoBadge, nomeCand } from "../components/ui";
 import { useBase, type Base } from "../lib/data";
 import { useUf } from "../lib/uf";
-import { fmt } from "../lib/format";
+import { fmt, titulo } from "../lib/format";
 import { CARGOS, type Candidatura } from "../lib/types";
 
 function topPartido(base: Base, partido: string, cargo: number, n: number) {
@@ -108,25 +108,28 @@ function Senado({ base, destaques }: { base: Base; destaques: Candidatura[] }) {
   if (!sen.length) return null;
   const validos = base.candidaturas.filter((c) => c.cargo === 5 && c.destinacao?.startsWith("Válido")).reduce((a, c) => a + c.votos, 0)
     || sen.reduce((a, c) => a + c.votos, 0);
-  // perspectiva padrão: candidatura em destaque ao Senado; senão a do partido em destaque; senão a mais votada
-  const ordemPartidos = [...base.partidosDestaque.map((p) => p.sigla), "PSOL", "PT", "PCdoB", "REDE", "PSB"];
-  const foco = destaques.find((c) => c.cargo === 5)
-    ?? ordemPartidos.map((p) => sen.find((c) => c.partido === p)).find(Boolean)
-    ?? sen[0];
+  // em destaque: candidatura ao Senado entre os destaques da UF e as do campo (PSOL, PT, PCdoB, REDE, PSB)
+  const campo = new Set([...base.partidosDestaque.map((p) => p.sigla), "PSOL", "PT", "PCdoB", "REDE", "PSB"]);
+  const focos = sen.filter((c) => destaques.some((d) => d.id === c.id) || (c.partido && campo.has(c.partido)));
   const max = sen[0].votos || 1;
   return (
     <section aria-label="Senado" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="display text-2xl">Senado</h2>
-        <Link to={`/c/${foco.id}`} className="text-sm text-accent">
-          Análise completa por cidade e bairro ({foco.nome}) →
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {focos.map((c) => (
+            <Link key={c.id} to={`/c/${c.id}`}
+              className="rounded-md border border-accent px-3 py-1.5 text-sm font-semibold text-accent hover:bg-accent-soft">
+              Análise completa · {titulo(c.nome)} ({c.partido}) →
+            </Link>
+          ))}
+        </div>
       </div>
       <ol className="rounded-lg border border-line bg-panel">
         {sen.map((c, i) => (
           <li key={c.id}>
             <Link to={`/c/${c.id}`}
-              className={`grid grid-cols-[24px_minmax(0,1fr)_minmax(60px,180px)_auto_auto] items-center gap-3 border-b border-line px-3 py-1.5 last:border-0 hover:bg-accent-soft ${c.id === foco.id ? "bg-accent-soft" : ""}`}>
+              className={`grid grid-cols-[24px_minmax(0,1fr)_minmax(60px,180px)_auto_auto] items-center gap-3 border-b border-line px-3 py-1.5 last:border-0 hover:bg-accent-soft ${focos.includes(c) ? "bg-accent-soft" : ""}`}>
               <span className="num text-right text-xs text-muted">{i + 1}</span>
               <span className="truncate"><b>{nomeCand(c)}</b> <span className="text-sm text-muted">{c.partido}</span><SituacaoBadge c={c} compacto /></span>
               <span className="h-2 rounded-sm bg-accent/70" style={{ width: `${(100 * c.votos) / max}%` }} aria-hidden />
