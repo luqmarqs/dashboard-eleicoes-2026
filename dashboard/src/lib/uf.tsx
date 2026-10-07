@@ -22,9 +22,27 @@ export const UFS: InfoUf[] = [
 const KEY = "uf-selecionada";
 let atual = lerSalva();
 
+/**
+ * UF de uma candidatura pelo id: as cargas usam faixas de 100 mil ids por UF, na ordem de UFS
+ * (SP 0–99.999, MG 100.000–199.999, RS 200.000–…), igual a UF_ORDEM em scripts/export_dashboard.py.
+ */
+export function ufDaCandidatura(id: number): string | undefined {
+  return Number.isFinite(id) && id > 0 ? UFS[Math.floor(id / 100_000)]?.sigla : undefined;
+}
+
+/** Links com candidatura (/c/123, ?a=123) abrem no estado certo mesmo sem ?uf=. */
+function ufDoEndereco(): string | undefined {
+  const q = new URLSearchParams(window.location.search);
+  const doParam = q.get("uf")?.toUpperCase();
+  if (doParam) return doParam;
+  const m = window.location.pathname.match(/^\/c\/(\d+)/);
+  const id = Number(m?.[1] ?? q.get("a") ?? q.get("b") ?? NaN);
+  return ufDaCandidatura(id);
+}
+
 function lerSalva(): string {
-  // ?uf=MG no endereço escolhe o estado (links diretos); senão, a última escolha deste navegador.
-  const daUrl = new URLSearchParams(window.location.search).get("uf")?.toUpperCase();
+  // ?uf=MG (ou a candidatura no endereço) escolhe o estado; senão, a última escolha deste navegador.
+  const daUrl = ufDoEndereco();
   if (daUrl && UFS.some((u) => u.sigla === daUrl)) {
     try {
       localStorage.setItem(KEY, daUrl);
