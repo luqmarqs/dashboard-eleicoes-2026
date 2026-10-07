@@ -83,7 +83,9 @@ function Login() {
       email: email.trim(), options: { shouldCreateUser: true, emailRedirectTo: window.location.origin },
     });
     if (error) {
-      setErro(`Não foi possível enviar o link: ${error.message}`);
+      setErro(/rate limit/i.test(error.message)
+        ? "Muitos pedidos de link agora. Espere alguns minutos e tente de novo; se você já recebeu um link antes, use o mais recente."
+        : `Não foi possível enviar o link: ${error.message}`);
       setEstado("erro");
     } else setEstado("enviado");
   };
