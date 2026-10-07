@@ -14,9 +14,11 @@ interface Props<T> {
   busca?: (row: T) => string;
   initialSort?: SortingState;
   pageSize?: number;
+  /** Ordenações prontas, mostradas como botões acima da tabela (ex.: "Maior perda"). */
+  atalhos?: { label: string; sort: SortingState }[];
 }
 
-export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, initialSort = [], pageSize = 25 }: Props<T>) {
+export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, initialSort = [], pageSize = 25, atalhos }: Props<T>) {
   const [sorting, setSorting] = useState<SortingState>(initialSort);
   const [filtro, setFiltro] = useState("");
   const table = useReactTable({
@@ -55,6 +57,21 @@ export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, in
             onClick={() => void exportarXlsx(linhas, exportCols, nomeArquivo)}>Excel</button>
         </div>
       </div>
+      {atalhos && atalhos.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted">Ordenar por:</span>
+          {atalhos.map((a) => {
+            const ativo = JSON.stringify(a.sort) === JSON.stringify(sorting);
+            return (
+              <button key={a.label} type="button" aria-pressed={ativo}
+                onClick={() => { setSorting(a.sort); table.setPageIndex(0); }}
+                className={`rounded-full border px-3 py-1 ${ativo ? "border-accent bg-accent text-panel font-semibold" : "border-line hover:bg-accent-soft"}`}>
+                {a.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="overflow-x-auto rounded-lg border border-line bg-panel">
         <table className="w-full border-collapse text-sm">
           <thead>
@@ -67,11 +84,16 @@ export function DataTable<T>({ data, columns, exportCols, nomeArquivo, busca, in
                     <th key={h.id} scope="col"
                       className={`sticky top-0 border-b border-line bg-panel px-3 py-2 font-semibold whitespace-nowrap ${numeric ? "text-right" : "text-left"}`}>
                       {h.isPlaceholder ? null : (
-                        <button type="button" className="inline-flex items-center gap-1" onClick={h.column.getToggleSortingHandler()}
-                          aria-label={`Ordenar por ${String(h.column.columnDef.header)}`}>
-                          {flexRender(h.column.columnDef.header, h.getContext())}
-                          <span className="text-muted">{sorted === "asc" ? "▲" : sorted === "desc" ? "▼" : ""}</span>
-                        </button>
+                        h.column.getCanSort() ? (
+                          <button type="button" className="group inline-flex items-center gap-1" onClick={h.column.getToggleSortingHandler()}
+                            title="Clique para ordenar; clique de novo para inverter"
+                            aria-label={`Ordenar por ${String(h.column.columnDef.header)}`}>
+                            {flexRender(h.column.columnDef.header, h.getContext())}
+                            <span className={sorted ? "text-accent" : "text-muted/60 group-hover:text-muted"} aria-hidden>
+                              {sorted === "asc" ? "▲" : sorted === "desc" ? "▼" : "↕"}
+                            </span>
+                          </button>
+                        ) : flexRender(h.column.columnDef.header, h.getContext())
                       )}
                     </th>
                   );

@@ -36,6 +36,7 @@ export function Historico({ base, cand, dados, municipio }: {
 }) {
   const hist = useHistorico(cand.id);
   const [nivel, setNivel] = useState<Nivel>(municipio ? "bairro" : "municipio");
+  const [minimo, setMinimo] = useState(0); // mínimo de votos em 2022 ou 2026 para entrar na tabela
   const efetivo: Nivel = municipio && nivel === "municipio" ? "bairro" : nivel;
 
   const r22 = hist.data?.resumo[0];
@@ -61,6 +62,8 @@ export function Historico({ base, cand, dados, municipio }: {
     return out.sort((a, b) => b.v26 - a.v26 || b.v22 - a.v22);
   }, [hist.data, r22, base, dados, efetivo, municipio]);
 
+  const visiveis = useMemo(
+    () => (minimo ? linhas.filter((l) => Math.max(l.v22, l.v26) >= minimo) : linhas), [linhas, minimo]);
   const t26 = useMemo(() => linhas.reduce((a, l) => a + l.v26, 0), [linhas]);
   const t22 = useMemo(() => linhas.reduce((a, l) => a + l.v22, 0), [linhas]);
 
@@ -77,8 +80,8 @@ export function Historico({ base, cand, dados, municipio }: {
     { id: "dif", accessorFn: (r) => r.v26 - r.v22, header: "Diferença",
       cell: (c) => { const v = Number(c.getValue()); return <span className={v >= 0 ? "text-accent" : "text-danger"}>{sinal(v)}{fmt(v)}</span>; },
       meta: { numeric: true } },
-    { id: "var", accessorFn: (r) => (r.v22 ? r.v26 / r.v22 - 1 : null), header: "Variação",
-      cell: (c) => { const v = c.getValue() as number | null; return v == null ? "novo" : `${sinal(v)}${pct(v, 0)}`; },
+    { id: "var", accessorFn: (r) => (r.v22 ? r.v26 / r.v22 - 1 : undefined), header: "Variação",
+      cell: (c) => { const v = c.getValue() as number | undefined; return v == null ? "novo" : `${sinal(v)}${pct(v, 0)}`; },
       sortUndefined: "last", meta: { numeric: true } },
     { id: "p26", accessorFn: (r) => (r.val26 ? r.v26 / r.val26 : 0), header: "% válidos 2026", cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
     { id: "p22", accessorFn: (r) => (r.val22 ? r.v22 / r.val22 : 0), header: "% válidos 2022", cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
@@ -129,9 +132,25 @@ export function Historico({ base, cand, dados, municipio }: {
           ...(municipio ? [] : [{ id: "municipio" as Nivel, label: "Por cidade" }]),
           { id: "bairro", label: "Por bairro" }, { id: "local", label: "Por escola" },
         ]} />
-      <DataTable data={linhas} columns={columns} exportCols={exportCols}
+      <label htmlFor="hist-min" className="flex flex-wrap items-center gap-2 text-sm text-muted">
+        Só lugares com pelo menos
+        <select id="hist-min" value={minimo} onChange={(e) => setMinimo(Number(e.target.value))}
+          className="rounded-md border border-line bg-panel px-2 py-1 text-ink">
+          {[0, 10, 50, 100, 500, 1000].map((n) => <option key={n} value={n}>{n === 0 ? "qualquer número de" : fmt(n)}</option>)}
+        </select>
+        votos (em 2022 ou 2026) · útil para a variação em %, que exagera em lugares com poucos votos
+      </label>
+      <DataTable data={visiveis} columns={columns} exportCols={exportCols}
         nomeArquivo={`${cand.numero}_2022x2026_${efetivo}${municipio ? `_${municipio}` : ""}`}
-        busca={(r) => `${r.nome} ${r.municipio}`} initialSort={[{ id: "v26", desc: true }]} />
+        busca={(r) => `${r.nome} ${r.municipio}`} initialSort={[{ id: "v26", desc: true }]}
+        atalhos={[
+          { label: "Mais votos em 2026", sort: [{ id: "v26", desc: true }] },
+          { label: "Maior ganho (votos)", sort: [{ id: "dif", desc: true }] },
+          { label: "Maior perda (votos)", sort: [{ id: "dif", desc: false }] },
+          { label: "Maior alta (%)", sort: [{ id: "var", desc: true }] },
+          { label: "Maior queda (%)", sort: [{ id: "var", desc: false }] },
+          { label: "Mais votos em 2022", sort: [{ id: "v22", desc: true }] },
+        ]} />
       <p className="text-xs text-muted">
         2022: dados abertos do TSE (votação por seção e locais de votação de 2022). Escolas de 2022 foram associadas às de 2026 pelo
         nome no mesmo município ou, quando o nome mudou, pela mais próxima até 150 m; 2,3% dos locais de 2022 ficaram sem par
