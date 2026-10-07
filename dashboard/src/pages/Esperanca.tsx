@@ -10,6 +10,7 @@ import type { ExportCol } from "../lib/export";
 import { dec, fmt, pct, titulo } from "../lib/format";
 import { L } from "../lib/i18n";
 import { CARGOS, type Candidatura, type TotaisCols, type VotosCols } from "../lib/types";
+import { MOBILIZACAO, NOME_FAIXA, agrega, linha, nossasDaUf, useBaseCandidatura, type Faixa, type Linha, type LinhaNossa, type Terr } from "../lib/atuacao";
 import { useUf } from "../lib/uf";
 
 /*
@@ -18,34 +19,9 @@ import { useUf } from "../lib/uf";
  * o saldo líquido para Lula é abstenções × (válidos/comparecimento) × (Lula − adversário). Prioridade = esse saldo.
  */
 
-// candidaturas do PSOL em que a equipe atua (UF:cargo:número)
-const NOSSAS: Record<string, string[]> = {
-  SP: ["6:5005", "7:50000"],
-  MG: ["7:50099"],
-  RS: ["7:50123", "5:500"],
-};
-const MOBILIZACAO = 0.1; // cenário: 10% dos abstencionistas passam a votar
-
 const RAMPA = () => (prefersDark()
   ? ["#3a2f45", "#5a3f75", "#7a4f9a", "#9a66c0", "#c08ce6"]
   : ["#efe6f5", "#d5b8e8", "#b98ad6", "#8e4fc0", "#6a2399"]).map((h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)] as RGB);
-
-interface Terr {
-  chave: string; cidade: string; cd: string; bairro?: string; locais: number;
-  aptos: number; comp: number; validos: number; lula: number; adv: number;
-}
-interface Linha extends Terr { abst: number; taxaAbst: number; sL: number; sA: number; margem: number; saldo: number; faixa: Faixa }
-type Faixa = "mobilizar" | "disputar" | "conter";
-
-const linha = (t: Terr, medianaAbst: number): Linha => {
-  const abst = t.aptos - t.comp, taxaAbst = t.aptos ? abst / t.aptos : 0;
-  const sL = t.validos ? t.lula / t.validos : 0, sA = t.validos ? t.adv / t.validos : 0, margem = sL - sA;
-  const saldo = MOBILIZACAO * abst * (t.comp ? t.validos / t.comp : 0) * margem;
-  const faixa: Faixa = margem >= 0.1 && taxaAbst >= medianaAbst ? "mobilizar" : Math.abs(margem) < 0.1 ? "disputar" : margem > 0 ? "mobilizar" : "conter";
-  return { ...t, abst, taxaAbst, sL, sA, margem, saldo, faixa };
-};
-
-const NOME_FAIXA = (f: Faixa) => (f === "mobilizar" ? L("Mobilizar", "Mobilize") : f === "disputar" ? L("Disputar", "Contest") : L("Conter", "Contain"));
 
 export function Esperanca() {
   const base = useBase();
@@ -59,23 +35,6 @@ export function Esperanca() {
   if (totais.error) return <ErrorBox error={totais.error} />;
   if (!base.data || !votos.data || !totais.data || !lula || !adv) return <Loading />;
   return <Painel base={base.data} lula={lula} adv={adv} votos={votos.data} totais={totais.data} />;
-}
-
-function agrega(base: Base, totais: TotaisCols, vl: VotosCols, va: VotosCols, porBairro: boolean): Map<string, Terr> {
-  const m = new Map<string, Terr>();
-  const pega = (localId: number) => {
-    const l = base.localById.get(localId);
-    if (!l) return null;
-    const b = porBairro ? titulo((l.bairro || L("sem bairro", "no neighbourhood")).trim()) : undefined;
-    const k = porBairro ? `${l.mun}|${b!.toUpperCase()}` : l.mun;
-    let t = m.get(k);
-    if (!t) { t = { chave: k, cidade: titulo(l.munNome), cd: l.mun, bairro: b, locais: 0, aptos: 0, comp: 0, validos: 0, lula: 0, adv: 0 }; m.set(k, t); }
-    return t;
-  };
-  totais.local.forEach((id, i) => { const t = pega(id); if (t) { t.locais++; t.aptos += totais.aptos[i]; t.comp += totais.comparecimento[i]; t.validos += totais.validos[i]; } });
-  vl.local.forEach((id, i) => { const t = pega(id); if (t) t.lula += vl.votos[i]; });
-  va.local.forEach((id, i) => { const t = pega(id); if (t) t.adv += va.votos[i]; });
-  return m;
 }
 
 function Painel({ base, lula, adv, votos, totais }: { base: Base; lula: Candidatura; adv: Candidatura; votos: Record<number, VotosCols>; totais: TotaisCols }) {
@@ -175,7 +134,7 @@ function Painel({ base, lula, adv, votos, totais }: { base: Base; lula: Candidat
       <TabelaTerr titulo={L("Prioridades por bairro (todas as cidades; bairros com 500+ eleitores)", "Priorities by neighbourhood (all cities; neighbourhoods with 500+ voters)")}
         linhas={bairros} nomeAdv={nomeAdv} arquivo="esperanca_bairros" bairro />
 
-      <Nossas base={base} uf={uf} bairros={bairros} medianaAbst={medianaAbst} />
+      <Nossas base={base} uf={uf} bairros={bairros} />
     </div>
   );
 }
@@ -257,9 +216,8 @@ function TabelaTerr({ titulo: tit, linhas, nomeAdv, arquivo, bairro = false }: {
 
 // ---- onde nossas candidaturas podem atuar ----
 
-function Nossas({ base, uf, bairros, medianaAbst }: { base: Base; uf: string; bairros: Linha[]; medianaAbst: number }) {
-  const cands = (NOSSAS[uf] ?? []).map((k) => { const [cg, n] = k.split(":").map(Number); return base.candidaturas.find((c) => c.cargo === cg && c.numero === n && c.tipo === "nominal"); })
-    .filter((c): c is Candidatura => !!c);
+function Nossas({ base, uf, bairros }: { base: Base; uf: string; bairros: Linha[] }) {
+  const cands = nossasDaUf(base, uf);
   if (!cands.length) return null;
   return (
     <section aria-label={L("Onde nossas candidaturas podem atuar", "Where our candidacies can act")} className="flex flex-col gap-3">
@@ -268,32 +226,14 @@ function Nossas({ base, uf, bairros, medianaAbst }: { base: Base; uf: string; ba
         {L("Cruzamento entre a base eleitoral de cada candidatura (bairros onde ela teve votação acima da sua média no estado) e o saldo potencial para Lula. São os territórios onde a candidatura tem rede e reconhecimento para puxar comparecimento no 2º turno.",
           "Cross-reference between each candidacy's electoral base (neighbourhoods where it polled above its state average) and Lula's potential. These are the territories where the candidacy has network and recognition to drive runoff turnout.")}
       </p>
-      {cands.map((c) => <Nossa key={c.id} base={base} c={c} bairros={bairros} medianaAbst={medianaAbst} />)}
+      {cands.map((c) => <Nossa key={c.id} base={base} c={c} bairros={bairros} />)}
     </section>
   );
 }
 
-interface LinhaNossa extends Linha { votosC: number; indice: number; score: number }
-
-function Nossa({ base, c, bairros, medianaAbst }: { base: Base; c: Candidatura; bairros: Linha[]; medianaAbst: number }) {
-  const v = useVotos([c.id]);
-  const t = useTotais(c.cargo);
-  const linhas = useMemo<LinhaNossa[]>(() => {
-    const vc = v.data?.[c.id];
-    if (!vc || !t.data) return [];
-    const val = new Map<string, number>(), vot = new Map<string, number>();
-    const chave = (id: number) => { const l = base.localById.get(id); return l ? `${l.mun}|${titulo((l.bairro || L("sem bairro", "no neighbourhood")).trim()).toUpperCase()}` : null; };
-    t.data.local.forEach((id, i) => { const k = chave(id); if (k) val.set(k, (val.get(k) ?? 0) + t.data!.validos[i]); });
-    vc.local.forEach((id, i) => { const k = chave(id); if (k) vot.set(k, (vot.get(k) ?? 0) + vc.votos[i]); });
-    const totVal = [...val.values()].reduce((a, x) => a + x, 0), totC = [...vot.values()].reduce((a, x) => a + x, 0);
-    const media = totVal ? totC / totVal : 0;
-    return bairros.filter((b) => b.saldo > 0).map((b) => {
-      const vC = vot.get(b.chave) ?? 0, vv = val.get(b.chave) ?? 0;
-      const indice = media && vv ? vC / vv / media : 0;
-      return { ...b, votosC: vC, indice, score: b.saldo * Math.min(indice, 3) };
-    }).filter((b) => b.indice >= 1.2 && b.votosC >= 100);
-  }, [v.data, t.data, base, c, bairros]);
-  void medianaAbst;
+function Nossa({ base, c, bairros }: { base: Base; c: Candidatura; bairros: Linha[] }) {
+  const { linhas: todas, loading } = useBaseCandidatura(base, c, bairros);
+  const linhas = useMemo(() => (todas ?? []).filter((b) => b.saldo > 0), [todas]);
   const columns = useMemo<ColumnDef<LinhaNossa, unknown>[]>(() => [
     { id: "bairro", accessorKey: "bairro", header: L("Bairro", "Neighbourhood"), cell: (x) => <span className="font-semibold">{String(x.getValue())}</span> },
     { id: "cidade", accessorKey: "cidade", header: L("Cidade", "City") },
@@ -315,7 +255,7 @@ function Nossa({ base, c, bairros, medianaAbst }: { base: Base; c: Candidatura; 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-line bg-panel p-4">
       <h3 className="text-lg font-semibold"><Link className="hover:text-accent" to={`/c/${c.id}`}>{titulo(c.nome)}</Link> <span className="text-sm font-normal text-muted">{c.partido} · {CARGOS[c.cargo]} · {fmt(c.votos)} {L("votos", "votes")}</span></h3>
-      {v.isLoading || t.isLoading ? <Loading /> : !linhas.length ? <p className="text-sm text-muted">{L("Sem bairros que combinem base forte e saldo positivo.", "No neighbourhoods combining a strong base and positive potential.")}</p> : (
+      {loading ? <Loading /> : !linhas.length ? <p className="text-sm text-muted">{L("Sem bairros que combinem base forte e saldo positivo.", "No neighbourhoods combining a strong base and positive potential.")}</p> : (
         <>
           <p className="text-sm">
             {L(<>{fmt(linhas.length)} bairros combinam base forte da candidatura e saldo positivo para Lula, somando <b>+{fmt(Math.round(somaSaldo))}</b> votos líquidos a cada 10% de mobilização. Começar por: {top.map((b) => `${b.bairro} (${b.cidade})`).join(", ")}.</>,

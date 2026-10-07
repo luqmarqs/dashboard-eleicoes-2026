@@ -1,6 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { CardsAtuacao } from "../components/CardsAtuacao";
 import { DataTable, TituloTabela } from "../components/DataTable";
 import { LazyMap } from "../components/LazyMap";
 import { ErrorBox, Loading, Segmented, SituacaoBadge, nomeCand } from "../components/ui";
@@ -249,6 +250,8 @@ function Painel({ base, apoc, resumo, temas, blocos, setBlocos, porCand, setPorC
             "TSE figures (1st round) and Meta Ad Library (only elected candidacies were collected). Blocs follow the classification below (party and, when on, candidacy), which can be adjusted. Descriptive cross-tabulations.")}
         </p>
       </section>
+
+      <CardsAtuacao />
 
       <Blocos base={base} blocos={blocos} setBlocos={setBlocos} />
       <PorCandidatura base={base} classif={apoc.classif ?? []} porCand={porCand} setPorCand={setPorCand} blocos={blocos} />
