@@ -56,16 +56,7 @@ export const EIXOS: Eixo[] = [
 ];
 
 const ESC = /[.*+?^${}()|[\]\\]/g;
-const RE = new Map<string, RegExp>();
-/** Termo casa no começo de palavra; espaço no fim do termo exige palavra inteira ("piso " ≠ "pisoteio"). */
-function casa(texto: string, termo: string): boolean {
-  let re = RE.get(termo);
-  if (!re) {
-    re = new RegExp(`(?:^|[^a-z0-9])${termo.trim().replace(ESC, "\\$&")}${termo.endsWith(" ") ? "(?![a-z0-9])" : ""}`);
-    RE.set(termo, re);
-  }
-  return re.test(texto);
-}
+// Termo casa no começo de palavra; espaço no fim do termo exige palavra inteira ("piso " ≠ "pisoteio").
 
 // Rodapés legais (identificação de quem paga, federação, coligação) não são mensagem: saem antes da classificação.
 const RODAPES = [
@@ -81,9 +72,20 @@ export function normalizarTexto(a: MetaAnuncio): string {
   return ` ${t.replace(/\s+/g, " ")} `;
 }
 
+// Uma expressão por tema (alternação dos termos): ~30 testes por texto em vez de ~300.
+const RE_TEMA: [string, RegExp][] = EIXOS.flatMap((e) => e.temas.map((tm): [string, RegExp] => [tm.id, new RegExp(
+  `(?:^|[^a-z0-9])(?:${tm.termos.map((x) => x.trim().replace(ESC, "\\$&") + (x.endsWith(" ") ? "(?![a-z0-9])" : "")).join("|")})`)]));
+const MEMO = new Map<string, Set<string>>();
+
+/** Temas de um texto já normalizado (memorizado: o mesmo texto se repete em centenas de anúncios). */
 export function temasDoTexto(t: string): Set<string> {
-  const out = new Set<string>();
-  for (const e of EIXOS) for (const tm of e.temas) if (tm.termos.some((x) => casa(t, x))) out.add(tm.id);
+  let out = MEMO.get(t);
+  if (!out) {
+    out = new Set<string>();
+    for (const [id, re] of RE_TEMA) if (re.test(t)) out.add(id);
+    if (MEMO.size > 50_000) MEMO.clear();
+    MEMO.set(t, out);
+  }
   return out;
 }
 

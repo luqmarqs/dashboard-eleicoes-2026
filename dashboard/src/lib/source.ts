@@ -338,7 +338,7 @@ const dev: DataSource = {
 
 const remote: DataSource = {
   historico: (id) => rpc("historico_json", { p_candidatura_id: id }),
-  metaResumo: () => rpc("meta_resumo_json", { p_uf: getUf() }),
+  metaResumo: () => rpc("meta_resumo_cache", { p_uf: getUf() }),
   metaAnuncios: async (id) => expandirCompacto(await rpc<MetaCompacto>("meta_anuncios_cache", { p_candidatura_id: id })),
   metaDobradas: (id) => rpc("meta_dobradas_cache", { p_candidatura_id: id }),
   digital: () => rpc("digital_json", { p_uf: getUf() }),

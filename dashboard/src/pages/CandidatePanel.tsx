@@ -5,6 +5,10 @@ import { LazyMap } from "../components/LazyMap";
 import type { Metrica, Modo } from "../components/mapTypes";
 import { Rankings, TopLista } from "../components/Rankings";
 import { SenadoAnalise } from "../components/SenadoAnalise";
+import { AnunciosVotos } from "../components/AnunciosVotos";
+import { useMetaAnuncios, useMetaResumo } from "../lib/metaHooks";
+import type { PorLocal } from "../lib/data";
+import type { Candidatura } from "../lib/types";
 import { CandidatePicker, ErrorBox, Loading, MapControls, MunicipioSelect, SituacaoBadge, Stat, nomeCand } from "../components/ui";
 import { agregar, porLocal, useBase, useTotais, useVotos } from "../lib/data";
 import { fmt, pct, titulo } from "../lib/format";
@@ -108,12 +112,30 @@ export function CandidatePanel() {
         </aside>
       </div>
 
+      {dados && !municipio && <PublicidadeCandidatura cand={cand} dados={dados} />}
+
       {/* Com histórico, a tabela de comparação já traz 2026 completo (votos, % válidos, % do total). */}
       {dados && temHistorico && <Historico base={b} cand={cand} dados={dados} municipio={municipio} />}
 
       {dados && !hist.isLoading && !temHistorico && <Rankings base={b} dados={dados} municipio={municipio}
         nomeArquivo={`${cand.numero}_${(cand.nome ?? "").replace(/\W+/g, "_")}${municipio ? `_${municipio}` : ""}`} />}
       </>)}
+    </div>
+  );
+}
+
+/** Anúncios × votos por cidade no painel da candidatura (só se houver anúncios coletados da Biblioteca da Meta). */
+function PublicidadeCandidatura({ cand, dados }: { cand: Candidatura; dados: PorLocal }) {
+  const base = useBase();
+  const resumo = useMetaResumo();
+  const item = resumo.data?.candidaturas.find((c) => c.candidatura_id === cand.id);
+  const ads = useMetaAnuncios(cand.id, item?.ultima_coleta, !!item && item.anuncios > 0);
+  const votosMun = useMemo(() => new Map((base.data ? agregar(base.data, dados, "municipio") : []).map((l) => [l.key, l])), [base.data, dados]);
+  if (!base.data || !item || !item.anuncios || !ads.data?.length) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <AnunciosVotos base={base.data} ads={ads.data} votosMun={votosMun} nome={cand.nome} />
+      <Link to={`/publicidade?c=${cand.id}`} className="self-end text-sm text-accent">Ver os anúncios, mapa e temas na página Publicidade →</Link>
     </div>
   );
 }

@@ -1,10 +1,11 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
-import { get as idbGet, set as idbSet } from "idb-keyval";
 import { useCallback, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DataTable } from "../components/DataTable";
+import { useMetaAnuncios, useMetaResumo } from "../lib/metaHooks";
 import { TemasCriativos } from "../components/TemasCriativos";
+import { AnunciosVotos } from "../components/AnunciosVotos";
 import { EIXOS, normalizarTexto, temasDoTexto } from "../lib/temas";
 import { LazyMap } from "../components/LazyMap";
 import { ErrorBox, Loading, Segmented, SituacaoBadge, Stat, nomeCand } from "../components/ui";
@@ -22,29 +23,6 @@ import { deUf, useUf } from "../lib/uf";
 
 const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 
-function useMetaResumo() {
-  const { uf } = useUf();
-  return useQuery({ queryKey: ["meta-resumo", uf], queryFn: () => source.metaResumo(), staleTime: 5 * 60_000 });
-}
-
-/** Anúncios de uma candidatura; guardados no IndexedDB até haver coleta nova (versão = última coleta da candidatura). */
-function useMetaAnuncios(id: number | undefined, versao: string | null | undefined) {
-  const { uf } = useUf();
-  return useQuery({
-    queryKey: ["meta-anuncios", uf, id, versao],
-    queryFn: async () => {
-      const chave = `meta-${uf}-${id}-${versao ?? "x"}`;
-      try {
-        const c = await idbGet<MetaAnuncio[]>(chave);
-        if (c) return c;
-      } catch { /* sem IndexedDB */ }
-      const ads = await source.metaAnuncios(id!);
-      try { await idbSet(chave, ads); } catch { /* ignora */ }
-      return ads;
-    },
-    enabled: id != null, staleTime: Infinity, gcTime: 30 * 60_000,
-  });
-}
 
 function FaixaTxt({ f, prefixo = "" }: { f: Map<string, Faixa>; prefixo?: string }) {
   if (!f.size) return <>não informado</>;
@@ -392,6 +370,8 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
         </aside>
       </div>
 
+      <AnunciosVotos base={base} ads={filtrados} votosMun={votosMun} nome={cand.nome} onMunicipio={setMunicipio} />
+
       <Efetividade base={base} mun={mun} votosMun={votosMun} ads={filtrados} cand={cand} onMunicipio={setMunicipio} />
 
       <section aria-label="Lista de anúncios" className="flex flex-col gap-3">
@@ -476,18 +456,6 @@ function Efetividade({ base, mun, votosMun, ads, cand, onMunicipio }: {
       votos: v?.votos ?? 0, validos: v?.validos ?? 0, pct: v?.pct ?? 0 };
   }), [base, mun, porId, votosMun]);
 
-  const grupos = useMemo(() => {
-    const g = (f: (l: LinhaEf) => boolean) => {
-      const ls = linhas.filter(f);
-      const votos = ls.reduce((s, l) => s + l.votos, 0), val = ls.reduce((s, l) => s + l.validos, 0);
-      return { n: ls.length, votos, pct: val ? votos / val : 0, share: total ? votos / total : 0 };
-    };
-    return [
-      { t: "Cidades incluídas na segmentação (cidade inteira)", ...g((l) => l.inclui > 0) },
-      { t: "Cidades só com bairros segmentados", ...g((l) => l.inclui === 0 && l.bairro > 0) },
-      { t: "Cidades sem segmentação explícita", ...g((l) => l.inclui === 0 && l.bairro === 0) },
-    ];
-  }, [linhas, total]);
 
   const columns = useMemo<ColumnDef<LinhaEf, unknown>[]>(() => [
     { id: "nome", accessorKey: "nome", header: "Município", cell: (x) => (
@@ -516,28 +484,7 @@ function Efetividade({ base, mun, votosMun, ads, cand, onMunicipio }: {
   ];
   return (
     <section aria-label="Segmentação e votação" className="flex flex-col gap-3">
-      <h3 className="display text-xl">Segmentação e votação</h3>
-      <div className="overflow-x-auto rounded-lg border border-line bg-panel">
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs text-muted">
-            <th className="px-3 py-2">Grupo de cidades</th><th className="px-3 py-2 text-right">Cidades</th>
-            <th className="px-3 py-2 text-right">Votos de {titulo(cand.nome)}</th><th className="px-3 py-2 text-right">% do total</th>
-            <th className="px-3 py-2 text-right">% dos válidos no grupo</th>
-          </tr></thead>
-          <tbody>{grupos.map((g) => (
-            <tr key={g.t} className="border-t border-line">
-              <td className="px-3 py-1.5">{g.t}</td><td className="num px-3 text-right">{fmt(g.n)}</td>
-              <td className="num px-3 text-right">{fmt(g.votos)}</td><td className="num px-3 text-right">{pct(g.share, 1)}</td>
-              <td className="num px-3 text-right">{pct(g.pct)}</td>
-            </tr>
-          ))}</tbody>
-        </table>
-      </div>
-      <p className="text-xs text-muted">
-        Comparação descritiva: as cidades escolhidas pelo anunciante tendem a ser onde a candidatura já é forte (capital, base
-        eleitoral), então diferença de votação entre os grupos <b>não mede o efeito</b> dos anúncios. Segmentar uma cidade também não
-        garante que o anúncio foi entregue lá.
-      </p>
+      <h3 className="display text-xl">Por cidade</h3>
       <DataTable data={linhas} columns={columns} exportCols={exportCols} nomeArquivo={`trafego_pago_${cand.numero}_municipios`}
         busca={(l) => normalizar(l.nome)} initialSort={[{ id: "inclui", desc: true }]} pageSize={15}
         atalhos={[
