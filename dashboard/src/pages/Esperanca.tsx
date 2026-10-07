@@ -19,9 +19,10 @@ import { useUf } from "../lib/uf";
  * o saldo líquido para Lula é abstenções × (válidos/comparecimento) × (Lula − adversário). Prioridade = esse saldo.
  */
 
+// divergente laranja ↔ roxo (mesma paleta validada do Apocalipse): saldo negativo, nulo, positivo
 const RAMPA = () => (prefersDark()
-  ? ["#3a2f45", "#5a3f75", "#7a4f9a", "#9a66c0", "#c08ce6"]
-  : ["#efe6f5", "#d5b8e8", "#b98ad6", "#8e4fc0", "#6a2399"]).map((h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)] as RGB);
+  ? ["#c47c22", "#7a5a3a", "#3a343f", "#7a4f9a", "#b37ad9"]
+  : ["#c86a00", "#eab27a", "#e6e2e8", "#b98ad6", "#6a2399"]).map((h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)] as RGB);
 
 export function Esperanca() {
   const base = useBase();
@@ -142,21 +143,21 @@ function Painel({ base, lula, adv, votos, totais }: { base: Base; lula: Candidat
 function Mapa({ base, cidades }: { base: Base; cidades: Linha[] }) {
   const rampa = RAMPA();
   const porCd = useMemo(() => new Map(cidades.map((c) => [c.cd, c])), [cidades]);
+  // mediana dos saldos positivos e dos negativos (em módulo): separa "alto" de "baixo" de cada lado
   const cortes = useMemo(() => {
-    const xs = cidades.filter((c) => c.saldo > 0).map((c) => c.saldo).sort((a, b) => a - b);
-    const q = (p: number) => xs[Math.min(xs.length - 1, Math.floor(p * xs.length))] ?? 0;
-    return [q(0.5), q(0.75), q(0.9), q(0.97)];
+    const med = (xs: number[]) => { const s = [...xs].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : 0; };
+    return { pos: med(cidades.filter((c) => c.saldo > 0).map((c) => c.saldo)), neg: med(cidades.filter((c) => c.saldo < 0).map((c) => -c.saldo)) };
   }, [cidades]);
   const cor = useCallback((cd: string): RGB | null => {
     const c = porCd.get(cd);
-    if (!c) return null;
-    if (c.saldo <= 0) return null;
-    const i = cortes.filter((x) => c.saldo > x).length;
-    return rampa[i];
+    if (!c || !c.validos) return null;
+    if (c.saldo > 0) return rampa[c.saldo >= cortes.pos ? 4 : 3];
+    if (c.saldo < 0) return rampa[-c.saldo >= cortes.neg ? 0 : 1];
+    return rampa[2];
   }, [porCd, cortes, rampa]);
   const info = useCallback(({ municipio }: { municipio?: string }) => {
     const c = municipio ? porCd.get(municipio) : undefined;
-    return c ? L(`Saldo potencial ${fmt(Math.round(c.saldo))} · abstenção ${pct(c.taxaAbst, 1)} · Lula ${pct(c.sL, 1)}`, `Potential ${fmt(Math.round(c.saldo))} · abstention ${pct(c.taxaAbst, 1)} · Lula ${pct(c.sL, 1)}`) : null;
+    return c ? L(`Saldo potencial ${c.saldo > 0 ? "+" : ""}${fmt(Math.round(c.saldo))} · abstenção ${pct(c.taxaAbst, 1)} · Lula ${pct(c.sL, 1)} × ${pct(c.sA, 1)} · ${NOME_FAIXA(c.faixa)}`, `Potential ${c.saldo > 0 ? "+" : ""}${fmt(Math.round(c.saldo))} · abstention ${pct(c.taxaAbst, 1)} · Lula ${pct(c.sL, 1)} × ${pct(c.sA, 1)} · ${NOME_FAIXA(c.faixa)}`) : null;
   }, [porCd]);
   const vazio = useMemo<PorLocal>(() => ({ votos: new Float64Array(base.locais.length), validos: new Float64Array(base.locais.length), total: 0, totalValidos: 0 }), [base]);
   return (
@@ -164,10 +165,11 @@ function Mapa({ base, cidades }: { base: Base; cidades: Linha[] }) {
       <h2 className="display text-2xl">{L("Onde está o voto a buscar", "Where the votes are")}</h2>
       <LazyMap base={base} dados={vazio} municipio={null} modo="municipios" metrica="pct" corPorMunicipio={cor} infoExtra={info} rotuloSerie={L("votos", "votes")} altura="min(62vh, 620px)" />
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted" aria-label={L("Legenda", "Legend")}>
-        {[L("até a mediana", "up to median"), L("mediana–p75", "median–p75"), "p75–p90", "p90–p97", L("top 3%", "top 3%")].map((t, i) => (
+        {[L("saldo negativo alto (mobilizar ajuda o adversário)", "large negative (turnout helps the opponent)"), L("saldo negativo baixo", "small negative"),
+          L("empate / sem votos", "even / no votes"), L("saldo positivo baixo", "small positive"), L("saldo positivo alto (prioridade)", "large positive (priority)")].map((t, i) => (
           <span key={t} className="inline-flex items-center gap-1.5"><span className="h-3 w-4 rounded-sm" style={{ background: cssRgb(rampa[i]) }} />{t}</span>
         ))}
-        <span>{L("Sem cor: adversário à frente (saldo negativo).", "No colour: opponent ahead (negative potential).")}</span>
+        <span>{L("Alto/baixo: acima ou abaixo da mediana das cidades do mesmo sinal.", "Large/small: above or below the median of cities with the same sign.")}</span>
       </div>
     </section>
   );
