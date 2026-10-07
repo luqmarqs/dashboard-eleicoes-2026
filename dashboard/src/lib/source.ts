@@ -15,7 +15,18 @@ export interface DadosRegra {
   totais: TotaisCols;
 }
 
+export interface Historico {
+  resumo: { candidatura_id: number; ano: number; cd_cargo: number; numero: number; votos_total: number }[];
+  nivel: string[];
+  mun: string[];
+  chave: string[];
+  votos: number[];
+  validos: number[];
+  ano: number[];
+}
+
 export interface DataSource {
+  historico(id: number): Promise<Historico>;
   versao(): Promise<string>;
   dadosRegra(partido: string, cargo: number, cdMunicipio: string | null, limite: number): Promise<DadosRegra>;
   locais(): Promise<LocaisCols>;
@@ -95,7 +106,16 @@ function devPaineis(): Painel[] {
   }
 }
 
+const HIST_VAZIO: Historico = { resumo: [], nivel: [], mun: [], chave: [], votos: [], validos: [], ano: [] };
+
 const dev: DataSource = {
+  async historico(id) {
+    try {
+      return await getJson<Historico>(`${devBase()}/historico/${id}.json`);
+    } catch {
+      return HIST_VAZIO;
+    }
+  },
   versao: async () => "dev",
   async dadosRegra(partido, cargo, cd, limite) {
     const top = await dev.topCandidaturas(partido, cargo, cd, limite);
@@ -170,6 +190,7 @@ const dev: DataSource = {
 };
 
 const remote: DataSource = {
+  historico: (id) => rpc("historico_json", { p_candidatura_id: id }),
   async versao() {
     const { data, error } = await supabase().from("meta").select("valor").eq("chave", "versao_dados").maybeSingle();
     if (error) rpcError("versão dos dados", error);

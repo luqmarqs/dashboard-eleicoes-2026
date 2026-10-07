@@ -35,7 +35,7 @@ TABLES = {  # tabela -> chave do upsert
     "locais": "id",
     "candidaturas": "id",
 }
-INT_COLS = {"id", "cd_ibge", "nr_zona", "nr_local", "qt_secoes", "cd_eleicao", "cd_cargo", "numero",
+INT_COLS = {"ano", "id", "cd_ibge", "nr_zona", "nr_local", "qt_secoes", "cd_eleicao", "cd_cargo", "numero",
             "nr_partido", "sq_candidato", "votos_total", "local_id", "candidatura_id", "aptos",
             "comparecimento", "validos", "brancos", "nulos"}
 FLOAT_COLS = {"lat", "lon"}
@@ -197,15 +197,34 @@ def load_direct(uf: str, src: Path) -> None:
     print(f"ok em {time.time() - t0:.0f}s")
 
 
+def load_historico(src: Path) -> None:
+    """Histórico (ex.: 2022) das candidaturas: substitui o das candidaturas presentes nos arquivos."""
+    t0 = time.time()
+    h_header, h_rows = rows_of(src / "historico.csv")
+    ids = sorted({r[0] for r in h_rows})
+    run_cli_sql(f"DELETE FROM public.historico_votos WHERE candidatura_id IN ({','.join(ids)}); "
+                f"DELETE FROM public.historico_candidatura WHERE candidatura_id IN ({','.join(ids)});", "limpeza do histórico")
+    run_cli_sql(upsert_sql("historico_candidatura", None, h_header, h_rows), "historico_candidatura")
+    header, rows = rows_of(src / "historico_comparativo.csv")
+    for i, lote in enumerate(lotes(rows)):
+        run_cli_sql(upsert_sql("historico_votos", None, header, lote), f"historico_votos lote {i}")
+    run_cli_sql(VERSAO_SQL, "versão dos dados")
+    print(f"histórico: {len(h_rows)} candidaturas, {len(rows):,} linhas ({time.time() - t0:.0f}s)")
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--uf", required=True)
     p.add_argument("--via-cli", action="store_true", help="carrega pelo Supabase CLI logado (sem senha)")
     p.add_argument("--only", help="modo --via-cli: atualiza só estas tabelas pequenas (ex.: candidaturas)")
+    p.add_argument("--historico", action="store_true",
+                   help="carrega só o histórico (historico.csv / historico_comparativo.csv) pelo Supabase CLI")
     a = p.parse_args(argv)
     uf = a.uf.upper()
     src = get_settings().data_dir / "dashboard" / uf.lower()
-    if a.via_cli:
+    if a.historico:
+        load_historico(src)
+    elif a.via_cli:
         load_via_cli(uf, src, a.only.split(",") if a.only else None)
     else:
         load_direct(uf, src)

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Historico } from "../components/Historico";
 import { LazyMap } from "../components/LazyMap";
 import type { Metrica, Modo } from "../components/mapTypes";
 import { Rankings, TopLista } from "../components/Rankings";
@@ -99,6 +100,8 @@ export function CandidatePanel() {
             onClick={(l) => { if (!municipio) set("mun", l.key); }} />
         </aside>
       </div>
+
+      {dados && <Historico base={b} cand={cand} dados={dados} municipio={municipio} />}
 
       {dados && <Rankings base={b} dados={dados} municipio={municipio}
         nomeArquivo={`${cand.numero}_${(cand.nome ?? "").replace(/\W+/g, "_")}${municipio ? `_${municipio}` : ""}`} />}
