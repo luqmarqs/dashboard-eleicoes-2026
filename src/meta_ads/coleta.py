@@ -259,7 +259,7 @@ def periodo_incremental(banco: Banco, dias_reconsulta: int = 14) -> str:
     """Início da janela incremental: última coleta completa menos `dias_reconsulta` (reconsulta anúncios recentes,
     cujas faixas acumuladas ainda mudam). Sem coleta completa anterior, volta ao início da campanha."""
     r = banco.con.execute(
-        "SELECT MAX(iniciada_em) FROM execucoes WHERE status = 'completa'").fetchone()[0]
+        "SELECT MAX(iniciada_em) FROM execucoes WHERE status = 'completa' AND modo <> 'mencoes'").fetchone()[0]
     if not r:
         return INICIO_CAMPANHA
     d = date.fromisoformat(r[:10]) - timedelta(days=dias_reconsulta)

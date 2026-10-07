@@ -27,6 +27,30 @@ export function Metodologia() {
         <li><b>Municípios</b>, <b>Hexágonos</b> e <b>Calor</b>: agregações dos locais para leitura em escala estadual.</li>
         <li>As cores usam quantis: cada faixa da legenda tem aproximadamente o mesmo número de áreas.</li>
       </ul>
+      <h2 className="display text-xl">Publicidade (Biblioteca de Anúncios da Meta)</h2>
+      <ul className="list-disc pl-5">
+        <li><b>Coleta</b>: API oficial <code>ads_archive</code> (Graph API v26.0), anúncios políticos veiculados desde 16/08/2026 pelas
+          páginas das candidaturas eleitas de SP, MG e RS (e da Manuela). Sem raspagem de tela.</li>
+        <li><b>Página ↔ candidatura</b>: confirmada quando o financiador declarado é o CNPJ de campanha ("ELEIÇÃO 2026 + nome completo
+          no TSE"). Casos de nome social ou financiador fora do padrão ficam como vínculo a revisar, sinalizados na página.</li>
+        <li><b>Segmentação ≠ entrega ≠ votação</b>: as cidades e bairros são os escolhidos pelo anunciante; a entrega informada pela
+          Meta só existe por estado; o cruzamento com votos é descritivo, não mede efeito dos anúncios.</li>
+        <li><b>Gasto e impressões</b> são faixas acumuladas por anúncio; somam-se os limites, sem ponto médio. Alcance não se soma.
+          O gasto de um anúncio com várias cidades nunca é dividido entre elas.</li>
+        <li><b>Dobradas pagas</b>: anúncio pago por uma campanha (financiador = CNPJ de campanha) que traz o nome e o número de urna de
+          outra candidatura. O gasto é de quem pagou.</li>
+        <li><b>Temas dos criativos</b>: classificação por termos, sem IA, em três eixos (políticas públicas, função eleitoral, como fala),
+          revisada sobre os 110 mil anúncios coletados. Unidade: criativo distinto (o mesmo texto chega a centenas de anúncios, um por
+          cidade). Rodapés legais (CNPJ, federação) são removidos antes; termos casam no começo de palavra. A verba por tema é dividida
+          entre os temas de política de cada anúncio.</li>
+      </ul>
+      <h2 className="display text-xl">Evolução digital (MG)</h2>
+      <ul className="list-disc pl-5">
+        <li>16 candidaturas a deputado estadual do monitoramento de setembro, ligadas ao TSE pelo número de urna, cargo e UF.</li>
+        <li>Seguidores observados em 01, 04, 06, 13 e 20/09 (histórico) e no snapshot atual pela Apify; só datas observadas, sem curva
+          diária inventada; plataformas separadas; seguidores não são eleitores nem votos.</li>
+        <li>Postagens do Instagram desde 16/08: curtidas e comentários acumulados até a coleta; sem taxa de engajamento.</li>
+      </ul>
       <h2 className="display text-xl">Fontes</h2>
       <p className="text-sm text-muted">
         TSE (Boletins de Urna, resultados oficiais e cadastro de locais de votação) · IBGE (malhas municipais) ·

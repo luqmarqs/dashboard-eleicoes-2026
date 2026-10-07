@@ -74,6 +74,35 @@ export interface MetaResumo {
   }[];
 }
 
+/** Resposta compacta de meta_anuncios_compacto: dicionários de localidades e textos + colunas por anúncio. */
+interface MetaCompacto {
+  locs: [string, string | null, string | null, string | null, number | null, string | null, string | null, string | null, string, string][];
+  textos: [string[] | null, string[] | null][];
+  id: string[]; page_id: string[]; page_name: (string | null)[]; bylines: (string | null)[]; criado: (string | null)[];
+  inicio: (string | null)[]; fim: (string | null)[]; texto: number[]; plataformas: (string[] | null)[]; moeda: (string | null)[];
+  gmin: (number | null)[]; gmax: (number | null)[]; imin: (number | null)[]; imax: (number | null)[]; alcance: (number | null)[];
+  pmin: (number | null)[]; pmax: (number | null)[]; idades: (string[] | null)[]; genero: (string | null)[];
+  primeira: string[]; ultima: string[]; loc: number[][]; entrega: [string, number | null][][];
+}
+
+function expandirCompacto(c: MetaCompacto): MetaAnuncio[] {
+  return c.id.map((id, i) => {
+    const [textos, titulos] = c.textos[c.texto[i]] ?? [null, null];
+    return {
+      id, page_id: c.page_id[i], page_name: c.page_name[i], bylines: c.bylines[i], criado: c.criado[i], inicio: c.inicio[i],
+      fim: c.fim[i], textos, titulos, plataformas: c.plataformas[i], moeda: c.moeda[i], gasto: [c.gmin[i], c.gmax[i]],
+      impressoes: [c.imin[i], c.imax[i]], alcance: c.alcance[i], publico: [c.pmin[i], c.pmax[i]], idades: c.idades[i],
+      genero: c.genero[i], link: `https://www.facebook.com/ads/library/?id=${id}`, primeira_coleta: c.primeira[i],
+      ultima_coleta: c.ultima[i],
+      loc: (c.loc[i] ?? []).map((k) => {
+        const L = c.locs[Math.abs(k) - 1];
+        return [L[0], L[1], k < 0, L[2], L[3], L[4], L[5], L[6], L[7], L[8], L[9]] as MetaAnuncio["loc"][number];
+      }),
+      entrega: c.entrega[i] ?? [],
+    };
+  });
+}
+
 /** Menção de dobrada: 'recebe' = outra campanha (outra) cita esta; 'faz' = esta cita outra (outra). */
 export interface MetaMencao {
   papel: "recebe" | "faz";
@@ -310,8 +339,8 @@ const dev: DataSource = {
 const remote: DataSource = {
   historico: (id) => rpc("historico_json", { p_candidatura_id: id }),
   metaResumo: () => rpc("meta_resumo_json", { p_uf: getUf() }),
-  metaAnuncios: (id) => rpc("meta_anuncios_json", { p_candidatura_id: id }),
-  metaDobradas: (id) => rpc("meta_dobradas_json", { p_candidatura_id: id }),
+  metaAnuncios: async (id) => expandirCompacto(await rpc<MetaCompacto>("meta_anuncios_cache", { p_candidatura_id: id })),
+  metaDobradas: (id) => rpc("meta_dobradas_cache", { p_candidatura_id: id }),
   digital: () => rpc("digital_json", { p_uf: getUf() }),
   async versao() {
     const { data, error } = await supabase().from("meta").select("valor").eq("chave", "versao_dados").maybeSingle();

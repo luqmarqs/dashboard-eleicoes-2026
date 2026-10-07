@@ -1,8 +1,11 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
+import { get as idbGet, set as idbSet } from "idb-keyval";
 import { useCallback, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DataTable } from "../components/DataTable";
+import { TemasCriativos } from "../components/TemasCriativos";
+import { EIXOS, normalizarTexto, temasDoTexto } from "../lib/temas";
 import { LazyMap } from "../components/LazyMap";
 import { ErrorBox, Loading, Segmented, SituacaoBadge, Stat, nomeCand } from "../components/ui";
 import { BIVAR, classe, cssRgb, prefersDark, quantis, ramp, type RGB } from "../lib/colors";
@@ -24,10 +27,23 @@ function useMetaResumo() {
   return useQuery({ queryKey: ["meta-resumo", uf], queryFn: () => source.metaResumo(), staleTime: 5 * 60_000 });
 }
 
-function useMetaAnuncios(id: number | undefined) {
+/** Anúncios de uma candidatura; guardados no IndexedDB até haver coleta nova (versão = última coleta da candidatura). */
+function useMetaAnuncios(id: number | undefined, versao: string | null | undefined) {
   const { uf } = useUf();
-  return useQuery({ queryKey: ["meta-anuncios", uf, id], queryFn: () => source.metaAnuncios(id!), enabled: id != null,
-    staleTime: 5 * 60_000 });
+  return useQuery({
+    queryKey: ["meta-anuncios", uf, id, versao],
+    queryFn: async () => {
+      const chave = `meta-${uf}-${id}-${versao ?? "x"}`;
+      try {
+        const c = await idbGet<MetaAnuncio[]>(chave);
+        if (c) return c;
+      } catch { /* sem IndexedDB */ }
+      const ads = await source.metaAnuncios(id!);
+      try { await idbSet(chave, ads); } catch { /* ignora */ }
+      return ads;
+    },
+    enabled: id != null, staleTime: Infinity, gcTime: 30 * 60_000,
+  });
 }
 
 function FaixaTxt({ f, prefixo = "" }: { f: Map<string, Faixa>; prefixo?: string }) {
@@ -165,7 +181,7 @@ type Fonte = "proprios" | "recebe" | "faz";
 
 function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatura; item: MetaResumo["candidaturas"][number] }) {
   const { info } = useUf();
-  const ads = useMetaAnuncios(cand.id);
+  const ads = useMetaAnuncios(cand.id, item.ultima_coleta);
   const { uf } = useUf();
   const dob = useQuery({ queryKey: ["meta-dobradas", uf, cand.id], queryFn: () => source.metaDobradas(cand.id), staleTime: 5 * 60_000 });
   const [fonteSel, setFonte] = useState<Fonte | null>(null);
@@ -178,6 +194,7 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
   const [plataforma, setPlataforma] = useState("todas");
   const [modo, setModo] = useState<ModoMapa>("segmentacao");
   const [mostrar, setMostrar] = useState(20);
+  const [tema, setTema] = useState<string | null>(null);
   const municipio = sp.get("mun");
   const setMunicipio = (cd: string | null) => {
     const n = new URLSearchParams(sp);
@@ -207,8 +224,15 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
     return out;
   }, [fonte, proprios, mencoesFonte, parceira]);
   const plataformas = useMemo(() => [...new Set(todas.flatMap((a) => a.plataformas ?? []))].sort(), [todas]);
-  const filtrados = useMemo(() => todas.filter((a) => circulou(a, de || null, ate || null)
+  const temasAd = useMemo(() => new Map(todas.map((a) => [a.id, temasDoTexto(normalizarTexto(a))])), [todas]);
+  const filtradosBase = useMemo(() => todas.filter((a) => circulou(a, de || null, ate || null)
     && (plataforma === "todas" || (a.plataformas ?? []).includes(plataforma))), [todas, de, ate, plataforma]);
+  const filtrados = useMemo(() => (tema ? filtradosBase.filter((a) => temasAd.get(a.id)?.has(tema)) : filtradosBase),
+    [filtradosBase, tema, temasAd]);
+  // o card de temas mostra o recorte sem o próprio filtro de tema (as parcelas não mudam ao clicar)
+  const paraTemas = useMemo(() => (municipio
+    ? filtradosBase.filter((a) => a.loc.some((l) => l[LOC.cd] === municipio && l[LOC.status] === "validada"))
+    : filtradosBase), [filtradosBase, municipio]);
   const mun = useMemo(() => porMunicipio(filtrados), [filtrados]);
   const lista = useMemo(() => (municipio
     ? filtrados.filter((a) => a.loc.some((l) => l[LOC.cd] === municipio && l[LOC.status] === "validada"))
@@ -334,6 +358,8 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
         </p>
       )}
 
+      <TemasCriativos ads={paraTemas} tema={tema} onTema={setTema} />
+
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-2">
           <Segmented label="O que o mapa mostra" value={modo} onChange={setModo} options={[
@@ -369,7 +395,7 @@ function AnunciosCandidatura({ base, cand, item }: { base: Base; cand: Candidatu
       <Efetividade base={base} mun={mun} votosMun={votosMun} ads={filtrados} cand={cand} onMunicipio={setMunicipio} />
 
       <section aria-label="Lista de anúncios" className="flex flex-col gap-3">
-        <h3 className="display text-xl">Anúncios{municipio ? ` que incluem ${munNome}` : ""}</h3>
+        <h3 className="display text-xl">Anúncios{municipio ? ` que incluem ${munNome}` : ""}{tema ? ` · tema: ${EIXOS.flatMap((e) => e.temas).find((t) => t.id === tema)?.rotulo}` : ""}</h3>
         {lista.slice(0, mostrar).map((a) => <CardAnuncio key={a.id} a={a} mencoes={mencaoPorAd.get(a.id)} base={base} />)}
         {lista.length > mostrar && (
           <button type="button" onClick={() => setMostrar((m) => m + 20)}

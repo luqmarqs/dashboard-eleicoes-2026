@@ -187,9 +187,10 @@ def cmd_verificar(a: argparse.Namespace) -> int:
 def cmd_exportar(a: argparse.Namespace) -> int:
     from .exportar import exportar_dev, carregar_supabase
     b = banco()
-    exportar_dev(b, ROOT)
-    if a.supabase:
-        carregar_supabase(b, ROOT)
+    if not a.sem_dev:
+        exportar_dev(b, ROOT)
+    if a.supabase or a.retomar:
+        carregar_supabase(b, ROOT, retomar=a.retomar)
     return 0
 
 
@@ -209,6 +210,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("verificar")
     e = sub.add_parser("exportar")
     e.add_argument("--supabase", action="store_true")
+    e.add_argument("--retomar", action="store_true", help="retoma uma carga interrompida (só acrescenta o que falta)")
+    e.add_argument("--sem-dev", action="store_true", help="não regenera o dev-data")
     a = p.parse_args(argv)
     return {"descobrir": cmd_descobrir, "vincular": cmd_vincular, "coletar": cmd_coletar, "status": cmd_status,
             "exportar": cmd_exportar, "mencoes": cmd_mencoes, "dobradas": cmd_dobradas,

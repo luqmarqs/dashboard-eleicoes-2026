@@ -99,7 +99,8 @@ def hash_anuncio(ad: dict[str, Any]) -> str:
 class Banco:
     def __init__(self, caminho: Path, ibge: CadastroIbge | None = None):
         caminho.parent.mkdir(parents=True, exist_ok=True)
-        self.con = sqlite3.connect(caminho, check_same_thread=False)  # escrita serializada pela coleta
+        self.con = sqlite3.connect(caminho, check_same_thread=False, timeout=120)  # escrita serializada pela coleta
+        self.con.execute("PRAGMA journal_mode=WAL")  # leitura (análises, exportação) não bloqueia a coleta
         self.con.row_factory = sqlite3.Row
         self.con.executescript(SCHEMA)
         self.ibge = ibge

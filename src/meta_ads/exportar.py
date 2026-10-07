@@ -82,7 +82,8 @@ def anuncios_de(b: Banco, candidatura_id: int, ibge_tse: dict[int, str]) -> list
 
 
 def resumo_de(b: Banco, uf: str) -> dict[str, Any]:
-    ex = b.con.execute("SELECT * FROM execucoes ORDER BY iniciada_em DESC LIMIT 1").fetchone()
+    # cobertura = última coleta das páginas (a busca de menções é outra coisa)
+    ex = b.con.execute("SELECT * FROM execucoes WHERE modo <> 'mencoes' ORDER BY iniciada_em DESC LIMIT 1").fetchone()
     ult = b.con.execute("SELECT MAX(iniciada_em) FROM execucoes WHERE status = 'completa'").fetchone()[0]
     cands = []
     for (cid,) in b.con.execute("SELECT DISTINCT candidatura_id FROM vinculos WHERE uf = ? AND status_revisao <> 'rejeitado'", (uf,)):
@@ -152,11 +153,21 @@ def _rodar_sql(root: Path, sql: str, rotulo: str) -> None:
 
 
 def _inserir(root: Path, tabela: str, cols: list[str], linhas: list[list[Any]], conflito: str | None,
-             atualizar: bool = True, max_bytes: int = 1_500_000) -> None:
-    lote: list[str] = []
-    tam = 0
+             atualizar: bool = True, max_bytes: int = 1_500_000, paralelo: int = 6) -> None:
+    """Insere em lotes de SQL pelo CLI, vários lotes em paralelo (cada chamada do CLI leva segundos de ida e volta)."""
+    from concurrent.futures import ThreadPoolExecutor
 
-    def enviar() -> None:
+    lotes: list[list[str]] = [[]]
+    tam = 0
+    for r in linhas:
+        s = "(" + ", ".join(lit(v) for v in r) + ")"
+        if tam + len(s) > max_bytes and lotes[-1]:
+            lotes.append([])
+            tam = 0
+        lotes[-1].append(s)
+        tam += len(s)
+
+    def enviar(lote: list[str]) -> None:
         if not lote:
             return
         sql = f"INSERT INTO public.{tabela} ({', '.join(cols)}) VALUES\n" + ",\n".join(lote)
@@ -165,65 +176,75 @@ def _inserir(root: Path, tabela: str, cols: list[str], linhas: list[list[Any]], 
             sql += f"\nON CONFLICT ({conflito}) " + (f"DO UPDATE SET {sets}" if atualizar and sets else "DO NOTHING")
         _rodar_sql(root, sql + ";", tabela)
 
-    for r in linhas:
-        s = "(" + ", ".join(lit(v) for v in r) + ")"
-        if tam + len(s) > max_bytes:
-            enviar()
-            lote, tam = [], 0
-        lote.append(s)
-        tam += len(s)
-    enviar()
-    print(f"  {tabela}: {len(linhas):,} linhas")
+    with ThreadPoolExecutor(max_workers=paralelo) as ex:
+        list(ex.map(enviar, lotes))
+    print(f"  {tabela}: {len(linhas):,} linhas ({len(lotes)} lotes)", flush=True)
 
 
-def carregar_supabase(b: Banco, root: Path) -> None:
+def carregar_supabase(b: Banco, root: Path, retomar: bool = False) -> None:
+    """Carga completa (substitui vínculos, segmentação, entrega e menções) ou retomada (retomar=True: não apaga nada,
+    pula vínculos e anúncios e só acrescenta o que falta, com ON CONFLICT DO NOTHING)."""
     ibge_tse = _mapa_ibge_tse(root)
     q = lambda sql, *p: [list(r) for r in b.con.execute(sql, p)]
-    print("carga no Supabase:")
-    _rodar_sql(root, "DELETE FROM public.meta_vinculos;", "limpeza de vínculos")
-    _inserir(root, "meta_vinculos", ["page_id", "candidatura_id", "uf", "page_name", "natureza", "evidencia",
-                                     "status_revisao", "coletar"],
-             [[r[0], r[1], r[2], r[3], r[4], r[5], r[6], bool(r[7])] for r in
-              q("SELECT page_id, candidatura_id, uf, page_name, natureza, evidencia, status_revisao, coletar FROM vinculos")],
-             "page_id, candidatura_id")
-    cols = ["ad_id", "page_id", "page_name", "bylines", "criado_em", "inicio_veiculacao", "fim_veiculacao", "textos",
-            "titulos_link", "descricoes_link", "legendas_link", "plataformas", "idiomas", "moeda", "gasto_min", "gasto_max",
-            "impressoes_min", "impressoes_max", "alcance_br", "publico_estimado_min", "publico_estimado_max", "idades_alvo",
-            "genero_alvo", "link_biblioteca", "primeira_coleta", "ultima_coleta", "ultima_execucao"]
-    jcols = {"textos", "titulos_link", "descricoes_link", "legendas_link", "plataformas", "idiomas", "idades_alvo"}
-    linhas = []
-    for r in b.con.execute(f"SELECT {', '.join(cols)} FROM anuncios"):
-        linhas.append([_jl(r[c]) if c in jcols else r[c] for c in cols])
-    _inserir(root, "meta_anuncios", cols, linhas, "ad_id")
-    ids = [r[0] for r in linhas]
-    # segmentação e entrega refletem o estado mais recente: substitui por anúncio
-    for i in range(0, len(ids), 2000):
-        bloco = ", ".join(lit(x) for x in ids[i:i + 2000])
-        _rodar_sql(root, f"DELETE FROM public.meta_localidades WHERE ad_id IN ({bloco}); "
-                         f"DELETE FROM public.meta_entrega_regional WHERE ad_id IN ({bloco});", "limpeza de localidades")
+    print("carga no Supabase:" + (" (retomada)" if retomar else ""), flush=True)
+    if not retomar:
+        _rodar_sql(root, "DELETE FROM public.meta_vinculos;", "limpeza de vínculos")
+        _inserir(root, "meta_vinculos", ["page_id", "candidatura_id", "uf", "page_name", "natureza", "evidencia",
+                                         "status_revisao", "coletar"],
+                 [[r[0], r[1], r[2], r[3], r[4], r[5], r[6], bool(r[7])] for r in
+                  q("SELECT page_id, candidatura_id, uf, page_name, natureza, evidencia, status_revisao, coletar FROM vinculos")],
+                 "page_id, candidatura_id")
+        cols = ["ad_id", "page_id", "page_name", "bylines", "criado_em", "inicio_veiculacao", "fim_veiculacao", "textos",
+                "titulos_link", "descricoes_link", "legendas_link", "plataformas", "idiomas", "moeda", "gasto_min", "gasto_max",
+                "impressoes_min", "impressoes_max", "alcance_br", "publico_estimado_min", "publico_estimado_max", "idades_alvo",
+                "genero_alvo", "link_biblioteca", "primeira_coleta", "ultima_coleta", "ultima_execucao"]
+        jcols = {"textos", "titulos_link", "descricoes_link", "legendas_link", "plataformas", "idiomas", "idades_alvo"}
+        linhas = [[_jl(r[c]) if c in jcols else r[c] for c in cols] for r in b.con.execute(f"SELECT {', '.join(cols)} FROM anuncios")]
+        _inserir(root, "meta_anuncios", cols, linhas, "ad_id")
+        # segmentação e entrega refletem o estado mais recente: substitui por anúncio
+        ids = [r[0] for r in linhas]
+        blocos = [", ".join(lit(x) for x in ids[i:i + 2000]) for i in range(0, len(ids), 2000)]
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            list(ex.map(lambda bl: _rodar_sql(root, f"DELETE FROM public.meta_localidades WHERE ad_id IN ({bl}); "
+                                                    f"DELETE FROM public.meta_entrega_regional WHERE ad_id IN ({bl});",
+                                              "limpeza de localidades"), blocos))
     _inserir(root, "meta_localidades",
              ["ad_id", "ordem", "nome_original", "tipo", "excluida", "num_obfuscated", "nivel", "uf", "municipio_nome",
               "cd_ibge", "cd_municipio", "bairro_nome", "cep_prefixo", "status", "metodo"],
              [[r[0], r[1], r[2], r[3], bool(r[4]), r[5], r[6], r[7], r[8], r[9], ibge_tse.get(r[9]) if r[9] else None,
                r[10], r[11], r[12], r[13]] for r in
               q("""SELECT ad_id, ordem, nome_original, tipo, excluida, num_obfuscated, nivel, uf, municipio_nome, cd_ibge,
-                          bairro_nome, cep_prefixo, status, metodo FROM localidades""")], None)
+                          bairro_nome, cep_prefixo, status, metodo FROM localidades""")],
+             "ad_id, ordem", atualizar=False)
     _inserir(root, "meta_entrega_regional", ["ad_id", "regiao", "uf", "proporcao"],
-             q("SELECT ad_id, regiao, uf, proporcao FROM entrega_regional"), None)
+             q("SELECT ad_id, regiao, uf, proporcao FROM entrega_regional"), "ad_id, regiao", atualizar=False)
     _inserir(root, "meta_observacoes", ["ad_id", "coletado_em", "execucao_id", "versao_api", "hash", "gasto_min",
                                         "gasto_max", "impressoes_min", "impressoes_max", "alcance_br", "bruto"],
-             [r[:10] + [json.loads(gzip.decompress(r[10]))] for r in
+             # resposta bruta saneada fica no SQLite local (gzip); no Supabase vai a referência + hash
+             [r[:10] + [{"armazenamento": "data/meta_ads/meta_ads.sqlite#observacoes", "execucao_id": r[2], "sha256": r[4]}] for r in
               q("""SELECT ad_id, coletado_em, execucao_id, versao_api, hash, gasto_min, gasto_max, impressoes_min,
-                          impressoes_max, alcance_br, bruto_gz FROM observacoes""")],
+                          impressoes_max, alcance_br FROM observacoes""")],
              "ad_id, execucao_id", atualizar=False)
     if b.con.execute("SELECT name FROM sqlite_master WHERE name='mencoes'").fetchone():
-        _rodar_sql(root, "DELETE FROM public.meta_mencoes;", "limpeza de menções")
+        if not retomar:
+            _rodar_sql(root, "DELETE FROM public.meta_mencoes;", "limpeza de menções")
         _inserir(root, "meta_mencoes", ["ad_id", "candidatura_id", "pagador_candidatura_id", "cita_nome", "cita_numero",
                                         "cnpjs_texto", "cnpj_financiador", "confirmada"],
-                 [[r[0], r[1], r[2], bool(r[3]), bool(r[4]), r[5], r[6], bool(r[7])] for r in q("SELECT * FROM mencoes")], None)
+                 [[r[0], r[1], r[2], bool(r[3]), bool(r[4]), r[5], r[6], bool(r[7])] for r in q("SELECT * FROM mencoes")],
+                 "ad_id, candidatura_id", atualizar=False)
     _inserir(root, "meta_execucoes", ["id", "modo", "iniciada_em", "terminada_em", "status", "versao_api", "periodo_min",
                                       "periodo_max", "paginas_alvo", "paginas_concluidas", "paginas_com_falha",
                                       "anuncios_vistos", "anuncios_novos", "observacoes_novas", "erros"],
              [r[:14] + [_jl(r[14])] for r in q("""SELECT id, modo, iniciada_em, terminada_em, status, versao_api, periodo_min,
                 periodo_max, paginas_alvo, paginas_concluidas, paginas_com_falha, anuncios_vistos, anuncios_novos,
                 observacoes_novas, erros FROM execucoes""")], "id")
+    atualizar_cache(root, [r[0] for r in b.con.execute("SELECT DISTINCT uf FROM vinculos")])
+
+
+def atualizar_cache(root: Path, ufs: list[str]) -> None:
+    """Pré-calcula no banco as respostas do painel (meta_cache), uma UF por vez e em paralelo."""
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        list(ex.map(lambda uf: _rodar_sql(root, f"select public.meta_atualizar_cache('{uf}');", f"cache {uf}"), ufs))
+    print(f"  cache do painel atualizado: {', '.join(ufs)}", flush=True)

@@ -56,7 +56,7 @@ create table if not exists public.meta_observacoes (
   versao_api     text not null,
   hash           text not null,
   gasto_min      numeric, gasto_max numeric, impressoes_min numeric, impressoes_max numeric, alcance_br integer,
-  bruto          jsonb not null,       -- resposta saneada (sem token e sem ad_snapshot_url)
+  bruto          jsonb not null,       -- referência à resposta saneada (SQLite local, gzip) + hash; não a resposta inteira
   primary key (ad_id, execucao_id)    -- uma observação por anúncio e execução, só quando o anúncio mudou
 );
 

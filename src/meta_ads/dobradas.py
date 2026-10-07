@@ -84,7 +84,7 @@ def cita_numero(texto_norm: str, numero: int) -> bool:
     return False
 
 
-@dataclass
+@dataclass(frozen=True)
 class Cand:
     id: int
     uf: str
@@ -181,11 +181,13 @@ def analisar(banco: Banco, cands: list[Cand], alvos_extra: dict[int, list[str]] 
                     if not cita_numero(t, c.numero):
                         continue
                     vistos.add(c.id)
+                    if pag and pag.id == c.id:  # a campanha citando a si mesma não é dobrada
+                        continue
                     confirmada = int(bool(pag) and pag.id != c.id)
                     linhas.append((r["ad_id"], c.id, pag.id if pag else None, 1, 1, cnpj_txt, cnpj_fin, confirmada))
         # menções só por nome (sem número), para as candidaturas com busca dedicada
         for cid in alvos_extra:
-            if cid in vistos:
+            if cid in vistos or (pag and pag.id == cid):
                 continue
             if any(tem_nome(t, v) for v in variantes.get(cid, [])):
                 linhas.append((r["ad_id"], cid, pag.id if pag else None, 1, 0, cnpj_txt, cnpj_fin, 0))
