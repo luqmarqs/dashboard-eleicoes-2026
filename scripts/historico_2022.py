@@ -34,7 +34,8 @@ from tse2026.config import get_settings
 
 # candidatura 2026 (cargo, número) -> candidatura 2022 (cargo, número)
 HISTORICO = {
-    "SP": {(7, 50000): (7, 50000), (6, 5005): (7, 50005), (6, 6565): (6, 6565)},  # Bancada Feminista; Guilherme Cortez (estadual em 2022); Orlando Silva (PCdoB, federal nos dois anos)
+    # Bancada Feminista; Guilherme Cortez (estadual em 2022); Orlando Silva e Leci Brandão (PCdoB, mesmo cargo e número nos dois anos)
+    "SP": {(7, 50000): (7, 50000), (6, 5005): (7, 50005), (6, 6565): (6, 6565), (7, 65035): (7, 65035)},
     "MG": {(7, 50099): (6, 5000), (6, 5050): (6, 1212)},     # Iza Lourença (federal em 2022); Duda Salabert (PDT em 2022)
     "RS": {(7, 50123): (7, 50123)},                          # Matheus Gomes (Manuela não concorreu em 2022)
 }

@@ -28,7 +28,12 @@ DB = DATA / "meta_ads.sqlite"
 DESCOBERTA = DATA / "descoberta.csv"
 REVISAO = ROOT / "config" / "meta_paginas_revisao.csv"
 UFS = ["SP", "MG", "RS"]
-EXTRAS = [("RS", 5, 500)]  # Manuela (Senado/RS): não eleita, incluída a pedido
+# Candidaturas não eleitas incluídas por escolha deliberada da equipe (fora da regra "só eleitas"); o painel explicita isso
+EXTRAS = [
+    ("RS", 5, 500),     # Manuela D'Ávila (Senado/RS)
+    ("SP", 6, 6565),    # Orlando Silva (dep. federal/SP, PCdoB, suplente)
+    ("SP", 7, 65035),   # Leci Brandão (dep. estadual/SP, PCdoB, suplente)
+]
 
 
 def banco() -> Banco:
@@ -94,6 +99,8 @@ def cmd_coletar(a: argparse.Namespace) -> int:
     b = banco()
     cli = Cliente(carregar_token())
     paginas = b.paginas_para_coletar()
+    if a.paginas:  # só estas páginas (ex.: páginas novas, com --completa, sem refazer as demais)
+        paginas = [p for p in paginas if p in set(a.paginas)]
     if a.retomar:
         eid = a.retomar
         pmin = b.con.execute("SELECT periodo_min FROM execucoes WHERE id=?", (eid,)).fetchone()[0]
@@ -204,6 +211,7 @@ def main(argv: list[str] | None = None) -> int:
     c = sub.add_parser("coletar")
     c.add_argument("--completa", action="store_true")
     c.add_argument("--retomar")
+    c.add_argument("--paginas", nargs="+", help="coleta só estas page_ids (use com --completa para páginas novas)")
     sub.add_parser("status")
     sub.add_parser("mencoes")
     sub.add_parser("dobradas")

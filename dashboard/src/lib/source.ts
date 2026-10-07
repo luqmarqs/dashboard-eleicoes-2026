@@ -110,7 +110,9 @@ function expandirCompacto(c: MetaCompacto): MetaAnuncio[] {
 
 /** Menção de dobrada: 'recebe' = outra campanha (outra) cita esta; 'faz' = esta cita outra (outra). */
 export interface MetaMencao {
-  papel: "recebe" | "faz";
+  /** recebe = outras campanhas citam a candidatura; faz = páginas dela citam outras; paga = CNPJ dela financia anúncios
+   *  (em páginas que não são dela) citando outras — único rastro de quem não teve páginas coletadas */
+  papel: "recebe" | "faz" | "paga";
   outra: number | null;
   cita_nome: boolean;
   cita_numero: boolean;

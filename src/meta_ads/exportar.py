@@ -62,6 +62,11 @@ def dobradas_de(b: Banco, candidatura_id: int, ibge_tse: dict[int, str]) -> list
     linhas += [("faz", r) for r in b.con.execute(
         f"""SELECT m.*, m.candidatura_id AS outra FROM mencoes m JOIN anuncios a USING (ad_id)
             WHERE a.page_id IN ({ph}) AND m.candidatura_id <> ? AND m.cita_numero = 1""", (*proprias, candidatura_id))]
+    # 'paga': financiador = CNPJ desta candidatura, citando outras, em páginas que não são dela (rastro de quem não foi coletado)
+    linhas += [("paga", r) for r in b.con.execute(
+        f"""SELECT m.*, m.candidatura_id AS outra FROM mencoes m JOIN anuncios a USING (ad_id)
+            WHERE m.pagador_candidatura_id = ? AND m.candidatura_id <> ? AND m.cita_numero = 1 AND a.page_id NOT IN ({ph})""",
+        (candidatura_id, candidatura_id, *proprias))]
     out = []
     for papel, m in linhas:
         an = b.con.execute("SELECT * FROM anuncios WHERE ad_id = ?", (m["ad_id"],)).fetchone()
@@ -122,7 +127,14 @@ def exportar_dev(b: Banco, root: Path) -> None:
             (out / "dobradas").mkdir(exist_ok=True)
             (out / "dobradas" / f"{c['candidatura_id']}.json").write_text(
                 json.dumps(dobradas_de(b, c["candidatura_id"], ibge_tse), ensure_ascii=False), encoding="utf-8")
-        print(f"dev-data {uf}: {len(res['candidaturas'])} candidaturas")
+        # candidaturas da UF que só aparecem como pagadoras de menções (páginas não coletadas): só o arquivo de dobradas
+        coletadas = {c["candidatura_id"] for c in res["candidaturas"]}
+        ids_uf = set(json.loads((root / "dashboard" / "dev-data" / uf.lower() / "candidaturas.json").read_text(encoding="utf-8"))["id"])
+        pagadoras = [r[0] for r in b.con.execute(
+            "SELECT DISTINCT pagador_candidatura_id FROM mencoes WHERE pagador_candidatura_id IS NOT NULL") if r[0] in ids_uf and r[0] not in coletadas]
+        for cid in pagadoras:
+            (out / "dobradas" / f"{cid}.json").write_text(json.dumps(dobradas_de(b, cid, ibge_tse), ensure_ascii=False), encoding="utf-8")
+        print(f"dev-data {uf}: {len(res['candidaturas'])} candidaturas coletadas + {len(pagadoras)} só pagadoras")
 
 
 # ---------------------------------------------------------------------------------------------

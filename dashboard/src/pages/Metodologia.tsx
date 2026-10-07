@@ -33,7 +33,8 @@ export function Metodologia() {
       <h2 className="display text-xl">Publicidade (Biblioteca de Anúncios da Meta)</h2>
       <ul className="list-disc pl-5">
         <li><b>Coleta</b>: API oficial <code>ads_archive</code> (Graph API v26.0), anúncios políticos veiculados desde 16/08/2026 pelas
-          páginas das candidaturas eleitas de SP, MG e RS (e da Manuela). Sem raspagem de tela.</li>
+          páginas das candidaturas eleitas de SP, MG e RS e, por escolha deliberada da equipe, de três não eleitas: Manuela D'Ávila
+          (Senado/RS), Orlando Silva e Leci Brandão (PCdoB/SP). Sem raspagem de tela.</li>
         <li><b>Página ↔ candidatura</b>: confirmada quando o financiador declarado é o CNPJ de campanha ("ELEIÇÃO 2026 + nome completo
           no TSE"). Casos de nome social ou financiador fora do padrão ficam como vínculo a revisar, sinalizados na página.</li>
         <li><b>Segmentação ≠ entrega ≠ votação</b>: as cidades e bairros são os escolhidos pelo anunciante; a entrega informada pela
@@ -42,6 +43,9 @@ export function Metodologia() {
           O gasto de um anúncio com várias cidades nunca é dividido entre elas.</li>
         <li><b>Dobradas pagas</b>: anúncio pago por uma campanha (financiador = CNPJ de campanha) que traz o nome e o número de urna de
           outra candidatura. O gasto é de quem pagou. Só contam anúncios segmentados para o estado da candidatura citada (evita homônimos de outros estados, como a Bancada Feminista do PSOL do Piauí); menções só pelo nome, sem número, ficam como não confirmadas.</li>
+        <li><b>Cobertura</b>: só as páginas das candidaturas eleitas (e das três incluídas por escolha) foram coletadas. Para as demais, o painel não diz
+          "não gastou": diz que não foi coletada e mostra o único rastro disponível, os anúncios pagos pelo CNPJ de campanha dela que
+          citam candidaturas coletadas (ex.: Simão Pedro pagou anúncios citando Guilherme Cortez).</li>
         <li><b>Candidaturas sem tráfego próprio</b> (caso da Manuela D'Ávila): nenhuma página delas anunciou. O que aparece são
           anúncios de outras campanhas que escolheram usar o nome e o número da candidatura; o painel os chama de "anúncios de
           terceiros", o gasto é de quem pagou e nada disso é gasto da candidatura.</li>
@@ -138,7 +142,8 @@ function MetodologiaEn() {
       <h2 className="display text-xl">Paid ads (Meta Ad Library)</h2>
       <ul className="list-disc pl-5">
         <li><b>Collection</b>: the official <code>ads_archive</code> API (Graph API v26.0), political ads run since August 16, 2026 by the
-          pages of the elected candidacies in SP, MG and RS (and Manuela's). No screen scraping.</li>
+          pages of the elected candidacies in SP, MG and RS and, by the team's deliberate choice, of three non-elected ones: Manuela
+          D'Ávila (Senate/RS), Orlando Silva and Leci Brandão (PCdoB/SP). No screen scraping.</li>
         <li><b>Page ↔ candidacy</b>: confirmed when the declared funder is the campaign's CNPJ (tax ID) ("ELEIÇÃO 2026 + full name
           at the TSE"). Cases with a social name or a non-standard funder remain as links to be reviewed, flagged on the page.</li>
         <li><b>Targeting ≠ delivery ≠ votes</b>: cities and neighborhoods are those chosen by the advertiser; the delivery reported by
@@ -147,6 +152,9 @@ function MetodologiaEn() {
           added up. The spend of an ad targeting several cities is never split among them.</li>
         <li><b>Paid joint tickets</b>: an ad paid for by one campaign (funder = campaign CNPJ) that shows the name and ballot number of
           another candidacy. The spend belongs to whoever paid. Only ads targeting the mentioned candidacy's state count (this avoids namesakes from other states, such as the PSOL Feminist Caucus of Piauí); name-only mentions, without the ballot number, remain unconfirmed.</li>
+        <li><b>Coverage</b>: only the Pages of elected candidacies (and the three included by choice) were collected. For the others the panel does not say
+          "spent nothing": it says the candidacy was not collected and shows the only available trace, the ads paid for by its campaign
+          CNPJ that mention collected candidacies (e.g. Simão Pedro paid for ads mentioning Guilherme Cortez).</li>
         <li><b>Candidacies with no paid ads of their own</b> (Manuela D'Ávila's case): none of their pages advertised. What shows up are
           ads by other campaigns that chose to use the candidacy's name and ballot number; the dashboard calls them "third-party ads",
           the spend belongs to whoever paid, and none of it is the candidacy's spend.</li>

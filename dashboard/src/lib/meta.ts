@@ -158,6 +158,11 @@ export function custoPorMil(ads: MetaAnuncio[]): { min: number; max: number | nu
   return { min: (gmin / alc) * 1000, max: gmax == null ? null : (gmax / alc) * 1000, n };
 }
 
+/** Candidaturas não eleitas cujas páginas foram coletadas por escolha deliberada da equipe (UF -> "cargo:número"). */
+export const INCLUIDAS: Record<string, string[]> = { RS: ["5:500"], SP: ["6:6565", "7:65035"] };
+export const incluidaDeliberada = (uf: string, cargo: number, numero: number) => (INCLUIDAS[uf] ?? []).includes(`${cargo}:${numero}`);
+export const NOMES_INCLUIDAS = () => L("Manuela D'Ávila, Orlando Silva e Leci Brandão", "Manuela D'Ávila, Orlando Silva and Leci Brandão");
+
 /**
  * Custo estimado por voto: faixa de gasto ÷ votos nominais da candidatura no 1º turno. É uma régua de comparação, não
  * efeito dos anúncios (quem anuncia mais costuma já ser mais forte). Gasto aberto ("ou mais") mantém max = null.
