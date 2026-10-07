@@ -126,7 +126,7 @@ function Senado({ base, destaques }: { base: Base; destaques: Candidatura[] }) {
         </div>
       </div>
       <ol className="rounded-lg border border-line bg-panel">
-        {sen.map((c, i) => (
+        {sen.map((c, i) => (i >= 10 && !focos.includes(c) ? null : (
           <li key={c.id}>
             <Link to={`/c/${c.id}`}
               className={`grid grid-cols-[24px_minmax(0,1fr)_minmax(60px,180px)_auto_auto] items-center gap-3 border-b border-line px-3 py-1.5 last:border-0 hover:bg-accent-soft ${focos.includes(c) ? "bg-accent-soft" : ""}`}>
@@ -137,9 +137,9 @@ function Senado({ base, destaques }: { base: Base; destaques: Candidatura[] }) {
               <span className="num w-16 text-right text-sm text-muted">{validos ? ((100 * c.votos) / validos).toFixed(2).replace(".", ",") : "–"}%</span>
             </Link>
           </li>
-        ))}
+        )))}
       </ol>
-      <p className="text-xs text-muted">Cada eleitor votou em 2 nomes: as porcentagens dos válidos somam 200%. Clique numa candidatura para ver a análise do Senado do ponto de vista dela.</p>
+      <p className="text-xs text-muted">{sen.length > 10 ? `Os 10 mais votados de ${sen.length}. ` : ""}Cada eleitor votou em 2 nomes: as porcentagens dos válidos somam 200%. Clique numa candidatura para ver a análise do Senado do ponto de vista dela.</p>
     </section>
   );
 }
