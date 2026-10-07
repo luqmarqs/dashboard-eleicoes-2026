@@ -52,8 +52,6 @@ export function Rankings({ base, dados, municipio, nomeArquivo }: {
       { id: "pct", accessorKey: "pct", header: "% dos válidos", cell: (c) => pct(Number(c.getValue())), meta: { numeric: true } },
       { id: "validos", accessorKey: "validos", header: "Válidos (todos)", cell: (c) => fmt(Number(c.getValue())), meta: { numeric: true } },
     );
-    if (efetivo !== "local") cols.push({ id: "locais", accessorKey: "locais", header: "Locais", meta: { numeric: true } });
-    cols.push({ id: "secoes", accessorKey: "secoes", header: "Seções", meta: { numeric: true } });
     return cols;
   }, [efetivo, municipio, totalEscopo, rotuloTotal]);
 
@@ -69,8 +67,6 @@ export function Rankings({ base, dados, municipio, nomeArquivo }: {
     { header: rotuloTotal, value: (r) => (totalEscopo ? r.votos / totalEscopo : 0), type: "percent" },
     { header: "% dos válidos", value: (r) => r.pct, type: "percent" },
     { header: "Votos válidos (todos os candidatos)", value: (r) => r.validos, type: "number" },
-    { header: "Locais", value: (r) => r.locais, type: "number" },
-    { header: "Seções", value: (r) => r.secoes, type: "number" },
   ], [efetivo, totalEscopo, rotuloTotal]);
 
   return (
