@@ -194,10 +194,12 @@ def _inserir(root: Path, tabela: str, cols: list[str], linhas: list[list[Any]], 
     """Insere em lotes de SQL pelo CLI, vários lotes em paralelo (cada chamada do CLI leva segundos de ida e volta)."""
     from concurrent.futures import ThreadPoolExecutor
 
+    # cada lote vira UM literal JSON lido por json_populate_recordset: o pg_stat_statements guarda o texto normalizado
+    # (um só $1), em vez de milhares de VALUES distintos de 1,5 MB que incharam o arquivo de textos e o IO de disco
     lotes: list[list[str]] = [[]]
     tam = 0
     for r in linhas:
-        s = "(" + ", ".join(lit(v) for v in r) + ")"
+        s = json.dumps(dict(zip(cols, r)), ensure_ascii=False, default=str)
         if tam + len(s) > max_bytes and lotes[-1]:
             lotes.append([])
             tam = 0
@@ -207,7 +209,9 @@ def _inserir(root: Path, tabela: str, cols: list[str], linhas: list[list[Any]], 
     def enviar(lote: list[str]) -> None:
         if not lote:
             return
-        sql = f"INSERT INTO public.{tabela} ({', '.join(cols)}) VALUES\n" + ",\n".join(lote)
+        dados = ("[" + ",".join(lote) + "]").replace("'", "''")
+        sql = (f"INSERT INTO public.{tabela} ({', '.join(cols)})\n"
+               f"SELECT {', '.join(cols)} FROM json_populate_recordset(null::public.{tabela}, '{dados}'::json)")
         if conflito:
             sets = ", ".join(f"{c} = excluded.{c}" for c in cols if c not in conflito.split(", "))
             sql += f"\nON CONFLICT ({conflito}) " + (f"DO UPDATE SET {sets}" if atualizar and sets else "DO NOTHING")
@@ -318,12 +322,16 @@ def carregar_supabase(b: Banco, root: Path, retomar: bool = False) -> None:
     atualizar_cache(root, [r[0] for r in b.con.execute("SELECT DISTINCT uf FROM vinculos")])
 
 
-def atualizar_cache(root: Path, ufs: list[str]) -> None:
-    """Pré-calcula no banco as respostas do painel (meta_cache), uma UF por vez e em paralelo."""
-    from concurrent.futures import ThreadPoolExecutor
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        list(ex.map(lambda uf: _rodar_sql(root, f"select public.meta_atualizar_cache('{uf}');", f"cache {uf}"), ufs))
+def atualizar_cache(root: Path, ufs: list[str], apocalipse: bool = False) -> None:
+    """Pré-calcula no banco as respostas do painel (meta_cache). Incremental: meta_atualizar_cache só refaz candidaturas
+    com anúncio/menção novos desde o cache (migration 32). Uma UF por vez: em paralelo, três reconstruções disputavam
+    memória e derramavam para disco. O Apocalipse depende de votos e classificação, não de anúncios: só sob pedido."""
+    for uf in ufs:
+        _rodar_sql(root, f"select public.meta_atualizar_cache('{uf}');", f"cache {uf}")
     _rodar_sql(root, "select public.meta_atualizar_prioritarias();", "cache das prioritárias")
-    for uf in ufs:  # aba Apocalipse (votos por cidade e partido; ~10 s por UF)
-        _rodar_sql(root, f"select public.apocalipse_atualizar('{uf}');", f"apocalipse {uf}")
-    print(f"  cache do painel atualizado: {', '.join(ufs)} + prioritárias", flush=True)
+    if apocalipse:
+        for uf in ufs:  # votos por cidade e partido (~10 s por UF)
+            _rodar_sql(root, f"select public.apocalipse_atualizar('{uf}');", f"apocalipse {uf}")
+    # os lotes de carga viram entradas no pg_stat_statements; zerar depois evita o arquivo de textos crescer sem limite
+    _rodar_sql(root, "select pg_stat_statements_reset();", "reset de estatísticas de consultas")
+    print(f"  cache do painel atualizado: {', '.join(ufs)} + prioritárias" + (" + apocalipse" if apocalipse else ""), flush=True)

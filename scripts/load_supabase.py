@@ -228,6 +228,10 @@ def main(argv: list[str] | None = None) -> int:
         load_via_cli(uf, src, a.only.split(",") if a.only else None)
     else:
         load_direct(uf, src)
+    if a.via_cli or a.historico:
+        # lotes grandes de INSERT viram entradas enormes no pg_stat_statements; zerar evita o arquivo de textos crescer
+        # (ler esse arquivo inchado custava centenas de MB de temp a cada consulta de diagnóstico)
+        run_cli_sql("select pg_stat_statements_reset();", "reset de estatísticas de consultas")
     return 0
 
 
