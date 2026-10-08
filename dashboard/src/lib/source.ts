@@ -163,7 +163,14 @@ export interface ClassifCand { id: number; cargo: number; numero: number; nome: 
 /** Temas dos criativos por candidatura (criativos distintos com o tema; total de criativos da candidatura). */
 export interface MetaTemas { cand: number[]; tema: string[]; criativos: number[]; anuncios: number[]; total: number[] }
 
+/** Fundo eleitoral (FEFC) e contas por candidatura, da prestação de contas do TSE (colunas alinhadas por id). */
+export interface FundoCols {
+  id: number[]; fundo: number[]; partidario: number[]; receita: number[]; gasto: (number | null)[];
+  prestacao: (string | null)[]; data_prestacao: (string | null)[]; data_tse: string | null;
+}
+
 export interface DataSource {
+  fundo(): Promise<FundoCols>;
   apocalipse(): Promise<Apocalipse | null>;
   metaTemas(): Promise<MetaTemas>;
   metaPrioritarias(): Promise<MetaPrioritaria[]>;
@@ -255,7 +262,16 @@ const HIST_VAZIO: Historico = { resumo: [], nivel: [], mun: [], chave: [], votos
 
 const META_VAZIO: MetaResumo = { execucao: null, ultima_completa: null, candidaturas: [] };
 
+const FUNDO_VAZIO: FundoCols = { id: [], fundo: [], partidario: [], receita: [], gasto: [], prestacao: [], data_prestacao: [], data_tse: null };
+
 const dev: DataSource = {
+  async fundo() {
+    try {
+      return await getJson<FundoCols>(`${devBase()}/fundo.json`);
+    } catch {
+      return FUNDO_VAZIO;
+    }
+  },
   async metaResumo() {
     try {
       return await getJson<MetaResumo>(`${devBase()}/meta/resumo.json`);
@@ -406,6 +422,7 @@ const dev: DataSource = {
 };
 
 const remote: DataSource = {
+  fundo: () => rpc("fundo_json", { p_uf: getUf() }),
   historico: (id) => rpc("historico_json", { p_candidatura_id: id }),
   metaResumo: () => rpc("meta_resumo_cache", { p_uf: getUf() }),
   metaAnuncios: async (id) => expandirCompacto(await rpc<MetaCompacto>("meta_anuncios_cache", { p_candidatura_id: id })),

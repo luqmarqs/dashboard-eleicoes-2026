@@ -107,7 +107,7 @@ export function GastoTopo({ candId }: { candId: number }) {
   );
 }
 
-function Bloco({ rotulo, valor, sub, destaque = false }: { rotulo: string; valor: string; sub: string; destaque?: boolean }) {
+export function Bloco({ rotulo, valor, sub, destaque = false }: { rotulo: string; valor: string; sub: string; destaque?: boolean }) {
   return (
     <div className={`flex min-w-0 flex-col rounded-md border px-3 py-2 ${destaque ? "border-accent bg-accent-soft/40" : "border-line bg-panel"}`}>
       <span className="eyebrow">{rotulo}</span>

@@ -8,6 +8,7 @@ import { SenadoAnalise } from "../components/SenadoAnalise";
 import { AnunciosVotos } from "../components/AnunciosVotos";
 import { AnaliseCandidatura } from "../components/AnaliseCandidatura";
 import { GastoTopo } from "../components/GastoTopo";
+import { FundoTopo } from "../components/FundoTopo";
 import { DobradasAlcance } from "../components/DobradasAlcance";
 import { TerritorioAnuncios } from "../components/TerritorioAnuncios";
 import { TemasCriativos } from "../components/TemasCriativos";
@@ -90,6 +91,9 @@ export function CandidatePanel() {
 
       {/* gasto em anúncios (próprio + dobradas), para qualquer candidatura com dados da Meta */}
       <GastoTopo candId={cand.id} />
+
+      {/* fundo eleitoral (FEFC) recebido e por voto, da prestação de contas do TSE */}
+      <FundoTopo candId={cand.id} />
 
       {/* candidaturas prioritárias (destaques da UF): análise breve no topo */}
       {dados && !municipio && b.candidaturasDestaque.includes(cand.id) && <AnaliseCandidatura base={b} cand={cand} dados={dados} />}
