@@ -27,8 +27,10 @@ export function Dobrada() {
   const destaque = base.data?.candidaturasDestaque ?? [];
   // Padrão: as duas candidaturas em destaque; com uma só, cruza com o Lula (presidente).
   const lula = base.data?.candidaturas.find((c) => c.cargo === 1 && c.numero === 13 && c.tipo === "nominal")?.id;
-  const aId = Number(sp.get("a") ?? (destaque.length > 1 ? destaque[1] : lula) ?? destaque[0]);
-  const bId = Number(sp.get("b") ?? destaque[0]);
+  // ids da URL que não existem nesta UF caem no padrão (link de outro estado com ?uf= trocado)
+  const daUf = (v: string | null) => (v != null && base.data?.candById.has(Number(v)) ? Number(v) : undefined);
+  const aId = daUf(sp.get("a")) ?? (destaque.length > 1 ? destaque[1] : lula) ?? destaque[0] ?? NaN;
+  const bId = daUf(sp.get("b")) ?? destaque[0] ?? NaN;
   const municipio = sp.get("mun");
   const modo = (sp.get("modo") === "territorios" && municipio ? "territorios" : "escolas") as "escolas" | "territorios";
   const set = (k: string, v: string | null) => {

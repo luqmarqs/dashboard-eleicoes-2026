@@ -62,8 +62,10 @@ export function Presidente() {
     () => (b ? b.candidaturas.filter((c) => c.cargo === 1 && c.tipo === "nominal").sort((x, y) => y.votos - x.votos) : []),
     [b],
   );
-  const refId = Number(sp.get("ref") ?? presCands.find((c) => c.numero === 13)?.id ?? presCands[0]?.id);
-  const candId = Number(sp.get("c") ?? b?.candidaturasDestaque[0]);
+  // ids da URL que não existem nesta UF (ex.: link de outro estado com ?uf= trocado) caem no padrão
+  const daUf = (v: string | null) => (v != null && b?.candById.has(Number(v)) ? Number(v) : undefined);
+  const refId = daUf(sp.get("ref")) ?? presCands.find((c) => c.numero === 13)?.id ?? presCands[0]?.id ?? NaN;
+  const candId = daUf(sp.get("c")) ?? b?.candidaturasDestaque[0] ?? NaN;
   const ref = b?.candById.get(refId);
   const cand = b?.candById.get(candId);
 

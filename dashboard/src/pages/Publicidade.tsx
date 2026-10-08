@@ -46,7 +46,7 @@ export function Publicidade() {
   const r = resumo.data;
   const comAnuncios = r.candidaturas.filter((c) => c.anuncios > 0 && b.candById.has(c.candidatura_id));
   const padrao = comAnuncios.find((c) => b.candidaturasDestaque.includes(c.candidatura_id)) ?? comAnuncios[0];
-  const candId = Number(sp.get("c")) || padrao?.candidatura_id;
+  const candId = (b.candById.has(Number(sp.get("c"))) ? Number(sp.get("c")) : undefined) ?? padrao?.candidatura_id;
   const cand = candId ? b.candById.get(candId) : undefined;
   const item = r.candidaturas.find((c) => c.candidatura_id === candId);
   const escolher = (id: number) => { const n = new URLSearchParams(sp); n.set("c", String(id)); n.delete("mun"); setSp(n, { replace: true }); };
