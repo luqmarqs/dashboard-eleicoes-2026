@@ -86,7 +86,7 @@ export function Dobrada() {
       <header>
         <div className="eyebrow">{L("Dobrada", "Joint ticket")}</div>
         <h1 className="display text-3xl">
-          {a ? <>{nomeCand(a)}<SituacaoBadge c={a} compacto /></> : "?"} × {b ? <>{nomeCand(b)}<SituacaoBadge c={b} compacto /></> : "?"}
+          {a ? <>{nomeCand(a)}<SituacaoBadge c={a} compacto /></> : L("escolha", "choose")} × {b ? <>{nomeCand(b)}<SituacaoBadge c={b} compacto /></> : L("escolha", "choose")}
         </h1>
         <p className="max-w-3xl text-muted">
           {L(
@@ -103,7 +103,9 @@ export function Dobrada() {
         <MunicipioSelect base={B} value={municipio} onChange={(cd) => set("mun", cd)} id="mun-dob" />
       </div>
       {votos.error && <ErrorBox error={votos.error} />}
-      {!analise || !a || !b || !soma ? <Loading texto={L("Cruzando as candidaturas…", "Crossing the candidacies…")} /> : (
+      {!a || !b ? (
+        <p className="text-muted">{L("Escolha as duas candidaturas acima para cruzar os votos.", "Choose both candidacies above to cross their votes.")}</p>
+      ) : !analise || !soma ? <Loading texto={L("Cruzando as candidaturas…", "Crossing the candidacies…")} /> : (
         <>
           {municipio && (
             <Segmented label={L("Modo do mapa", "Map mode")} value={modo} onChange={(m) => set("modo", m)}

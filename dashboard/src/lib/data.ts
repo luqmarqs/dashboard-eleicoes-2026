@@ -58,12 +58,14 @@ async function loadBase(): Promise<Base> {
     nomeCompleto: c.nomeCompleto[i], partido: c.partido[i], destinacao: c.destinacao[i], votos: c.votos[i],
     situacao: c.situacao?.[i] ?? null,
   }));
+  const candById = new Map(candidaturas.map((x) => [x.id, x]));
   return {
     locais, localById: new Map(locais.map((x) => [x.id, x])),
-    candidaturas, candById: new Map(candidaturas.map((x) => [x.id, x])),
+    candidaturas, candById,
     municipios, munByCd,
     partidosDestaque: cfg.partidos.sort((a, b) => a.ordem - b.ordem).map(({ sigla, cor }) => ({ sigla, cor })),
-    candidaturasDestaque: cfg.candidaturas,
+    // a tabela candidaturas_destaque tem as prioritárias de todas as UFs: só ficam as da UF carregada
+    candidaturasDestaque: cfg.candidaturas.filter((id) => candById.has(id)),
   };
 }
 
